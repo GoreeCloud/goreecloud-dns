@@ -6,6 +6,7 @@ import reducers from './reducers';
 
 import App from './components/App';
 import './components/App/index.css';
+import './glaze-ui.css';
 import './i18n';
 import { RootState, initialState } from './initialState';
 
