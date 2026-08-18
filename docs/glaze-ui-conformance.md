@@ -2,14 +2,16 @@
 
 ## Status
 
-GoreeCloud DNS is an active Glaze UI 1.0 consumer implementation. This document records source-level conformance for the first additive application-wide design layer. It does not classify the product Stable and does not replace compiled visual acceptance.
+GoreeCloud DNS is an active Glaze UI 1.0 consumer implementation. This document records source-level conformance for the additive application-wide design layer. It does not classify the product Stable and does not replace compiled visual acceptance.
 
 ## Canonical Target
 
 - Design system: Glaze UI
 - Target version: 1.0.0
+- Canonical repository: `GoreeCloud/glaze-ui`
+- Reviewed canonical revision: `d6e446fd8ef251259d16368d50aad90d9287a774`
 - Product: GoreeCloud DNS
-- Implementation model: local web consumer layer over the inherited AdGuard Home frontend
+- Consumer implementation: `client/src/glaze-ui.css` and `client/src/glaze-ui-components.css`
 - Remote UI dependencies introduced by Glaze UI: none
 
 ## Surface Hierarchy
@@ -22,16 +24,22 @@ The application maps the Glaze UI hierarchy as follows:
 - **Glaze** — selective translucent header/navigation treatment.
 - **Overlay** — dialogs and menus requiring stronger separation.
 
-The implementation deliberately avoids applying glass treatment everywhere. Glaze surfaces have solid fallbacks when transparency or backdrop filtering is unavailable or unsuitable.
+Canvas, Solid, Raised, Glaze, and Overlay are semantic roles rather than instructions to maximize translucency. DNS administration prioritizes readability, operational clarity, accessibility, and predictable behavior.
 
 ## Semantic Tokens
 
 `client/src/glaze-ui.css` defines product-local semantic roles for canvas, solid, raised, glaze, overlay, text, muted text, border, accent, success, warning, danger, focus, geometry, depth, target size, spacing, and motion. Existing inherited CSS variables are bridged onto these roles to support gradual migration instead of a destabilizing full rewrite.
 
+## Component Alignment
+
+`client/src/glaze-ui-components.css` deepens the semantic mapping for common inherited application primitives, including cards, tables, forms, dropdowns, pagination, alerts, badges, modal framing, and query-log/table surfaces. Header navigation uses the same Glaze semantic roles rather than hard-coded upstream green/gray presentation values.
+
 ## Interaction Contract
 
 The current foundation establishes consistent rounded control geometry, semantic accent treatment, visible `:focus-visible` focus, coarse-pointer minimum target sizing, and the canonical Glaze motion vocabulary:
 
+- Minimum practical target: 44 px
+- Comfortable target: 48 px
 - Instant: 90 ms
 - Fast: 160 ms
 - Standard: 220 ms
@@ -48,7 +56,7 @@ The Glaze consumer layer explicitly records all four adaptive ranges:
 - Expanded: 1024–1439 px
 - Wide: 1440 px and above
 
-The first pass adjusts container spacing and wide-layout bounds. Deeper navigation and data-density transformations remain follow-up work.
+Existing product-specific breakpoints may remain where technically useful, but they must not conflict with the canonical adaptive model.
 
 ## Accessibility and Resilience
 
@@ -68,9 +76,13 @@ The source layer includes:
 
 The inherited application already exposes light and dark theme behavior. The Glaze consumer layer maps both themes to semantic roles. System appearance and explicit preference behavior must be reviewed in runtime acceptance before Stable classification.
 
-## Product Identity
+## Product Identity Boundary
 
-GoreeCloud DNS retains a DNS/security-specific product personality while using shared Glaze UI semantics. The application shell now uses GoreeCloud DNS titles and a GoreeCloud DNS header mark. A complete canonical icon/favicon asset family remains follow-up work.
+GoreeCloud DNS retains a DNS/security-specific product personality while using shared Glaze UI semantics. The application shell uses GoreeCloud DNS titles and a GoreeCloud DNS header mark.
+
+Localized product self-references are adapted through `client/src/productIdentity.ts`. That transformation is intentionally limited to the exact upstream product name `AdGuard Home`. Generic `AdGuard` references, upstream organization names, protocol names, filtering syntax, licensing, provenance, and other upstream-specific references are not generically rewritten.
+
+A complete canonical icon/favicon asset family remains follow-up work.
 
 ## Stable-Release Boundary
 
