@@ -1,4 +1,4 @@
-# GoreeCloud DNS lint validation.
+# GoreeCloud DNS lint and design-system validation.
 name: lint
 
 permissions: {}
@@ -20,6 +20,19 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  glaze-ui-contract:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Validate Glaze UI contract
+        run: python3 scripts/validate_glaze_ui.py
+
   go-lint:
     runs-on: ubuntu-latest
     permissions:
