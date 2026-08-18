@@ -6,6 +6,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 CSS = ROOT / "client" / "src" / "glaze-ui.css"
+COMPONENT_CSS = ROOT / "client" / "src" / "glaze-ui-components.css"
 ENTRY = ROOT / "client" / "src" / "index.tsx"
 DOC = ROOT / "docs" / "glaze-ui-conformance.md"
 
@@ -24,6 +25,7 @@ def require_markers(name: str, text: str, markers: list[str]) -> None:
 
 def main() -> int:
     css = require_file(CSS)
+    component_css = require_file(COMPONENT_CSS)
     entry = require_file(ENTRY)
     doc = require_file(DOC)
 
@@ -56,7 +58,28 @@ def main() -> int:
         ],
     )
 
-    require_markers("index.tsx", entry, ["import './glaze-ui.css';"])
+    require_markers(
+        "glaze-ui-components.css",
+        component_css,
+        [
+            ".table",
+            ".form-control",
+            ".dropdown-item",
+            ".btn-outline-secondary",
+            ".pagination .page-link",
+            ".modal-header",
+            "forced-colors: active",
+        ],
+    )
+
+    require_markers(
+        "index.tsx",
+        entry,
+        [
+            "import './glaze-ui.css';",
+            "import './glaze-ui-components.css';",
+        ],
+    )
 
     require_markers(
         "glaze-ui-conformance.md",
@@ -83,7 +106,7 @@ def main() -> int:
         "jsdelivr.net",
         "cdnjs.cloudflare.com",
     ]
-    combined = css + "\n" + doc
+    combined = css + "\n" + component_css + "\n" + doc
     leaked = [value for value in forbidden if value in combined]
     if leaked:
         raise AssertionError(f"remote presentation dependency found: {', '.join(leaked)}")
