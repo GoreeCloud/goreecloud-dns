@@ -61,6 +61,8 @@ The upstream foundation is an engineering bootstrap, not the final product bound
 
 GoreeCloud DNS consumes Glaze UI 1.0 as its design system. Current foundation work includes GoreeCloud DNS product identity, semantic light/dark surfaces, the Canvas/Solid/Raised/Glaze/Overlay hierarchy, accessible target and focus treatment, adaptive layouts, and local-only presentation resources.
 
+The independently bundled dashboard, initial setup flow, and login flow all load the same Glaze UI consumer layers and GoreeCloud product-identity adapter. Setup and authentication surfaces are also being migrated away from inherited hard-coded card, shadow, progress, error, and accent presentation values.
+
 Visible localized self-references to the inherited product name are adapted through a controlled identity layer that replaces only the exact `AdGuard Home` product name. Generic upstream references, protocol terminology, filtering syntax, licensing, attribution, and provenance are not generically rewritten.
 
 ## Production Safety
@@ -74,6 +76,10 @@ The existing production AdGuard Home deployment remains operational during early
 - `docs/goreecloud-project.md` — project architecture and development direction.
 - `docs/glaze-ui-conformance.md` — Glaze UI consumer conformance and Stable-release boundary.
 
+## Validation Status
+
+Fail-closed source validators now cover Glaze UI and product identity across the dashboard, setup, and login entrypoints. GitHub has not surfaced status checks for the current PR head. A disposable direct clone was attempted from the execution environment but could not resolve `github.com`, so no local npm or Go executable result is claimed from that attempt.
+
 ## Current Status
 
-GoreeCloud DNS is under active development. Repository, CI, application-shell, localization identity, and Glaze UI foundations are being established before DNS-engine behavior or production migration work begins.
+GoreeCloud DNS is under active development. Repository, CI, application-shell, localization identity, Glaze UI, setup, and authentication foundations are being established before DNS-engine behavior or production migration work begins.
