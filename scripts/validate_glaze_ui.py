@@ -7,7 +7,11 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 CSS = ROOT / "client" / "src" / "glaze-ui.css"
 COMPONENT_CSS = ROOT / "client" / "src" / "glaze-ui-components.css"
-ENTRY = ROOT / "client" / "src" / "index.tsx"
+ENTRYPOINTS = (
+    ROOT / "client" / "src" / "index.tsx",
+    ROOT / "client" / "src" / "install" / "index.tsx",
+    ROOT / "client" / "src" / "login" / "index.tsx",
+)
 DOC = ROOT / "docs" / "glaze-ui-conformance.md"
 
 
@@ -26,7 +30,6 @@ def require_markers(name: str, text: str, markers: list[str]) -> None:
 def main() -> int:
     css = require_file(CSS)
     component_css = require_file(COMPONENT_CSS)
-    entry = require_file(ENTRY)
     doc = require_file(DOC)
 
     require_markers(
@@ -72,14 +75,16 @@ def main() -> int:
         ],
     )
 
-    require_markers(
-        "index.tsx",
-        entry,
-        [
-            "import './glaze-ui.css';",
-            "import './glaze-ui-components.css';",
-        ],
-    )
+    for entrypoint in ENTRYPOINTS:
+        entry = require_file(entrypoint)
+        require_markers(
+            str(entrypoint.relative_to(ROOT)),
+            entry,
+            [
+                "glaze-ui.css",
+                "glaze-ui-components.css",
+            ],
+        )
 
     require_markers(
         "glaze-ui-conformance.md",
