@@ -1,0 +1,150 @@
+/* GoreeCloud DNS — Glaze UI component alignment.
+ * Presentation-only overrides for inherited Bootstrap-style primitives.
+ */
+
+.card-header,
+.card-footer {
+    border-color: var(--glaze-border);
+    background: transparent;
+}
+
+.table {
+    color: var(--glaze-text);
+    background: transparent;
+}
+
+.table th,
+.table td,
+.table thead th {
+    border-color: var(--glaze-border);
+}
+
+.table-hover tbody tr:hover,
+.dropdown-item:hover,
+.dropdown-item:focus {
+    color: var(--glaze-text);
+    background: var(--glaze-accent-soft);
+}
+
+.dropdown-item,
+.dropdown-header {
+    color: var(--glaze-text);
+}
+
+.form-control,
+.custom-select,
+select,
+input,
+textarea {
+    color: var(--glaze-text);
+    border-color: var(--glaze-border);
+    background-color: var(--glaze-solid);
+}
+
+.form-control:focus,
+.custom-select:focus,
+select:focus,
+input:focus,
+textarea:focus {
+    color: var(--glaze-text);
+    border-color: var(--glaze-focus);
+    background-color: var(--glaze-solid);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--glaze-focus) 20%, transparent);
+}
+
+.form-control:disabled,
+.form-control[readonly],
+.custom-select:disabled,
+input:disabled,
+select:disabled,
+textarea:disabled {
+    color: var(--glaze-text-muted);
+    background: color-mix(in srgb, var(--glaze-solid) 86%, var(--glaze-canvas));
+}
+
+.btn-outline-secondary {
+    color: var(--glaze-text-muted);
+    border-color: var(--glaze-border);
+    background: transparent;
+}
+
+.btn-outline-secondary:hover,
+.btn-outline-secondary:focus {
+    color: var(--glaze-text);
+    border-color: var(--glaze-accent);
+    background: var(--glaze-accent-soft);
+}
+
+.badge-success {
+    background-color: var(--glaze-success);
+}
+
+.badge-danger {
+    background-color: var(--glaze-danger);
+}
+
+.alert {
+    border-color: var(--glaze-border);
+    border-radius: var(--glaze-radius-card);
+}
+
+.pagination .page-link {
+    color: var(--glaze-text);
+    border-color: var(--glaze-border);
+    background: var(--glaze-solid);
+}
+
+.pagination .page-item.active .page-link {
+    color: #fff;
+    border-color: var(--glaze-accent);
+    background: var(--glaze-accent);
+}
+
+.ReactTable,
+.rt-table,
+.logs__table {
+    color: var(--glaze-text);
+    border-color: var(--glaze-border);
+    background: transparent;
+}
+
+.ReactTable .rt-thead,
+.ReactTable .rt-tr-group,
+.ReactTable .rt-td,
+.ReactTable .rt-th {
+    border-color: var(--glaze-border);
+}
+
+.modal-header,
+.modal-footer {
+    border-color: var(--glaze-border);
+}
+
+.close {
+    color: var(--glaze-text-muted);
+    text-shadow: none;
+}
+
+.close:hover,
+.close:focus {
+    color: var(--glaze-text);
+}
+
+@media (max-width: 599px) {
+    .card-body,
+    .modal-body {
+        padding: var(--glaze-space-4);
+    }
+}
+
+@media (forced-colors: active) {
+    .form-control,
+    .custom-select,
+    .btn-outline-secondary,
+    .pagination .page-link,
+    .alert {
+        color: CanvasText;
+        border-color: ButtonText;
+        background: Canvas;
+    }
+}
