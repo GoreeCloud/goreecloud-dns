@@ -90,7 +90,7 @@ A complete canonical icon/favicon asset family remains follow-up work.
 
 ## Validation Boundary
 
-`script/validate_glaze_ui.py` and `scripts/validate_product_identity.py` are source-controlled fail-closed contracts. GitHub has not surfaced status checks for the current PR head. A disposable direct clone was also attempted from the execution environment but failed because that environment could not resolve `github.com`; therefore no local npm/Go executable result is claimed from that attempt.
+`scripts/validate_glaze_ui.py` and `scripts/validate_product_identity.py` are source-controlled fail-closed contracts. GitHub has not surfaced status checks for the current PR head. A disposable direct clone was also attempted from the execution environment but failed because that environment could not resolve `github.com`; therefore no local npm/Go executable result is claimed from that attempt.
 
 ## Stable-Release Boundary
 
