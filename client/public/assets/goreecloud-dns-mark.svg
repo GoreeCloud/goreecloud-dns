@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" role="img" aria-labelledby="title desc">
+  <title id="title">GoreeCloud DNS</title>
+  <desc id="desc">A shield containing a cloud, representing private DNS protection and GoreeCloud service discovery.</desc>
+  <rect width="40" height="40" rx="10" fill="#287d68"/>
+  <path fill="#ffffff" d="M20 5c5.1 0 9.8 1.1 14 3.3v9.3c0 8.6-4.7 15.4-14 20.4-9.3-5-14-11.8-14-20.4V8.3C10.2 6.1 14.9 5 20 5Zm0 4.2c-3.4 0-6.7.7-9.8 2.1v6.3c0 6.5 3.3 11.7 9.8 15.7 6.5-4 9.8-9.2 9.8-15.7v-6.3C26.7 9.9 23.4 9.2 20 9.2Z"/>
+  <path fill="#ffffff" opacity="0.76" d="M14.6 21.6a4.6 4.6 0 0 1 4.3-4.6 6.3 6.3 0 0 1 11.6 2.1 3.7 3.7 0 0 1-.7 7.3H18.3a3.8 3.8 0 0 1-3.7-4.8Z"/>
+</svg>
