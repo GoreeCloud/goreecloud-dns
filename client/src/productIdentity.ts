@@ -3,9 +3,10 @@ import i18n from './i18n';
 const UPSTREAM_PRODUCT_NAME = 'AdGuard Home';
 const GOREECLOUD_PRODUCT_NAME = 'GoreeCloud DNS';
 
-type TranslationObject = Record<string, unknown>;
+type TranslationValue = string | number | boolean | null | TranslationValue[] | TranslationObject;
+type TranslationObject = Record<string, TranslationValue>;
 
-const replaceProductName = (value: unknown): unknown => {
+const replaceProductName = (value: TranslationValue): TranslationValue => {
     if (typeof value === 'string') {
         return value.split(UPSTREAM_PRODUCT_NAME).join(GOREECLOUD_PRODUCT_NAME);
     }
@@ -16,8 +17,8 @@ const replaceProductName = (value: unknown): unknown => {
 
     if (value && typeof value === 'object') {
         return Object.fromEntries(
-            Object.entries(value as TranslationObject).map(([key, child]) => [key, replaceProductName(child)]),
-        );
+            Object.entries(value).map(([key, child]) => [key, replaceProductName(child)]),
+        ) as TranslationObject;
     }
 
     return value;
@@ -31,7 +32,8 @@ const applyProductIdentity = () => {
             return;
         }
 
-        i18n.addResourceBundle(language, 'translation', replaceProductName(bundle), true, true);
+        const rebrandedBundle = replaceProductName(bundle) as TranslationObject;
+        i18n.addResourceBundle(language, 'translation', rebrandedBundle, true, true);
     });
 };
 
