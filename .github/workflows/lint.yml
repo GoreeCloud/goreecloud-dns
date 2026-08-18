@@ -1,4 +1,4 @@
-# GoreeCloud DNS lint, product identity, and design-system validation.
+# GoreeCloud DNS lint, product identity, design-system, and frontend validation.
 name: lint
 
 permissions: {}
@@ -66,7 +66,7 @@ jobs:
       - name: Run Go lint
         run: make go-deps go-lint
 
-  eslint:
+  frontend-quality:
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -88,3 +88,12 @@ jobs:
 
       - name: Run ESLint
         run: npm --prefix="./client" run lint
+
+      - name: Run TypeScript typecheck
+        run: npm --prefix="./client" run typecheck
+
+      - name: Run frontend tests
+        run: npm --prefix="./client" run test
+
+      - name: Build production frontend
+        run: npm --prefix="./client" run build-prod
