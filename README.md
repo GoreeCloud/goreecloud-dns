@@ -8,25 +8,28 @@ This repository is a GoreeCloud-maintained fork of AdGuard Home. The project beg
 
 GoreeCloud DNS is intended to provide:
 
-- Network-wide advertisement and tracker blocking.
-- Malicious-domain and threat-domain blocking.
-- Client-specific DNS policies.
-- Family and child policy profiles.
-- Private GoreeCloud DNS records and service discovery.
-- Query visibility and privacy-aware diagnostics.
-- Upstream DNS management.
-- Approved encrypted DNS capabilities.
-- Integration with GoreeCloud Network, Manager, Monitor, Notify, and Backup.
+- network-wide advertisement and tracker blocking;
+- malicious-domain and threat-domain blocking;
+- client-specific DNS policies;
+- family and child policy profiles;
+- private GoreeCloud DNS records and service discovery;
+- custom filtering and allow rules;
+- query visibility and privacy-aware diagnostics;
+- upstream DNS management;
+- approved encrypted DNS capabilities;
+- GoreeCloud Network integration for private connectivity and client identity;
+- GoreeCloud Monitor integration for DNS observability;
+- GoreeCloud Notify integration for operational and security alerts;
+- GoreeCloud Backup integration for configuration and recovery;
+- GoreeCloud Manager integration for centralized visibility;
 - Wardveil Security capabilities for DNS security and policy enforcement.
 
 ## Architecture Boundary
 
-GoreeCloud DNS is the client-facing DNS layer.
-
-The initial architecture preserves Unbound as the recursive, caching, and DNSSEC-validating resolver:
+The initial production architecture remains:
 
 ```text
-Approved clients
+Approved Clients
       |
       v
 GoreeCloud DNS
@@ -35,10 +38,10 @@ GoreeCloud DNS
    Unbound
       |
       v
-Internet DNS authorities
+Internet DNS Authorities
 ```
 
-GoreeCloud DNS replaces the long-term role currently performed by AdGuard Home; it does not replace Unbound unless a future approved architecture explicitly changes that responsibility.
+GoreeCloud DNS is the client-facing filtering, policy, and private-DNS layer. Unbound remains the recursive, caching, and DNSSEC-validating resolver unless a future approved architecture explicitly changes that responsibility.
 
 ## Development Model
 
@@ -47,32 +50,30 @@ The project follows a controlled fork-to-native transition:
 ```text
 AdGuard Home
     -> GoreeCloud-maintained fork
-    -> GoreeCloud-native interface and integrations
+    -> GoreeCloud-native user experience and integrations
     -> increasingly independent internal architecture
     -> GoreeCloud-controlled DNS platform
 ```
 
-Early development will prioritize stability, provenance, build validation, security, migration compatibility, and preservation of mature DNS behavior before major inherited subsystems are replaced.
+The upstream foundation is an engineering bootstrap, not the final product boundary.
 
-## Design and Security
+## User Interface
 
-The GoreeCloud-controlled administration experience will use the **Glaze UI** design language.
+GoreeCloud DNS consumes Glaze UI 1.0 as its design system. Current foundation work includes GoreeCloud DNS product identity, semantic light/dark surfaces, the Canvas/Solid/Raised/Glaze/Overlay hierarchy, accessible target and focus treatment, adaptive layouts, and local-only presentation resources.
 
-Security-oriented DNS capabilities will be presented under **Wardveil Security by GoreeCloud** where appropriate and where the implementation provides the claimed protection.
+Visible localized self-references to the inherited product name are adapted through a controlled identity layer that replaces only the exact `AdGuard Home` product name. Generic upstream references, protocol terminology, filtering syntax, licensing, attribution, and provenance are not generically rewritten.
 
 ## Production Safety
 
-The current production AdGuard Home deployment remains authoritative until GoreeCloud DNS completes isolated validation, migration testing, backup and restore validation, security testing, and explicit production acceptance.
+The existing production AdGuard Home deployment remains operational during early GoreeCloud DNS development. No production cutover should occur until GoreeCloud DNS has passed isolated runtime, filtering, private-DNS, upstream, failure, backup/restore, performance, security, and rollback validation.
 
-Development in this repository does not authorize production DNS cutover.
+## Repository Documents
 
-## Upstream
+- `UPSTREAM.md` — upstream relationship and fork maintenance model.
+- `SECURITY.md` — security and production-safety boundary.
+- `docs/goreecloud-project.md` — project architecture and development direction.
+- `docs/glaze-ui-conformance.md` — Glaze UI consumer conformance and Stable-release boundary.
 
-Upstream project: AdGuard Home  
-Upstream repository: `AdguardTeam/AdGuardHome`
+## Current Status
 
-See [UPSTREAM.md](UPSTREAM.md) for provenance and maintenance expectations.
-
-## License
-
-This fork preserves the upstream project's applicable license and notices. See the repository license files and upstream provenance documentation before redistribution or release.
+GoreeCloud DNS is under active development. Repository, CI, application-shell, localization identity, and Glaze UI foundations are being established before DNS-engine behavior or production migration work begins.
