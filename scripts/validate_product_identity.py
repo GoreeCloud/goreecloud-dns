@@ -3,7 +3,11 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 IDENTITY = ROOT / 'client' / 'src' / 'productIdentity.ts'
-INDEX = ROOT / 'client' / 'src' / 'index.tsx'
+ENTRYPOINTS = (
+    ROOT / 'client' / 'src' / 'index.tsx',
+    ROOT / 'client' / 'src' / 'install' / 'index.tsx',
+    ROOT / 'client' / 'src' / 'login' / 'index.tsx',
+)
 
 required_identity_markers = (
     "const UPSTREAM_PRODUCT_NAME = 'AdGuard Home';",
@@ -14,14 +18,18 @@ required_identity_markers = (
 )
 
 identity_text = IDENTITY.read_text(encoding='utf-8')
-index_text = INDEX.read_text(encoding='utf-8')
 
 missing = [marker for marker in required_identity_markers if marker not in identity_text]
 if missing:
     raise SystemExit(f'product identity validation failed; missing markers: {missing}')
 
-if "import './productIdentity';" not in index_text:
-    raise SystemExit('product identity validation failed; application entrypoint does not load productIdentity')
+for entrypoint in ENTRYPOINTS:
+    entrypoint_text = entrypoint.read_text(encoding='utf-8')
+    if 'productIdentity' not in entrypoint_text:
+        relative = entrypoint.relative_to(ROOT)
+        raise SystemExit(
+            f'product identity validation failed; {relative} does not load productIdentity'
+        )
 
 if "split('AdGuard')" in identity_text or "replace('AdGuard'" in identity_text:
     raise SystemExit('product identity validation failed; generic AdGuard replacement is prohibited')
