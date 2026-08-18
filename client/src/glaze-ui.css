@@ -1,0 +1,279 @@
+/* GoreeCloud DNS — Glaze UI 1.0 consumer layer.
+ * This file maps the inherited AdGuard Home frontend onto GoreeCloud semantic
+ * design roles without changing DNS behavior or requiring remote UI assets.
+ */
+
+:root {
+    --glaze-version: 1.0.0;
+
+    /* Semantic color roles. */
+    --glaze-canvas: #f4f7fb;
+    --glaze-canvas-accent: #e8f5f2;
+    --glaze-solid: #ffffff;
+    --glaze-raised: rgba(255, 255, 255, 0.96);
+    --glaze-glaze: rgba(255, 255, 255, 0.76);
+    --glaze-overlay: rgba(255, 255, 255, 0.94);
+    --glaze-text: #17202a;
+    --glaze-text-muted: #667085;
+    --glaze-border: rgba(31, 51, 73, 0.12);
+    --glaze-accent: #287d68;
+    --glaze-accent-strong: #176b59;
+    --glaze-accent-soft: #dcefe9;
+    --glaze-success: #238636;
+    --glaze-warning: #9a6700;
+    --glaze-danger: #c0362c;
+    --glaze-focus: #278a75;
+
+    /* Surface and geometry roles. */
+    --glaze-radius-control: 0.75rem;
+    --glaze-radius-card: 1rem;
+    --glaze-radius-overlay: 1.125rem;
+    --glaze-shadow-raised: 0 10px 30px rgba(24, 39, 55, 0.08);
+    --glaze-shadow-overlay: 0 24px 64px rgba(17, 27, 39, 0.18);
+    --glaze-blur: 18px;
+
+    /* Target and spacing roles. */
+    --glaze-target-min: 44px;
+    --glaze-target-comfortable: 48px;
+    --glaze-space-1: 0.25rem;
+    --glaze-space-2: 0.5rem;
+    --glaze-space-3: 0.75rem;
+    --glaze-space-4: 1rem;
+    --glaze-space-5: 1.5rem;
+    --glaze-space-6: 2rem;
+
+    /* Canonical motion vocabulary. */
+    --glaze-motion-instant: 90ms;
+    --glaze-motion-fast: 160ms;
+    --glaze-motion-standard: 220ms;
+    --glaze-motion-emphasized: 320ms;
+
+    /* Bridge inherited roles to Glaze UI semantics. */
+    --bgcolor: var(--glaze-canvas);
+    --header-bgcolor: var(--glaze-glaze);
+    --card-bgcolor: var(--glaze-raised);
+    --card-border-color: var(--glaze-border);
+    --border-color: var(--glaze-border);
+    --ctrl-bgcolor: var(--glaze-solid);
+    --mcolor: var(--glaze-text);
+    --scolor: var(--glaze-text-muted);
+    --btn-success-bgcolor: var(--glaze-accent);
+}
+
+[data-theme='dark'] {
+    --glaze-canvas: #0d1318;
+    --glaze-canvas-accent: #13231f;
+    --glaze-solid: #151d23;
+    --glaze-raised: rgba(24, 34, 42, 0.96);
+    --glaze-glaze: rgba(18, 27, 33, 0.78);
+    --glaze-overlay: rgba(23, 32, 39, 0.96);
+    --glaze-text: #edf3f5;
+    --glaze-text-muted: #a7b2b8;
+    --glaze-border: rgba(208, 226, 234, 0.13);
+    --glaze-accent: #62b9a1;
+    --glaze-accent-strong: #83cbb8;
+    --glaze-accent-soft: #193d34;
+    --glaze-success: #57b86a;
+    --glaze-warning: #e2b84b;
+    --glaze-danger: #f07167;
+    --glaze-focus: #77d2bb;
+    --glaze-shadow-raised: 0 12px 34px rgba(0, 0, 0, 0.28);
+    --glaze-shadow-overlay: 0 26px 72px rgba(0, 0, 0, 0.42);
+
+    --bgcolor: var(--glaze-canvas);
+    --header-bgcolor: var(--glaze-glaze);
+    --card-bgcolor: var(--glaze-raised);
+    --card-border-color: var(--glaze-border);
+    --border-color: var(--glaze-border);
+    --ctrl-bgcolor: var(--glaze-solid);
+    --mcolor: var(--glaze-text);
+    --scolor: var(--glaze-text-muted);
+    --btn-success-bgcolor: var(--glaze-accent);
+}
+
+html,
+body,
+#root {
+    min-height: 100%;
+}
+
+body {
+    color: var(--glaze-text);
+    background:
+        radial-gradient(circle at 12% 0%, var(--glaze-canvas-accent), transparent 34rem),
+        var(--glaze-canvas);
+}
+
+.header {
+    background: var(--glaze-glaze);
+    border-bottom: 1px solid var(--glaze-border);
+    backdrop-filter: blur(var(--glaze-blur)) saturate(135%);
+    -webkit-backdrop-filter: blur(var(--glaze-blur)) saturate(135%);
+}
+
+.card,
+.modal-content,
+.dropdown-menu {
+    border: 1px solid var(--glaze-border);
+    border-radius: var(--glaze-radius-card);
+    background: var(--glaze-raised);
+    box-shadow: var(--glaze-shadow-raised);
+}
+
+.modal-content,
+.dropdown-menu {
+    background: var(--glaze-overlay);
+    box-shadow: var(--glaze-shadow-overlay);
+}
+
+.btn,
+.form-control,
+.custom-select,
+select,
+input,
+textarea {
+    border-radius: var(--glaze-radius-control);
+}
+
+.btn,
+.nav-link,
+.form-control,
+.custom-select {
+    transition:
+        background-color var(--glaze-motion-fast) ease,
+        border-color var(--glaze-motion-fast) ease,
+        color var(--glaze-motion-fast) ease,
+        box-shadow var(--glaze-motion-fast) ease,
+        transform var(--glaze-motion-fast) ease;
+}
+
+.btn-success {
+    border-color: var(--glaze-accent);
+    background: linear-gradient(135deg, var(--glaze-accent), var(--glaze-accent-strong));
+}
+
+.btn-success:hover,
+.btn-success:focus {
+    border-color: var(--glaze-accent-strong);
+}
+
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+    outline: 3px solid color-mix(in srgb, var(--glaze-focus) 70%, transparent);
+    outline-offset: 2px;
+}
+
+@media (pointer: coarse) {
+    .btn,
+    .nav-link,
+    .form-control,
+    .custom-select,
+    button,
+    input,
+    select {
+        min-height: var(--glaze-target-min);
+    }
+}
+
+/* Glaze UI adaptive layout contract:
+ * Compact: <=599px
+ * Medium: 600-1023px
+ * Expanded: 1024-1439px
+ * Wide: >=1440px
+ */
+@media (max-width: 599px) {
+    .container,
+    .header__container {
+        padding-right: var(--glaze-space-4);
+        padding-left: var(--glaze-space-4);
+    }
+
+    .card {
+        border-radius: 0.875rem;
+    }
+}
+
+@media (min-width: 600px) and (max-width: 1023px) {
+    .container,
+    .header__container {
+        padding-right: var(--glaze-space-5);
+        padding-left: var(--glaze-space-5);
+    }
+}
+
+@media (min-width: 1024px) and (max-width: 1439px) {
+    .container,
+    .header__container {
+        padding-right: var(--glaze-space-5);
+        padding-left: var(--glaze-space-5);
+    }
+}
+
+@media (min-width: 1440px) {
+    .container,
+    .header__container {
+        max-width: 1320px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        scroll-behavior: auto !important;
+        transition-duration: 0.01ms !important;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+    }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+    .header,
+    .card,
+    .modal-content,
+    .dropdown-menu {
+        background: var(--glaze-solid);
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+    }
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .header,
+    .modal-content,
+    .dropdown-menu {
+        background: var(--glaze-solid);
+    }
+}
+
+@media (prefers-contrast: more) {
+    :root {
+        --glaze-border: currentColor;
+    }
+
+    .btn,
+    .form-control,
+    .custom-select,
+    .card,
+    .modal-content {
+        border-width: 2px;
+    }
+}
+
+@media (forced-colors: active) {
+    .header,
+    .card,
+    .modal-content,
+    .dropdown-menu,
+    .btn-success {
+        background: Canvas;
+        color: CanvasText;
+        border-color: ButtonText;
+        box-shadow: none;
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+    }
+
+    :where(a, button, input, select, textarea, [tabindex]):focus-visible {
+        outline: 2px solid Highlight;
+    }
+}
