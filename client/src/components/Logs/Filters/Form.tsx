@@ -86,6 +86,7 @@ export const Form = ({ className, setIsLoading }: Props) => {
             }}>
             <div className="field__search">
                 <SearchField
+                    id="querylog_search"
                     data-testid="querylog_search"
                     value={searchValue}
                     handleChange={(val) => setValue('search', val)}
