@@ -7,6 +7,8 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 CSS = ROOT / "client" / "src" / "glaze-ui.css"
 COMPONENT_CSS = ROOT / "client" / "src" / "glaze-ui-components.css"
+SETTINGS_CSS = ROOT / "client" / "src" / "components" / "Settings" / "Settings.css"
+DNS_ACCESS_FORM = ROOT / "client" / "src" / "components" / "Settings" / "Dns" / "Access" / "Form.tsx"
 QUERY_LOG_FILTER = ROOT / "client" / "src" / "components" / "Logs" / "Filters" / "Form.tsx"
 QUERY_LOG_HEADER = ROOT / "client" / "src" / "components" / "Logs" / "Filters" / "index.tsx"
 ENTRYPOINTS = (
@@ -32,6 +34,8 @@ def require_markers(name: str, text: str, markers: list[str]) -> None:
 def main() -> int:
     css = require_file(CSS)
     component_css = require_file(COMPONENT_CSS)
+    settings_css = require_file(SETTINGS_CSS)
+    dns_access_form = require_file(DNS_ACCESS_FORM)
     query_log_filter = require_file(QUERY_LOG_FILTER)
     query_log_header = require_file(QUERY_LOG_HEADER)
     doc = require_file(DOC)
@@ -114,6 +118,33 @@ def main() -> int:
     )
 
     require_markers(
+        "advanced Settings Glaze semantics",
+        settings_css,
+        [
+            ".form__message--error",
+            "color: var(--glaze-danger)",
+            "color: var(--glaze-text-muted)",
+            "min-width: var(--glaze-target-min)",
+            "min-height: var(--glaze-target-min)",
+            "var(--glaze-motion-fast)",
+            "var(--glaze-motion-medium)",
+            "var(--glaze-state-hover)",
+            "prefers-reduced-motion: reduce",
+            "forced-colors: active",
+        ],
+    )
+
+    require_markers(
+        "DNS access form accessibility",
+        dns_access_form,
+        [
+            "const descriptionId = `${id}-description`;",
+            "id={descriptionId}",
+            "aria-describedby={descriptionId}",
+        ],
+    )
+
+    require_markers(
         "Query Log filter accessibility",
         query_log_filter,
         [
@@ -173,7 +204,7 @@ def main() -> int:
         "jsdelivr.net",
         "cdnjs.cloudflare.com",
     ]
-    combined = css + "\n" + component_css + "\n" + doc
+    combined = css + "\n" + component_css + "\n" + settings_css + "\n" + doc
     leaked = [value for value in forbidden if value in combined]
     if leaked:
         raise AssertionError(f"remote presentation dependency found: {', '.join(leaked)}")
