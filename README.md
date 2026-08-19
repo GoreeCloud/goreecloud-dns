@@ -59,7 +59,7 @@ The upstream foundation is an engineering bootstrap, not the final product bound
 
 ## User Interface
 
-GoreeCloud DNS consumes Glaze UI 1.0 as its design system. Current foundation work includes GoreeCloud DNS product identity, semantic light/dark surfaces, the Canvas/Solid/Raised/Glaze/Overlay hierarchy, accessible target and focus treatment, adaptive layouts, and local-only presentation resources.
+GoreeCloud DNS consumes Stable Glaze UI 1.1 as its design system. Current foundation work includes GoreeCloud DNS product identity, semantic light/dark surfaces, the Canvas/Solid/Raised/Glaze/Overlay hierarchy, accessible target and focus treatment, adaptive layouts, dense administration hardening, and local-only presentation resources.
 
 The independently bundled dashboard, initial setup flow, and login flow all load the same Glaze UI consumer layers and GoreeCloud product-identity adapter. Setup and authentication surfaces are also being migrated away from inherited hard-coded card, shadow, progress, error, and accent presentation values.
 
@@ -78,8 +78,8 @@ The existing production AdGuard Home deployment remains operational during early
 
 ## Validation Status
 
-Fail-closed source validators now cover Glaze UI and product identity across the dashboard, setup, and login entrypoints. GitHub has not surfaced status checks for the current PR head. A disposable direct clone was attempted from the execution environment but could not resolve `github.com`, so no local npm or Go executable result is claimed from that attempt.
+Fail-closed source validators cover Stable Glaze UI 1.1 and product identity across the dashboard, setup, and login entrypoints, including the current Query Log and advanced-settings accessibility contracts. Executable GitHub Actions evidence and compiled visual/accessibility acceptance remain separate release gates and are not inferred from source-marker validation.
 
 ## Current Status
 
-GoreeCloud DNS is under active development. Repository, CI, application-shell, localization identity, Glaze UI, setup, and authentication foundations are being established before DNS-engine behavior or production migration work begins.
+GoreeCloud DNS is under active development. Repository, CI, application-shell, localization identity, Stable Glaze UI 1.1, setup, authentication, dense administration, and accessibility foundations are being established before DNS-engine behavior or production migration work begins.
