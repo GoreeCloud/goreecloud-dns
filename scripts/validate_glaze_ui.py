@@ -7,6 +7,8 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 CSS = ROOT / "client" / "src" / "glaze-ui.css"
 COMPONENT_CSS = ROOT / "client" / "src" / "glaze-ui-components.css"
+QUERY_LOG_FILTER = ROOT / "client" / "src" / "components" / "Logs" / "Filters" / "Form.tsx"
+QUERY_LOG_HEADER = ROOT / "client" / "src" / "components" / "Logs" / "Filters" / "index.tsx"
 ENTRYPOINTS = (
     ROOT / "client" / "src" / "index.tsx",
     ROOT / "client" / "src" / "install" / "index.tsx",
@@ -30,6 +32,8 @@ def require_markers(name: str, text: str, markers: list[str]) -> None:
 def main() -> int:
     css = require_file(CSS)
     component_css = require_file(COMPONENT_CSS)
+    query_log_filter = require_file(QUERY_LOG_FILTER)
+    query_log_header = require_file(QUERY_LOG_HEADER)
     doc = require_file(DOC)
 
     require_markers(
@@ -71,7 +75,32 @@ def main() -> int:
             ".btn-outline-secondary",
             ".pagination .page-link",
             ".modal-header",
+            ".box-body--settings",
+            ".page-header--logs",
+            ".logs__refresh",
+            ".logs__table",
+            "prefers-reduced-motion: reduce",
             "forced-colors: active",
+        ],
+    )
+
+    require_markers(
+        "Query Log filter accessibility",
+        query_log_filter,
+        [
+            'role="search"',
+            "aria-label={t('query_log')}",
+            "register('response_status')",
+        ],
+    )
+
+    require_markers(
+        "Query Log header accessibility",
+        query_log_header,
+        [
+            "aria-label={t('refresh_btn')}",
+            'aria-hidden="true"',
+            'focusable="false"',
         ],
     )
 
