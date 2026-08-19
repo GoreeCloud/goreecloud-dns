@@ -24,7 +24,7 @@ const Filters = ({ setIsLoading }: FiltersProps) => {
 
     return (
         <div className="page-header page-header--logs">
-            <h1 className="page-title page-title--large">
+            <h1 className="page-title page-title--large" aria-label={t('query_log')}>
                 {t('query_log')}
 
                 <button
