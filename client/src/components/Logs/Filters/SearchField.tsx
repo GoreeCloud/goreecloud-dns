@@ -21,13 +21,13 @@ export const SearchField = ({
 
     const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
         e.target.value = e.target.value.trim();
-        handleChange(e.target.value)
-    }
+        handleChange(e.target.value);
+    };
 
     return (
         <>
             <div className="input-group-search input-group-search__icon--magnifier">
-                <svg className="icons icon--24 icon--gray">
+                <svg className="icons icon--24 icon--gray" aria-hidden="true" focusable="false">
                     <use xlinkHref="#magnifier" />
                 </svg>
             </div>
@@ -43,15 +43,15 @@ export const SearchField = ({
                     className="input-group-search input-group-search__icon--cross"
                     onClick={onClear}
                 >
-                    <svg className="icons icon--20 icon--gray">
-                    <use xlinkHref="#cross" />
+                    <svg className="icons icon--20 icon--gray" aria-hidden="true" focusable="false">
+                        <use xlinkHref="#cross" />
                     </svg>
                 </div>
             )}
             {tooltip && (
                 <span className="input-group-search input-group-search__icon--tooltip">
                     <Tooltip content={tooltip} className="tooltip-container">
-                        <svg className="icons icon--20 icon--gray">
+                        <svg className="icons icon--20 icon--gray" aria-hidden="true" focusable="false">
                             <use xlinkHref="#question" />
                         </svg>
                     </Tooltip>
