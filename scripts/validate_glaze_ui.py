@@ -8,6 +8,9 @@ ROOT = Path(__file__).resolve().parents[1]
 CSS = ROOT / "client" / "src" / "glaze-ui.css"
 COMPONENT_CSS = ROOT / "client" / "src" / "glaze-ui-components.css"
 SETTINGS_CSS = ROOT / "client" / "src" / "components" / "Settings" / "Settings.css"
+HEADER = ROOT / "client" / "src" / "components" / "Header" / "index.tsx"
+HEADER_MENU = ROOT / "client" / "src" / "components" / "Header" / "Menu.tsx"
+HEADER_CSS = ROOT / "client" / "src" / "components" / "Header" / "Header.css"
 INPUT_CONTROL = ROOT / "client" / "src" / "components" / "ui" / "Controls" / "Input.tsx"
 DNS_ACCESS_FORM = ROOT / "client" / "src" / "components" / "Settings" / "Dns" / "Access" / "Form.tsx"
 CLIENT_MODAL = ROOT / "client" / "src" / "components" / "Settings" / "Clients" / "Modal.tsx"
@@ -44,6 +47,9 @@ def main() -> int:
     css = require_file(CSS)
     component_css = require_file(COMPONENT_CSS)
     settings_css = require_file(SETTINGS_CSS)
+    header = require_file(HEADER)
+    header_menu = require_file(HEADER_MENU)
+    header_css = require_file(HEADER_CSS)
     input_control = require_file(INPUT_CONTROL)
     dns_access_form = require_file(DNS_ACCESS_FORM)
     client_modal = require_file(CLIENT_MODAL)
@@ -145,6 +151,43 @@ def main() -> int:
             "min-height: var(--glaze-target-min)",
             "var(--glaze-motion-fast)",
             "var(--glaze-state-hover)",
+        ],
+    )
+
+    require_markers(
+        "Primary navigation toggle accessibility",
+        header,
+        [
+            '<button',
+            'type="button"',
+            'aria-label="GoreeCloud DNS navigation"',
+            'aria-expanded={isMenuOpen}',
+            'aria-controls="goreecloud-primary-navigation"',
+            'aria-hidden="true"',
+            'collapsed: !isMenuOpen',
+        ],
+    )
+
+    require_markers(
+        "Primary navigation landmark accessibility",
+        header_menu,
+        [
+            '<nav id="goreecloud-primary-navigation"',
+            'aria-label="GoreeCloud DNS"',
+            'aria-hidden="true"',
+            'focusable="false"',
+        ],
+    )
+
+    require_markers(
+        "Primary navigation Glaze target styling",
+        header_css,
+        [
+            ".header-toggler",
+            "min-width: var(--glaze-target-min)",
+            "min-height: var(--glaze-target-min)",
+            "border-radius: var(--glaze-radius-control)",
+            "background: transparent",
         ],
     )
 
@@ -299,6 +342,7 @@ def main() -> int:
             "state layers",
             "compact and comfortable density",
             "safe-area",
+            "native keyboard-operable mobile navigation button",
             "strict-search guidance directly associated with the search input through `aria-describedby`",
             "Compact: through 599 px",
             "Medium: 600–1023 px",
