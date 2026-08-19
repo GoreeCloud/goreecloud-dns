@@ -58,7 +58,8 @@ export const Textarea = forwardRef<HTMLTextAreaElement, Props>(
                     onBlur={(e) => {
                         if (trimOnBlur) {
                             const normalizedValue = trimLinesAndRemoveEmpty(e.target.value);
-                            rest.onChange?.(normalizedValue as never);
+                            const onValueChange = rest.onChange as ((value: string) => void) | undefined;
+                            onValueChange?.(normalizedValue);
                         }
                         onBlur?.(e);
                     }}
