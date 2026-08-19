@@ -4,12 +4,14 @@ import Tooltip from '../../ui/Tooltip';
 interface Props extends ComponentProps<'input'> {
     handleChange: (newValue: string) => void;
     onClear: () => void;
+    clearLabel: string;
     tooltip?: string;
 }
 
 export const SearchField = ({
     handleChange,
     onClear,
+    clearLabel,
     value,
     tooltip,
     className,
@@ -39,14 +41,16 @@ export const SearchField = ({
                 {...rest}
             />
             {typeof value === 'string' && value.length > 0 && (
-                <div
-                    className="input-group-search input-group-search__icon--cross"
+                <button
+                    type="button"
+                    className="btn btn-icon input-group-search input-group-search__icon--cross"
+                    aria-label={clearLabel}
                     onClick={onClear}
                 >
                     <svg className="icons icon--20 icon--gray" aria-hidden="true" focusable="false">
                         <use xlinkHref="#cross" />
                     </svg>
-                </div>
+                </button>
             )}
             {tooltip && (
                 <span className="input-group-search input-group-search__icon--tooltip">
