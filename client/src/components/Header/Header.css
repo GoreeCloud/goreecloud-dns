@@ -39,6 +39,24 @@
     z-index: 102;
 }
 
+.header-toggler {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: var(--glaze-target-min);
+    min-height: var(--glaze-target-min);
+    padding: 0;
+    border: 0;
+    border-radius: var(--glaze-radius-control);
+    color: inherit;
+    background: transparent;
+    cursor: pointer;
+}
+
+.header-toggler:hover {
+    background: var(--glaze-accent-soft);
+}
+
 .mobile-menu {
     position: fixed;
     z-index: 103;
