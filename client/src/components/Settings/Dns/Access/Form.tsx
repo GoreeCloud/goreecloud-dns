@@ -93,6 +93,7 @@ const Form = ({ initialValues, onSubmit, processingSet }: FormProps) => {
         normalizeOnBlur: (value: string) => string;
     }) => {
         const disabled = allowedClients && id === 'disallowed_clients';
+        const descriptionId = `${id}-description`;
 
         return (
             <div key={id} className="form__group mb-5">
@@ -101,7 +102,9 @@ const Form = ({ initialValues, onSubmit, processingSet }: FormProps) => {
                     {disabled && <>&nbsp;({t('disabled')})</>}
                 </label>
 
-                <div className="form__desc form__desc--top">{subtitle}</div>
+                <div id={descriptionId} className="form__desc form__desc--top">
+                    {subtitle}
+                </div>
 
                 <Controller
                     name={id}
@@ -110,6 +113,7 @@ const Form = ({ initialValues, onSubmit, processingSet }: FormProps) => {
                         <Textarea
                             {...field}
                             id={id}
+                            aria-describedby={descriptionId}
                             data-testid={id}
                             disabled={disabled || processingSet}
                             onBlur={(e) => {
