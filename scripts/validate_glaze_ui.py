@@ -12,6 +12,7 @@ HEADER = ROOT / "client" / "src" / "components" / "Header" / "index.tsx"
 HEADER_MENU = ROOT / "client" / "src" / "components" / "Header" / "Menu.tsx"
 HEADER_CSS = ROOT / "client" / "src" / "components" / "Header" / "Header.css"
 SETUP_PROGRESS = ROOT / "client" / "src" / "install" / "Setup" / "Progress.tsx"
+LOGIN = ROOT / "client" / "src" / "login" / "Login" / "index.tsx"
 INPUT_CONTROL = ROOT / "client" / "src" / "components" / "ui" / "Controls" / "Input.tsx"
 DNS_ACCESS_FORM = ROOT / "client" / "src" / "components" / "Settings" / "Dns" / "Access" / "Form.tsx"
 CLIENT_MODAL = ROOT / "client" / "src" / "components" / "Settings" / "Clients" / "Modal.tsx"
@@ -52,6 +53,7 @@ def main() -> int:
     header_menu = require_file(HEADER_MENU)
     header_css = require_file(HEADER_CSS)
     setup_progress = require_file(SETUP_PROGRESS)
+    login = require_file(LOGIN)
     input_control = require_file(INPUT_CONTROL)
     dns_access_form = require_file(DNS_ACCESS_FORM)
     client_modal = require_file(CLIENT_MODAL)
@@ -209,6 +211,17 @@ def main() -> int:
     )
 
     require_markers(
+        "Authentication password-help disclosure accessibility",
+        login,
+        [
+            "const FORGOT_PASSWORD_HELP_ID = 'forgot-password-help'",
+            "aria-expanded={isForgotPasswordVisible}",
+            "aria-controls={FORGOT_PASSWORD_HELP_ID}",
+            "id={FORGOT_PASSWORD_HELP_ID}",
+        ],
+    )
+
+    require_markers(
         "Reusable input accessibility",
         input_control,
         [
@@ -360,6 +373,7 @@ def main() -> int:
             "compact and comfortable density",
             "safe-area",
             "native keyboard-operable mobile navigation button",
+            "authentication password-help disclosure exposes its expanded state and controlled help region",
             "strict-search guidance directly associated with the search input through `aria-describedby`",
             "Compact: through 599 px",
             "Medium: 600–1023 px",
