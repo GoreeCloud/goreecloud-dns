@@ -130,10 +130,104 @@ textarea:disabled {
     color: var(--glaze-text);
 }
 
+/* Dense administration surfaces: keep inherited behavior while making the
+ * settings stack and Query Log visually legible as GoreeCloud-owned regions.
+ */
+.box-body--settings,
+.page-header--logs,
+.logs__table {
+    border: 1px solid var(--glaze-border);
+    border-radius: var(--glaze-radius-card);
+    background: var(--glaze-raised);
+    box-shadow: var(--glaze-shadow-raised);
+}
+
+.box-body--settings {
+    padding: var(--glaze-space-5);
+}
+
+.page-header--logs {
+    align-items: center;
+    gap: var(--glaze-space-4);
+    margin-bottom: var(--glaze-space-4);
+    padding: var(--glaze-space-4) var(--glaze-space-5);
+}
+
+.page-header--logs .page-title {
+    margin-bottom: 0;
+    color: var(--glaze-text);
+}
+
+.page-header--logs .form-control--container {
+    gap: var(--glaze-space-3);
+}
+
+.page-header--logs .field__search,
+.page-header--logs .field__select {
+    min-height: var(--glaze-target-min);
+}
+
+.page-header--logs .form-control--search,
+.page-header--logs .custom-select--logs {
+    min-height: var(--glaze-target-min);
+    border: 1px solid var(--glaze-border);
+    background-color: var(--glaze-solid) !important;
+}
+
+.logs__refresh {
+    min-width: var(--glaze-target-min);
+    min-height: var(--glaze-target-min);
+    color: var(--glaze-accent);
+    border-radius: var(--glaze-radius-control);
+    transition:
+        color var(--glaze-motion-fast) ease,
+        background-color var(--glaze-motion-fast) ease,
+        transform var(--glaze-motion-fast) ease;
+}
+
+.logs__refresh:hover,
+.logs__refresh:focus-visible {
+    color: var(--glaze-accent-strong);
+    background: var(--glaze-accent-soft);
+}
+
+.logs__table {
+    overflow: hidden auto;
+}
+
+.logs__table .logs__row {
+    border-bottom-color: var(--glaze-border);
+    transition: background-color var(--glaze-motion-fast) ease;
+}
+
+.logs__table .logs__cell--header__container {
+    color: var(--glaze-text-muted);
+    background: color-mix(in srgb, var(--glaze-solid) 86%, var(--glaze-canvas));
+}
+
 @media (max-width: 599px) {
     .card-body,
-    .modal-body {
+    .modal-body,
+    .box-body--settings {
         padding: var(--glaze-space-4);
+    }
+
+    .page-header--logs {
+        align-items: stretch;
+        padding: var(--glaze-space-4);
+    }
+
+    .page-header--logs .field__select {
+        margin-top: var(--glaze-space-3);
+        padding-right: 0;
+        padding-left: 0;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .logs__refresh,
+    .logs__table .logs__row {
+        transition: none;
     }
 }
 
@@ -142,9 +236,17 @@ textarea:disabled {
     .custom-select,
     .btn-outline-secondary,
     .pagination .page-link,
-    .alert {
+    .alert,
+    .box-body--settings,
+    .page-header--logs,
+    .logs__table {
         color: CanvasText;
         border-color: ButtonText;
         background: Canvas;
+        box-shadow: none;
+    }
+
+    .logs__refresh {
+        color: ButtonText;
     }
 }
