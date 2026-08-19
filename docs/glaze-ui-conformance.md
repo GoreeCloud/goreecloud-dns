@@ -38,7 +38,7 @@ Glaze UI 1.1 state layers are represented explicitly for hover, pressed, focus, 
 
 The dashboard, initial setup flow, and authentication flow all load the same Glaze UI base/component layers and GoreeCloud product-identity adapter. Source validators fail closed if any of these three independently bundled frontend entrypoints loses those imports.
 
-The setup and authentication surfaces additionally map their inherited presentation onto Glaze semantic values rather than legacy hard-coded card radius, shadow, progress-track, error, or accent values. The initial-setup progress indicator exposes native progressbar semantics with localized naming and explicit current/minimum/maximum values, while the authentication password-help disclosure exposes its expanded state and controlled help region without changing the inherited reset workflow.
+The setup and authentication surfaces additionally map their inherited presentation onto Glaze semantic values rather than legacy hard-coded card radius, shadow, progress-track, error, or accent values. The initial-setup progress indicator exposes native progressbar semantics with localized naming and explicit current/minimum/maximum values, while the authentication password-help disclosure exposes its expanded state and controlled help region without changing the inherited reset workflow. The setup configuration validation debounce is memoized and canceled on teardown so delayed validation work does not outlive the setup component or get recreated on each render.
 
 ## Dense Administration Coverage
 
@@ -52,7 +52,7 @@ Advanced settings also include source-level accessibility hardening for DNS acce
 
 The shared `Input` control now establishes stable input IDs from the explicit `id` or field `name`, connects visible labels with `htmlFor`, links descriptions and errors through `aria-describedby`, exposes validation state through `aria-invalid`, and marks visible validation feedback as an alert. This improves every current consumer of the shared control without changing form values or backend behavior.
 
-This is presentation, semantics, and defensive frontend behavior only. It does not alter query collection, retention, filtering decisions, DNS processing, client policy, upstream selection, cache behavior, encryption behavior, DHCP allocation behavior, authentication processing, password-reset behavior, or backend configuration behavior.
+This is presentation, semantics, defensive frontend behavior, and setup lifecycle hardening only. It does not alter query collection, retention, filtering decisions, DNS processing, client policy, upstream selection, cache behavior, encryption behavior, DHCP allocation behavior, authentication processing, password-reset behavior, or backend configuration behavior.
 
 ## Interaction Contract
 
@@ -87,6 +87,7 @@ The source layer includes:
 - decorative mobile-navigation and navigation-item glyphs hidden from assistive technology;
 - a named initial-setup progressbar with explicit current, minimum, and maximum values;
 - authentication password-help disclosure semantics using `aria-expanded` and `aria-controls` with a stable controlled help-region ID;
+- memoized, teardown-cancelled setup configuration validation debounce behavior;
 - shared input label, description, validation-state, and error relationships;
 - explicit Query Log search/status/refresh/clear accessibility semantics;
 - a native keyboard-operable Query Log clear-search action with an accessible label;
@@ -108,7 +109,7 @@ The source layer includes:
 - local/system typography only;
 - no remote font, icon, analytics, tracking, or presentation runtime introduced by this layer.
 
-Setup and authentication surfaces preserve the existing mobile input anti-zoom accommodation while gaining semantic contrast, forced-colors behavior, Glaze surface fallbacks, explicit setup progress semantics, and stateful password-help disclosure semantics.
+Setup and authentication surfaces preserve the existing mobile input anti-zoom accommodation while gaining semantic contrast, forced-colors behavior, Glaze surface fallbacks, explicit setup progress semantics, deterministic debounced validation cleanup, and stateful password-help disclosure semantics.
 
 ## Appearance
 
@@ -124,7 +125,7 @@ The browser-facing SVG mark is established as the current canonical source asset
 
 ## Validation Boundary
 
-`scripts/validate_glaze_ui.py` and `scripts/validate_product_identity.py` are source-controlled fail-closed contracts. The Glaze validator requires the Stable 1.1 version claim, state layers, icon and density semantics, adaptive gutters, safe-area markers, primary-navigation button/landmark semantics and minimum-target styling, setup progressbar semantics, authentication password-help disclosure semantics, dense settings/table coverage, reusable input accessibility, Query Log accessibility semantics including the keyboard-operable clear-search action and programmatically associated strict-search guidance, advanced Settings semantics, DNS access-control relationships, client-modal labeling, encryption status announcements, DHCP validation/action accessibility, DHCP range-group naming, and resilience behavior. Executable GitHub Actions status must still be observed separately; source-marker validation does not substitute for lint, typecheck, tests, production build, or compiled visual acceptance.
+`scripts/validate_glaze_ui.py` and `scripts/validate_product_identity.py` are source-controlled fail-closed contracts. The Glaze validator requires the Stable 1.1 version claim, state layers, icon and density semantics, adaptive gutters, safe-area markers, primary-navigation button/landmark semantics and minimum-target styling, setup validation lifecycle stability, setup progressbar semantics, authentication password-help disclosure semantics, dense settings/table coverage, reusable input accessibility, Query Log accessibility semantics including the keyboard-operable clear-search action and programmatically associated strict-search guidance, advanced Settings semantics, DNS access-control relationships, client-modal labeling, encryption status announcements, DHCP validation/action accessibility, DHCP range-group naming, and resilience behavior. Executable GitHub Actions status must still be observed separately; source-marker validation does not substitute for lint, typecheck, tests, production build, or compiled visual acceptance.
 
 ## Stable-Release Boundary
 
