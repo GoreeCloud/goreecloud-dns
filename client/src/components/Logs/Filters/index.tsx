@@ -31,8 +31,9 @@ const Filters = ({ setIsLoading }: FiltersProps) => {
                     type="button"
                     className="btn btn-icon--green logs__refresh"
                     title={t('refresh_btn')}
+                    aria-label={t('refresh_btn')}
                     onClick={refreshLogs}>
-                    <svg className="icons icon--24">
+                    <svg className="icons icon--24" aria-hidden="true" focusable="false">
                         <use xlinkHref="#update" />
                     </svg>
                 </button>
