@@ -18,6 +18,7 @@ DHCP_LEASES = ROOT / "client" / "src" / "components" / "Settings" / "Dhcp" / "Le
 DHCP_V4_FORM = ROOT / "client" / "src" / "components" / "Settings" / "Dhcp" / "FormDHCPv4.tsx"
 DHCP_V6_FORM = ROOT / "client" / "src" / "components" / "Settings" / "Dhcp" / "FormDHCPv6.tsx"
 QUERY_LOG_FILTER = ROOT / "client" / "src" / "components" / "Logs" / "Filters" / "Form.tsx"
+QUERY_LOG_SEARCH = ROOT / "client" / "src" / "components" / "Logs" / "Filters" / "SearchField.tsx"
 QUERY_LOG_HEADER = ROOT / "client" / "src" / "components" / "Logs" / "Filters" / "index.tsx"
 ENTRYPOINTS = (
     ROOT / "client" / "src" / "index.tsx",
@@ -53,6 +54,7 @@ def main() -> int:
     dhcp_v4_form = require_file(DHCP_V4_FORM)
     dhcp_v6_form = require_file(DHCP_V6_FORM)
     query_log_filter = require_file(QUERY_LOG_FILTER)
+    query_log_search = require_file(QUERY_LOG_SEARCH)
     query_log_header = require_file(QUERY_LOG_HEADER)
     doc = require_file(DOC)
 
@@ -237,7 +239,23 @@ def main() -> int:
         [
             'role="search"',
             "aria-label={t('query_log')}",
+            "aria-label={t('query_log_response_status', { value: '' })}",
             "register('response_status')",
+            "clearLabel={`${t('query_log_clear')}: ${t('domain_or_client')}`}",
+        ],
+    )
+
+    require_markers(
+        "Query Log search-control accessibility",
+        query_log_search,
+        [
+            "clearLabel: string",
+            '<button',
+            'type="button"',
+            "aria-label={clearLabel}",
+            "onClick={onClear}",
+            'aria-hidden="true"',
+            'focusable="false"',
         ],
     )
 
