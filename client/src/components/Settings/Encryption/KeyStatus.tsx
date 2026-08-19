@@ -12,7 +12,7 @@ const KeyStatus = ({ validKey, keyType }: KeyStatusProps) => (
             <Trans>encryption_status</Trans>:
         </div>
 
-        <ul className="encryption__list">
+        <ul className="encryption__list" role="status" aria-live="polite">
             <li className={validKey ? 'text-success' : 'text-danger'}>
                 {validKey ? (
                     <Trans values={{ type: keyType }}>encryption_key_valid</Trans>
