@@ -82,6 +82,9 @@ The source layer includes:
 
 - visible keyboard focus;
 - 44 px minimum and 48 px comfortable target semantics;
+- a native keyboard-operable mobile navigation button with an accessible name, `aria-expanded`, and `aria-controls` linked to the primary navigation landmark;
+- a named primary `nav` landmark whose identifier is protected by source validation;
+- decorative mobile-navigation and navigation-item glyphs hidden from assistive technology;
 - shared input label, description, validation-state, and error relationships;
 - explicit Query Log search/status/refresh/clear accessibility semantics;
 - a native keyboard-operable Query Log clear-search action with an accessible label;
@@ -119,7 +122,7 @@ The browser-facing SVG mark is established as the current canonical source asset
 
 ## Validation Boundary
 
-`scripts/validate_glaze_ui.py` and `scripts/validate_product_identity.py` are source-controlled fail-closed contracts. The Glaze validator requires the Stable 1.1 version claim, state layers, icon and density semantics, adaptive gutters, safe-area markers, dense settings/table coverage, reusable input accessibility, Query Log accessibility semantics including the keyboard-operable clear-search action and programmatically associated strict-search guidance, advanced Settings semantics, DNS access-control relationships, client-modal labeling, encryption status announcements, DHCP validation/action accessibility, DHCP range-group naming, and resilience behavior. Executable GitHub Actions status must still be observed separately; source-marker validation does not substitute for lint, typecheck, tests, production build, or compiled visual acceptance.
+`scripts/validate_glaze_ui.py` and `scripts/validate_product_identity.py` are source-controlled fail-closed contracts. The Glaze validator requires the Stable 1.1 version claim, state layers, icon and density semantics, adaptive gutters, safe-area markers, primary-navigation button/landmark semantics and minimum-target styling, dense settings/table coverage, reusable input accessibility, Query Log accessibility semantics including the keyboard-operable clear-search action and programmatically associated strict-search guidance, advanced Settings semantics, DNS access-control relationships, client-modal labeling, encryption status announcements, DHCP validation/action accessibility, DHCP range-group naming, and resilience behavior. Executable GitHub Actions status must still be observed separately; source-marker validation does not substitute for lint, typecheck, tests, production build, or compiled visual acceptance.
 
 ## Stable-Release Boundary
 
