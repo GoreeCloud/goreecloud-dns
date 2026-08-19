@@ -8,12 +8,15 @@ ROOT = Path(__file__).resolve().parents[1]
 CSS = ROOT / "client" / "src" / "glaze-ui.css"
 COMPONENT_CSS = ROOT / "client" / "src" / "glaze-ui-components.css"
 SETTINGS_CSS = ROOT / "client" / "src" / "components" / "Settings" / "Settings.css"
+INPUT_CONTROL = ROOT / "client" / "src" / "components" / "ui" / "Controls" / "Input.tsx"
 DNS_ACCESS_FORM = ROOT / "client" / "src" / "components" / "Settings" / "Dns" / "Access" / "Form.tsx"
 CLIENT_MODAL = ROOT / "client" / "src" / "components" / "Settings" / "Clients" / "Modal.tsx"
 CERT_STATUS = ROOT / "client" / "src" / "components" / "Settings" / "Encryption" / "CertificateStatus.tsx"
 KEY_STATUS = ROOT / "client" / "src" / "components" / "Settings" / "Encryption" / "KeyStatus.tsx"
 DHCP_INTERFACES = ROOT / "client" / "src" / "components" / "Settings" / "Dhcp" / "Interfaces.tsx"
 DHCP_LEASES = ROOT / "client" / "src" / "components" / "Settings" / "Dhcp" / "Leases.tsx"
+DHCP_V4_FORM = ROOT / "client" / "src" / "components" / "Settings" / "Dhcp" / "FormDHCPv4.tsx"
+DHCP_V6_FORM = ROOT / "client" / "src" / "components" / "Settings" / "Dhcp" / "FormDHCPv6.tsx"
 QUERY_LOG_FILTER = ROOT / "client" / "src" / "components" / "Logs" / "Filters" / "Form.tsx"
 QUERY_LOG_HEADER = ROOT / "client" / "src" / "components" / "Logs" / "Filters" / "index.tsx"
 ENTRYPOINTS = (
@@ -40,12 +43,15 @@ def main() -> int:
     css = require_file(CSS)
     component_css = require_file(COMPONENT_CSS)
     settings_css = require_file(SETTINGS_CSS)
+    input_control = require_file(INPUT_CONTROL)
     dns_access_form = require_file(DNS_ACCESS_FORM)
     client_modal = require_file(CLIENT_MODAL)
     cert_status = require_file(CERT_STATUS)
     key_status = require_file(KEY_STATUS)
     dhcp_interfaces = require_file(DHCP_INTERFACES)
     dhcp_leases = require_file(DHCP_LEASES)
+    dhcp_v4_form = require_file(DHCP_V4_FORM)
+    dhcp_v6_form = require_file(DHCP_V6_FORM)
     query_log_filter = require_file(QUERY_LOG_FILTER)
     query_log_header = require_file(QUERY_LOG_HEADER)
     doc = require_file(DOC)
@@ -141,6 +147,19 @@ def main() -> int:
     )
 
     require_markers(
+        "Reusable input accessibility",
+        input_control,
+        [
+            "const inputId = id ?? name",
+            "htmlFor={inputId}",
+            "id={inputId}",
+            "aria-invalid={error ? true : undefined}",
+            "aria-describedby={describedBy}",
+            'role="alert"',
+        ],
+    )
+
+    require_markers(
         "DNS access-form accessibility",
         dns_access_form,
         [
@@ -189,6 +208,26 @@ def main() -> int:
             'aria-hidden="true"',
             'focusable="false"',
             "showPagination={leaseData.length > LEASES_TABLE_DEFAULT_PAGE_SIZE}",
+        ],
+    )
+
+    require_markers(
+        "DHCP IPv4 range-group accessibility",
+        dhcp_v4_form,
+        [
+            'role="group"',
+            'aria-labelledby="dhcp-v4-range-title"',
+            'id="dhcp-v4-range-title"',
+        ],
+    )
+
+    require_markers(
+        "DHCP IPv6 range-group accessibility",
+        dhcp_v6_form,
+        [
+            'role="group"',
+            'aria-labelledby="dhcp-v6-range-title"',
+            'id="dhcp-v6-range-title"',
         ],
     )
 
