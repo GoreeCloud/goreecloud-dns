@@ -11,6 +11,7 @@ SETTINGS_CSS = ROOT / "client" / "src" / "components" / "Settings" / "Settings.c
 HEADER = ROOT / "client" / "src" / "components" / "Header" / "index.tsx"
 HEADER_MENU = ROOT / "client" / "src" / "components" / "Header" / "Menu.tsx"
 HEADER_CSS = ROOT / "client" / "src" / "components" / "Header" / "Header.css"
+SETUP_PROGRESS = ROOT / "client" / "src" / "install" / "Setup" / "Progress.tsx"
 INPUT_CONTROL = ROOT / "client" / "src" / "components" / "ui" / "Controls" / "Input.tsx"
 DNS_ACCESS_FORM = ROOT / "client" / "src" / "components" / "Settings" / "Dns" / "Access" / "Form.tsx"
 CLIENT_MODAL = ROOT / "client" / "src" / "components" / "Settings" / "Clients" / "Modal.tsx"
@@ -50,6 +51,7 @@ def main() -> int:
     header = require_file(HEADER)
     header_menu = require_file(HEADER_MENU)
     header_css = require_file(HEADER_CSS)
+    setup_progress = require_file(SETUP_PROGRESS)
     input_control = require_file(INPUT_CONTROL)
     dns_access_form = require_file(DNS_ACCESS_FORM)
     client_modal = require_file(CLIENT_MODAL)
@@ -188,6 +190,21 @@ def main() -> int:
             "min-height: var(--glaze-target-min)",
             "border-radius: var(--glaze-radius-control)",
             "background: transparent",
+        ],
+    )
+
+    require_markers(
+        "Setup progress accessibility",
+        setup_progress,
+        [
+            "useTranslation",
+            'role="progressbar"',
+            "aria-label={t('install_step')}",
+            "aria-valuemin={0}",
+            "aria-valuemax={INSTALL_TOTAL_STEPS}",
+            "aria-valuenow={step}",
+            "aria-valuetext={`${step}/${INSTALL_TOTAL_STEPS}`}",
+            'aria-hidden="true"',
         ],
     )
 
