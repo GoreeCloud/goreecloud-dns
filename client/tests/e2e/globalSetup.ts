@@ -1,4 +1,4 @@
-import { chromium, type FullConfig } from '@playwright/test';
+import { chromium, expect, type FullConfig } from '@playwright/test';
 
 import { ADMIN_USERNAME, ADMIN_PASSWORD, PORT, CONFIG_FILE_PATH } from '../constants';
 
@@ -47,23 +47,17 @@ async function globalSetup(config: FullConfig) {
         await page.getByTestId('install_confirm_password').blur();
 
         const nextButton = page.getByTestId('install_next');
-        if (await nextButton.isDisabled()) {
-            throw new Error('Setup credentials should be valid when password and confirmation match.');
-        }
+        await expect(nextButton).toBeEnabled();
 
         await page.getByTestId('install_password').fill(UPDATED_ADMIN_PASSWORD);
         await page.getByTestId('install_password').blur();
-        if (!(await nextButton.isDisabled())) {
-            throw new Error('Setup must invalidate confirmation after the password changes.');
-        }
+        await expect(nextButton).toBeDisabled();
 
         await page.getByTestId('install_password').fill(ADMIN_PASSWORD);
         await page.getByTestId('install_password').blur();
         await page.getByTestId('install_confirm_password').fill(ADMIN_PASSWORD);
         await page.getByTestId('install_confirm_password').blur();
-        if (await nextButton.isDisabled()) {
-            throw new Error('Setup should recover after password confirmation matches again.');
-        }
+        await expect(nextButton).toBeEnabled();
 
         await nextButton.click();
         await page.getByTestId('install_next').click();
