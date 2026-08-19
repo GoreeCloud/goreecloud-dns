@@ -46,7 +46,7 @@ General Settings, advanced settings regions, inherited responsive tables, ReactT
 
 Dense tables use semantic headers, stable overflow behavior, compact row spacing for pointer-heavy administration, comfortable row spacing on coarse-pointer devices, 44-pixel pagination targets, state-layer hover treatment, reduced-motion handling, reduced-transparency fallback, and forced-colors resilience. Compact layouts keep tables scrollable rather than compressing data into unreadable columns.
 
-The Query Log search/status toolbar uses canonical target sizing, semantic controls, Compact spacing, and 1.1 interaction-state semantics. The search region, response-status selector, and icon-only refresh action expose explicit accessibility semantics, with decorative refresh artwork removed from the accessibility tree.
+The Query Log search/status toolbar uses canonical target sizing, semantic controls, Compact spacing, and 1.1 interaction-state semantics. The search region, response-status selector, icon-only refresh action, and clear-search action expose explicit accessibility semantics. The clear-search affordance is a native keyboard-operable button rather than a click-only container, and decorative search/refresh/clear artwork is removed from the accessibility tree.
 
 Advanced settings also include source-level accessibility hardening for DNS access controls, client add/edit dialogs, encryption validation feedback, DHCP interface validation, DHCP lease actions, DHCP range groups, and the shared `Input` control. The DHCP interface selector exposes invalid state and its validation message through `aria-invalid` and `aria-describedby`, while the lease table uses accessible labels for icon-only actions and safely handles an absent leases array before pagination decisions. IPv4 and IPv6 range controls expose explicit named group semantics rather than relying on unassociated visual labels.
 
@@ -83,7 +83,9 @@ The source layer includes:
 - visible keyboard focus;
 - 44 px minimum and 48 px comfortable target semantics;
 - shared input label, description, validation-state, and error relationships;
-- explicit Query Log search/status/refresh accessibility semantics;
+- explicit Query Log search/status/refresh/clear accessibility semantics;
+- a native keyboard-operable Query Log clear-search action with an accessible label;
+- decorative Query Log search, refresh, clear, and help glyphs hidden from assistive technology;
 - DNS access-form description relationships;
 - client-modal title labeling;
 - certificate and private-key validation status announcements;
@@ -116,7 +118,7 @@ The browser-facing SVG mark is established as the current canonical source asset
 
 ## Validation Boundary
 
-`scripts/validate_glaze_ui.py` and `scripts/validate_product_identity.py` are source-controlled fail-closed contracts. The Glaze validator requires the Stable 1.1 version claim, state layers, icon and density semantics, adaptive gutters, safe-area markers, dense settings/table coverage, reusable input accessibility, Query Log accessibility semantics, advanced Settings semantics, DNS access-control relationships, client-modal labeling, encryption status announcements, DHCP validation/action accessibility, DHCP range-group naming, and resilience behavior. Executable GitHub Actions status must still be observed separately; source-marker validation does not substitute for lint, typecheck, tests, production build, or compiled visual acceptance.
+`scripts/validate_glaze_ui.py` and `scripts/validate_product_identity.py` are source-controlled fail-closed contracts. The Glaze validator requires the Stable 1.1 version claim, state layers, icon and density semantics, adaptive gutters, safe-area markers, dense settings/table coverage, reusable input accessibility, Query Log accessibility semantics including the keyboard-operable clear-search action, advanced Settings semantics, DNS access-control relationships, client-modal labeling, encryption status announcements, DHCP validation/action accessibility, DHCP range-group naming, and resilience behavior. Executable GitHub Actions status must still be observed separately; source-marker validation does not substitute for lint, typecheck, tests, production build, or compiled visual acceptance.
 
 ## Stable-Release Boundary
 
