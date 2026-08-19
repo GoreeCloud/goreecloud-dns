@@ -15,8 +15,13 @@ export const SearchField = ({
     value,
     tooltip,
     className,
+    id,
+    'aria-describedby': ariaDescribedBy,
     ...rest
 }: Props) => {
+    const helpId = tooltip && id ? `${id}-help` : undefined;
+    const describedBy = [ariaDescribedBy, helpId].filter(Boolean).join(' ') || undefined;
+
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         handleChange(e.target.value);
     };
@@ -34,12 +39,19 @@ export const SearchField = ({
                 </svg>
             </div>
             <input
+                {...rest}
+                id={id}
+                aria-describedby={describedBy}
                 className={className}
                 value={value}
                 onChange={handleInputChange}
                 onBlur={handleBlur}
-                {...rest}
             />
+            {tooltip && helpId && (
+                <span id={helpId} className="sr-only">
+                    {tooltip}
+                </span>
+            )}
             {typeof value === 'string' && value.length > 0 && (
                 <button
                     type="button"
