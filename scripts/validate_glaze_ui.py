@@ -405,7 +405,6 @@ def main() -> int:
             "native keyboard-operable mobile navigation button",
             "setup configuration validation debounce is memoized and canceled on teardown",
             "authentication password-help disclosure exposes its expanded state and controlled help region",
-            "password confirmation explicitly depends on the password field",
             "strict-search guidance directly associated with the search input through `aria-describedby`",
             "Compact: through 599 px",
             "Medium: 600–1023 px",
