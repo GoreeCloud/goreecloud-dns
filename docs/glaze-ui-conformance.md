@@ -48,7 +48,9 @@ Dense tables use semantic headers, stable overflow behavior, compact row spacing
 
 The Query Log search/status toolbar uses canonical target sizing, semantic controls, Compact spacing, and 1.1 interaction-state semantics. The search region, response-status selector, and icon-only refresh action expose explicit accessibility semantics, with decorative refresh artwork removed from the accessibility tree.
 
-Advanced settings also include source-level accessibility hardening for DNS access controls, client add/edit dialogs, encryption validation feedback, DHCP interface validation, and DHCP lease actions. The DHCP interface selector exposes invalid state and its validation message through `aria-invalid` and `aria-describedby`, while the lease table uses accessible labels for icon-only actions and safely handles an absent leases array before pagination decisions.
+Advanced settings also include source-level accessibility hardening for DNS access controls, client add/edit dialogs, encryption validation feedback, DHCP interface validation, DHCP lease actions, DHCP range groups, and the shared `Input` control. The DHCP interface selector exposes invalid state and its validation message through `aria-invalid` and `aria-describedby`, while the lease table uses accessible labels for icon-only actions and safely handles an absent leases array before pagination decisions. IPv4 and IPv6 range controls expose explicit named group semantics rather than relying on unassociated visual labels.
+
+The shared `Input` control now establishes stable input IDs from the explicit `id` or field `name`, connects visible labels with `htmlFor`, links descriptions and errors through `aria-describedby`, exposes validation state through `aria-invalid`, and marks visible validation feedback as an alert. This improves every current consumer of the shared control without changing form values or backend behavior.
 
 This is presentation, semantics, and defensive frontend behavior only. It does not alter query collection, retention, filtering decisions, DNS processing, client policy, upstream selection, cache behavior, encryption behavior, DHCP allocation behavior, or backend configuration behavior.
 
@@ -80,11 +82,13 @@ The source layer includes:
 
 - visible keyboard focus;
 - 44 px minimum and 48 px comfortable target semantics;
+- shared input label, description, validation-state, and error relationships;
 - explicit Query Log search/status/refresh accessibility semantics;
 - DNS access-form description relationships;
 - client-modal title labeling;
 - certificate and private-key validation status announcements;
 - DHCP interface error relationships and alert semantics;
+- explicit IPv4 and IPv6 DHCP range-group naming;
 - accessible DHCP lease action labeling with decorative icons hidden from assistive technology;
 - touch-safe dense-table and pagination treatment;
 - reduced-motion handling;
@@ -112,7 +116,7 @@ The browser-facing SVG mark is established as the current canonical source asset
 
 ## Validation Boundary
 
-`scripts/validate_glaze_ui.py` and `scripts/validate_product_identity.py` are source-controlled fail-closed contracts. The Glaze validator requires the Stable 1.1 version claim, state layers, icon and density semantics, adaptive gutters, safe-area markers, dense settings/table coverage, Query Log accessibility semantics, advanced Settings semantics, DNS access-control relationships, client-modal labeling, encryption status announcements, DHCP validation/action accessibility, and resilience behavior. Executable GitHub Actions status must still be observed separately; source-marker validation does not substitute for lint, typecheck, tests, production build, or compiled visual acceptance.
+`scripts/validate_glaze_ui.py` and `scripts/validate_product_identity.py` are source-controlled fail-closed contracts. The Glaze validator requires the Stable 1.1 version claim, state layers, icon and density semantics, adaptive gutters, safe-area markers, dense settings/table coverage, reusable input accessibility, Query Log accessibility semantics, advanced Settings semantics, DNS access-control relationships, client-modal labeling, encryption status announcements, DHCP validation/action accessibility, DHCP range-group naming, and resilience behavior. Executable GitHub Actions status must still be observed separately; source-marker validation does not substitute for lint, typecheck, tests, production build, or compiled visual acceptance.
 
 ## Stable-Release Boundary
 
