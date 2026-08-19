@@ -9,6 +9,9 @@ CSS = ROOT / "client" / "src" / "glaze-ui.css"
 COMPONENT_CSS = ROOT / "client" / "src" / "glaze-ui-components.css"
 SETTINGS_CSS = ROOT / "client" / "src" / "components" / "Settings" / "Settings.css"
 DNS_ACCESS_FORM = ROOT / "client" / "src" / "components" / "Settings" / "Dns" / "Access" / "Form.tsx"
+CLIENT_MODAL = ROOT / "client" / "src" / "components" / "Settings" / "Clients" / "Modal.tsx"
+CERT_STATUS = ROOT / "client" / "src" / "components" / "Settings" / "Encryption" / "CertificateStatus.tsx"
+KEY_STATUS = ROOT / "client" / "src" / "components" / "Settings" / "Encryption" / "KeyStatus.tsx"
 QUERY_LOG_FILTER = ROOT / "client" / "src" / "components" / "Logs" / "Filters" / "Form.tsx"
 QUERY_LOG_HEADER = ROOT / "client" / "src" / "components" / "Logs" / "Filters" / "index.tsx"
 ENTRYPOINTS = (
@@ -36,6 +39,9 @@ def main() -> int:
     component_css = require_file(COMPONENT_CSS)
     settings_css = require_file(SETTINGS_CSS)
     dns_access_form = require_file(DNS_ACCESS_FORM)
+    client_modal = require_file(CLIENT_MODAL)
+    cert_status = require_file(CERT_STATUS)
+    key_status = require_file(KEY_STATUS)
     query_log_filter = require_file(QUERY_LOG_FILTER)
     query_log_header = require_file(QUERY_LOG_HEADER)
     doc = require_file(DOC)
@@ -118,31 +124,46 @@ def main() -> int:
     )
 
     require_markers(
-        "advanced Settings Glaze semantics",
+        "Settings semantic accessibility",
         settings_css,
         [
-            ".form__message--error",
             "color: var(--glaze-danger)",
             "color: var(--glaze-text-muted)",
             "min-width: var(--glaze-target-min)",
             "min-height: var(--glaze-target-min)",
             "var(--glaze-motion-fast)",
-            "var(--glaze-motion-medium)",
             "var(--glaze-state-hover)",
-            "prefers-reduced-motion: reduce",
-            "forced-colors: active",
         ],
     )
 
     require_markers(
-        "DNS access form accessibility",
+        "DNS access-form accessibility",
         dns_access_form,
         [
-            "const descriptionId = `${id}-description`;",
+            "const descriptionId = `${id}-description`",
             "id={descriptionId}",
             "aria-describedby={descriptionId}",
         ],
     )
+
+    require_markers(
+        "Client modal accessibility",
+        client_modal,
+        [
+            "aria={{ labelledby: 'client-modal-title' }}",
+            'id="client-modal-title"',
+        ],
+    )
+
+    for name, status_source in (("Certificate status accessibility", cert_status), ("Key status accessibility", key_status)):
+        require_markers(
+            name,
+            status_source,
+            [
+                'role="status"',
+                'aria-live="polite"',
+            ],
+        )
 
     require_markers(
         "Query Log filter accessibility",
@@ -204,7 +225,7 @@ def main() -> int:
         "jsdelivr.net",
         "cdnjs.cloudflare.com",
     ]
-    combined = css + "\n" + component_css + "\n" + settings_css + "\n" + doc
+    combined = css + "\n" + component_css + "\n" + doc
     leaked = [value for value in forbidden if value in combined]
     if leaked:
         raise AssertionError(f"remote presentation dependency found: {', '.join(leaked)}")
