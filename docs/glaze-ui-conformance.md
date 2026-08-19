@@ -1,15 +1,15 @@
-# GoreeCloud DNS — Glaze UI 1.0 Conformance
+# GoreeCloud DNS — Glaze UI 1.1 Conformance
 
 ## Status
 
-GoreeCloud DNS is an active Glaze UI 1.0 consumer implementation. This document records source-level conformance for the additive application-wide design layer. It does not classify the product Stable and does not replace compiled visual acceptance.
+GoreeCloud DNS is an active Glaze UI 1.1 consumer implementation. This document records source-level conformance for the additive application-wide design layer. It does not classify the product Stable and does not replace compiled visual acceptance.
 
 ## Canonical Target
 
 - Design system: Glaze UI
-- Target version: 1.0.0
+- Target version: 1.1.0
 - Canonical repository: GoreeCloud/glaze-ui
-- Reviewed canonical revision: d6e446fd8ef251259d16368d50aad90d9287a774
+- Reviewed Stable revision: 5c8320de4f770614a3e2bcf9de2a27f7fcfd920c
 - Product: GoreeCloud DNS
 - Implementation model: local web consumer layer over the inherited AdGuard Home frontend
 - Remote UI dependencies introduced by Glaze UI: none
@@ -20,17 +20,19 @@ The application maps the Glaze UI hierarchy as follows:
 
 - **Canvas** — atmospheric application and authentication/setup backgrounds.
 - **Solid** — readability-first controls and fallback surfaces.
-- **Raised** — cards, login form, setup container, settings regions, query-log toolbar, and ordinary elevated content.
+- **Raised** — cards, login form, setup container, settings regions, query-log toolbar, tables, and ordinary elevated content.
 - **Glaze** — selective translucent header/navigation treatment.
-- **Overlay** — dialogs and menus requiring stronger separation.
+- **Overlay** — dialogs and menus requiring stronger separation, with the 1.1 modal-scrim semantic role.
 
 The implementation deliberately avoids applying glass treatment everywhere. Glaze surfaces have solid fallbacks when transparency or backdrop filtering is unavailable or unsuitable.
 
 ## Semantic Tokens
 
-`client/src/glaze-ui.css` defines product-local semantic roles for canvas, solid, raised, glaze, overlay, text, muted text, border, accent, success, warning, danger, focus, geometry, depth, target size, spacing, and motion. Existing inherited CSS variables are bridged onto these roles to support gradual migration instead of a destabilizing full rewrite.
+`client/src/glaze-ui.css` defines product-local semantic roles for canvas, solid, raised, glaze, overlay, text, muted text, border, accent, on-accent, info, success, warning, danger, focus, modal scrim, geometry, depth, target size, icon size, spacing, typography, motion, layering, adaptive gutters, and safe-area behavior. Existing inherited CSS variables are bridged onto these roles to support gradual migration instead of a destabilizing full rewrite.
 
-`client/src/glaze-ui-components.css` extends the semantic layer across cards, tables, forms, dropdowns, pagination, alerts, badges, dialogs, settings regions, and dense Query Log surfaces.
+Glaze UI 1.1 state layers are represented explicitly for hover, pressed, focus, and selected interaction states. The consumer also records compact and comfortable density semantics so dense administrative screens can remain efficient for pointer use while becoming touch-safe on coarse-pointer devices.
+
+`client/src/glaze-ui-components.css` extends the semantic layer across cards, tables, ReactTable instances, forms, dropdowns, pagination, alerts, badges, dialogs, settings regions, and dense Query Log surfaces.
 
 ## Entrypoint Coverage
 
@@ -40,20 +42,24 @@ The setup and authentication surfaces additionally map their inherited presentat
 
 ## Dense Administration Coverage
 
-The current source layer gives General Settings content and the Query Log dedicated Raised-region treatment without changing inherited handlers, state management, filtering semantics, refresh behavior, or DNS APIs. The Query Log search/status toolbar uses canonical target sizing, semantic controls, Compact spacing, reduced-motion handling, and forced-colors fallback. The search region, response-status selector, and icon-only refresh action now expose explicit accessibility semantics, with decorative refresh artwork removed from the accessibility tree.
+General Settings, advanced settings regions, inherited responsive tables, ReactTable surfaces, and the Query Log now share a stronger Raised-region treatment without changing inherited handlers, state management, filtering semantics, refresh behavior, DNS APIs, or configuration writes.
 
-This is presentation and semantics work only. It does not alter query collection, retention, filtering decisions, DNS processing, client policy, or backend configuration behavior.
+Dense tables use semantic headers, stable overflow behavior, compact row spacing for pointer-heavy administration, comfortable row spacing on coarse-pointer devices, 44-pixel pagination targets, state-layer hover treatment, reduced-motion handling, reduced-transparency fallback, and forced-colors resilience. Compact layouts keep tables scrollable rather than compressing data into unreadable columns.
+
+The Query Log search/status toolbar uses canonical target sizing, semantic controls, Compact spacing, and 1.1 interaction-state semantics. The search region, response-status selector, and icon-only refresh action expose explicit accessibility semantics, with decorative refresh artwork removed from the accessibility tree.
+
+This is presentation and semantics work only. It does not alter query collection, retention, filtering decisions, DNS processing, client policy, upstream selection, cache behavior, encryption behavior, DHCP behavior, or backend configuration behavior.
 
 ## Interaction Contract
 
-The current foundation establishes consistent rounded control geometry, semantic accent treatment, visible `:focus-visible` focus, coarse-pointer minimum target sizing, and the canonical Glaze motion vocabulary:
+The current foundation establishes consistent rounded control geometry, semantic accent treatment, visible `:focus-visible` focus, coarse-pointer minimum target sizing, hover/pressed/selected state layers, and the canonical Glaze motion vocabulary:
 
 - Instant: 90 ms
 - Fast: 160 ms
 - Standard: 220 ms
 - Emphasized: 320 ms
 
-Component-by-component interaction-state review remains required as inherited surfaces are migrated.
+The 1.1 standard easing role is used for transition timing. Component-by-component runtime review remains required as inherited surfaces are migrated.
 
 ## Adaptive Layout Contract
 
@@ -64,7 +70,7 @@ The Glaze consumer layer explicitly records all four adaptive ranges:
 - Expanded: 1024–1439 px
 - Wide: 1440 px and above
 
-The current pass covers application container spacing, wide-layout bounds, setup-card behavior, authentication-card behavior, navigation adaptation, and the Query Log toolbar at Compact widths. Deeper per-table and advanced-settings density review remains follow-up work.
+Application containers now use the 1.1 adaptive gutter semantics and safe-area insets rather than one repeated inherited spacing value. The current pass covers application container spacing, wide-layout bounds, setup-card behavior, authentication-card behavior, navigation adaptation, Query Log controls, and dense table overflow at Compact widths.
 
 ## Accessibility and Resilience
 
@@ -73,11 +79,13 @@ The source layer includes:
 - visible keyboard focus;
 - 44 px minimum and 48 px comfortable target semantics;
 - explicit Query Log search/status/refresh accessibility semantics;
+- touch-safe dense-table and pagination treatment;
 - reduced-motion handling;
 - reduced-transparency handling;
 - no-backdrop-filter solid fallback;
 - increased-contrast handling;
 - forced-colors handling;
+- safe-area-aware application/header gutters;
 - local/system typography only;
 - no remote font, icon, analytics, tracking, or presentation runtime introduced by this layer.
 
@@ -85,7 +93,7 @@ Setup and authentication surfaces preserve the existing mobile input anti-zoom a
 
 ## Appearance
 
-The inherited application already exposes light and dark theme behavior. The Glaze consumer layer maps both themes to semantic roles. System appearance and explicit preference behavior must be reviewed in runtime acceptance before Stable classification.
+The inherited application already exposes light and dark theme behavior. The Glaze consumer layer maps both themes to semantic roles while retaining a DNS-specific GoreeCloud accent. System appearance and explicit preference behavior must be reviewed in runtime acceptance before Stable classification.
 
 ## Product Identity
 
@@ -97,10 +105,10 @@ The browser-facing SVG mark is established as the current canonical source asset
 
 ## Validation Boundary
 
-`scripts/validate_glaze_ui.py` and `scripts/validate_product_identity.py` are source-controlled fail-closed contracts. The Glaze validator now also requires the dense settings/Query Log surface markers and Query Log accessibility semantics introduced by this pass. Executable GitHub Actions status must still be observed separately; source-marker validation does not substitute for lint, typecheck, tests, production build, or compiled visual acceptance.
+`scripts/validate_glaze_ui.py` and `scripts/validate_product_identity.py` are source-controlled fail-closed contracts. The Glaze validator requires the Stable 1.1 version claim, state layers, icon and density semantics, adaptive gutters, safe-area markers, dense settings/table coverage, Query Log accessibility semantics, and resilience behavior. Executable GitHub Actions status must still be observed separately; source-marker validation does not substitute for lint, typecheck, tests, production build, or compiled visual acceptance.
 
 ## Stable-Release Boundary
 
-Source conformance does not establish visual completion. Before GoreeCloud DNS can be classified Stable, representative acceptance must cover light and dark appearance, Compact and Expanded layouts, keyboard navigation, zoom/reflow, contrast, screen-reader semantics, reduced-motion behavior, reduced-transparency fallback, forms, tables, dialogs, menus, query-log surfaces, filtering/settings surfaces, and installation/authentication flows.
+Source conformance does not establish visual completion. Before GoreeCloud DNS can be classified Stable, representative acceptance must cover light and dark appearance, Compact and Expanded layouts, keyboard navigation, zoom/reflow, contrast, screen-reader semantics, reduced-motion behavior, reduced-transparency fallback, forms, tables, dialogs, menus, query-log surfaces, advanced filtering/settings surfaces, and installation/authentication flows.
 
 No production DNS cutover is authorized by this conformance record.
