@@ -11,6 +11,7 @@ SETTINGS_CSS = ROOT / "client" / "src" / "components" / "Settings" / "Settings.c
 HEADER = ROOT / "client" / "src" / "components" / "Header" / "index.tsx"
 HEADER_MENU = ROOT / "client" / "src" / "components" / "Header" / "Menu.tsx"
 HEADER_CSS = ROOT / "client" / "src" / "components" / "Header" / "Header.css"
+SETUP = ROOT / "client" / "src" / "install" / "Setup" / "index.tsx"
 SETUP_PROGRESS = ROOT / "client" / "src" / "install" / "Setup" / "Progress.tsx"
 LOGIN = ROOT / "client" / "src" / "login" / "Login" / "index.tsx"
 INPUT_CONTROL = ROOT / "client" / "src" / "components" / "ui" / "Controls" / "Input.tsx"
@@ -52,6 +53,7 @@ def main() -> int:
     header = require_file(HEADER)
     header_menu = require_file(HEADER_MENU)
     header_css = require_file(HEADER_CSS)
+    setup = require_file(SETUP)
     setup_progress = require_file(SETUP_PROGRESS)
     login = require_file(LOGIN)
     input_control = require_file(INPUT_CONTROL)
@@ -192,6 +194,20 @@ def main() -> int:
             "min-height: var(--glaze-target-min)",
             "border-radius: var(--glaze-radius-control)",
             "background: transparent",
+        ],
+    )
+
+    require_markers(
+        "Setup validation lifecycle",
+        setup,
+        [
+            "useMemo",
+            "SettingsFormValues",
+            "const checkConfig = useMemo(",
+            "debounce((values: SettingsFormValues)",
+            "[dispatch]",
+            "checkConfig.cancel()",
+            "[checkConfig]",
         ],
     )
 
@@ -373,6 +389,7 @@ def main() -> int:
             "compact and comfortable density",
             "safe-area",
             "native keyboard-operable mobile navigation button",
+            "setup configuration validation debounce is memoized and canceled on teardown",
             "authentication password-help disclosure exposes its expanded state and controlled help region",
             "strict-search guidance directly associated with the search input through `aria-describedby`",
             "Compact: through 599 px",
