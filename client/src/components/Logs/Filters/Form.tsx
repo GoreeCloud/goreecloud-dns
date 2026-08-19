@@ -91,6 +91,7 @@ export const Form = ({ className, setIsLoading }: Props) => {
                     handleChange={(val) => setValue('search', val)}
                     onKeyDown={onEnterPress}
                     onClear={onInputClear}
+                    clearLabel={`${t('query_log_clear')}: ${t('domain_or_client')}`}
                     placeholder={t('domain_or_client')}
                     tooltip={t('query_log_strict_search')}
                     className={classNames('form-control form-control--search form-control--transparent', className)}
