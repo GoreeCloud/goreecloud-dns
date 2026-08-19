@@ -100,7 +100,7 @@ export const Form = ({ className, setIsLoading }: Props) => {
             <div className="field__select">
                 <select
                     {...register('response_status')}
-                    aria-label={t('response_status')}
+                    aria-label={t('query_log')}
                     className="form-control custom-select custom-select--logs custom-select__arrow--left form-control--transparent d-sm-block">
                     {Object.values(RESPONSE_FILTER).map(({ QUERY, LABEL, disabled }: any) => (
                         <option key={LABEL} value={QUERY} disabled={disabled}>
