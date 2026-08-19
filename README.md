@@ -78,7 +78,7 @@ The existing production AdGuard Home deployment remains operational during early
 
 ## Validation Status
 
-Fail-closed source validators cover Stable Glaze UI 1.1 and product identity across the dashboard, setup, and login entrypoints, including the current Query Log and advanced-settings accessibility contracts. Executable GitHub Actions evidence and compiled visual/accessibility acceptance remain separate release gates and are not inferred from source-marker validation.
+Fail-closed source validators cover Stable Glaze UI 1.1 and product identity across the dashboard, setup, and login entrypoints, including the current Query Log and advanced-settings accessibility contracts. For the latest inspected exact head, GitHub returned no pull-request workflow run and no combined commit-status checks. Executable lint, typecheck, tests, production build, and compiled visual/accessibility acceptance therefore remain outstanding rather than inferred from source-marker validation.
 
 ## Current Status
 
