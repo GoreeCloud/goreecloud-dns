@@ -12,6 +12,8 @@ DNS_ACCESS_FORM = ROOT / "client" / "src" / "components" / "Settings" / "Dns" / 
 CLIENT_MODAL = ROOT / "client" / "src" / "components" / "Settings" / "Clients" / "Modal.tsx"
 CERT_STATUS = ROOT / "client" / "src" / "components" / "Settings" / "Encryption" / "CertificateStatus.tsx"
 KEY_STATUS = ROOT / "client" / "src" / "components" / "Settings" / "Encryption" / "KeyStatus.tsx"
+DHCP_INTERFACES = ROOT / "client" / "src" / "components" / "Settings" / "Dhcp" / "Interfaces.tsx"
+DHCP_LEASES = ROOT / "client" / "src" / "components" / "Settings" / "Dhcp" / "Leases.tsx"
 QUERY_LOG_FILTER = ROOT / "client" / "src" / "components" / "Logs" / "Filters" / "Form.tsx"
 QUERY_LOG_HEADER = ROOT / "client" / "src" / "components" / "Logs" / "Filters" / "index.tsx"
 ENTRYPOINTS = (
@@ -42,6 +44,8 @@ def main() -> int:
     client_modal = require_file(CLIENT_MODAL)
     cert_status = require_file(CERT_STATUS)
     key_status = require_file(KEY_STATUS)
+    dhcp_interfaces = require_file(DHCP_INTERFACES)
+    dhcp_leases = require_file(DHCP_LEASES)
     query_log_filter = require_file(QUERY_LOG_FILTER)
     query_log_header = require_file(QUERY_LOG_HEADER)
     doc = require_file(DOC)
@@ -164,6 +168,29 @@ def main() -> int:
                 'aria-live="polite"',
             ],
         )
+
+    require_markers(
+        "DHCP interface validation accessibility",
+        dhcp_interfaces,
+        [
+            "const interfaceErrorId = 'interface_name-error'",
+            "aria-invalid={hasInterfaceError}",
+            "aria-describedby={hasInterfaceError ? interfaceErrorId : undefined}",
+            'role="alert"',
+        ],
+    )
+
+    require_markers(
+        "DHCP lease action accessibility",
+        dhcp_leases,
+        [
+            "const leaseData = leases || []",
+            "aria-label={actionLabel}",
+            'aria-hidden="true"',
+            'focusable="false"',
+            "showPagination={leaseData.length > LEASES_TABLE_DEFAULT_PAGE_SIZE}",
+        ],
+    )
 
     require_markers(
         "Query Log filter accessibility",
