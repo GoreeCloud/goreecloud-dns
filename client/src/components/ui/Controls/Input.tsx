@@ -1,5 +1,12 @@
-import React, { ComponentProps, forwardRef, ReactNode } from 'react';
+import React, { ComponentProps, forwardRef, ReactNode, useRef } from 'react';
 import clsx from 'clsx';
+
+let inputIdCounter = 0;
+
+const createInputId = () => {
+    inputIdCounter += 1;
+    return `goreecloud-input-${inputIdCounter}`;
+};
 
 type Props = ComponentProps<'input'> & {
     label?: string;
@@ -12,9 +19,15 @@ type Props = ComponentProps<'input'> & {
 
 export const Input = forwardRef<HTMLInputElement, Props>(
     ({ name, id, label, desc, className, leftAddon, rightAddon, error, trimOnBlur, onBlur, ...rest }, ref) => {
-        const inputId = id ?? name;
-        const descId = desc && inputId ? `${inputId}-description` : undefined;
-        const errorId = error && inputId ? `${inputId}-error` : undefined;
+        const generatedId = useRef<string | null>(null);
+
+        if (!generatedId.current) {
+            generatedId.current = createInputId();
+        }
+
+        const inputId = id ?? name ?? generatedId.current;
+        const descId = desc ? `${inputId}-description` : undefined;
+        const errorId = error ? `${inputId}-error` : undefined;
         const describedBy = [rest['aria-describedby'], descId, errorId].filter(Boolean).join(' ') || undefined;
 
         return (
