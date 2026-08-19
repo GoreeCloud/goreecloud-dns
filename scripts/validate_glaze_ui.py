@@ -239,6 +239,7 @@ def main() -> int:
         [
             'role="search"',
             "aria-label={t('query_log')}",
+            'id="querylog_search"',
             "aria-label={t('query_log_response_status', { value: '' })}",
             "register('response_status')",
             "clearLabel={`${t('query_log_clear')}: ${t('domain_or_client')}`}",
@@ -250,6 +251,10 @@ def main() -> int:
         query_log_search,
         [
             "clearLabel: string",
+            "'aria-describedby': ariaDescribedBy",
+            "const helpId = tooltip && id ? `${id}-help` : undefined",
+            "aria-describedby={describedBy}",
+            'className="sr-only"',
             '<button',
             'type="button"',
             "aria-label={clearLabel}",
@@ -294,6 +299,7 @@ def main() -> int:
             "state layers",
             "compact and comfortable density",
             "safe-area",
+            "strict-search guidance directly associated with the search input through `aria-describedby`",
             "Compact: through 599 px",
             "Medium: 600–1023 px",
             "Expanded: 1024–1439 px",
