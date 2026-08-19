@@ -79,6 +79,8 @@ export const Form = ({ className, setIsLoading }: Props) => {
     return (
         <form
             className="d-flex flex-wrap form-control--container"
+            role="search"
+            aria-label={t('query_log')}
             onSubmit={(e) => {
                 e.preventDefault();
             }}>
@@ -98,6 +100,7 @@ export const Form = ({ className, setIsLoading }: Props) => {
             <div className="field__select">
                 <select
                     {...register('response_status')}
+                    aria-label={t('response_status')}
                     className="form-control custom-select custom-select--logs custom-select__arrow--left form-control--transparent d-sm-block">
                     {Object.values(RESPONSE_FILTER).map(({ QUERY, LABEL, disabled }: any) => (
                         <option key={LABEL} value={QUERY} disabled={disabled}>
