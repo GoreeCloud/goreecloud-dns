@@ -13,6 +13,7 @@ HEADER_MENU = ROOT / "client" / "src" / "components" / "Header" / "Menu.tsx"
 HEADER_CSS = ROOT / "client" / "src" / "components" / "Header" / "Header.css"
 SETUP = ROOT / "client" / "src" / "install" / "Setup" / "index.tsx"
 SETUP_PROGRESS = ROOT / "client" / "src" / "install" / "Setup" / "Progress.tsx"
+SETUP_AUTH = ROOT / "client" / "src" / "install" / "Setup" / "Auth.tsx"
 LOGIN = ROOT / "client" / "src" / "login" / "Login" / "index.tsx"
 INPUT_CONTROL = ROOT / "client" / "src" / "components" / "ui" / "Controls" / "Input.tsx"
 DNS_ACCESS_FORM = ROOT / "client" / "src" / "components" / "Settings" / "Dns" / "Access" / "Form.tsx"
@@ -55,6 +56,7 @@ def main() -> int:
     header_css = require_file(HEADER_CSS)
     setup = require_file(SETUP)
     setup_progress = require_file(SETUP_PROGRESS)
+    setup_auth = require_file(SETUP_AUTH)
     login = require_file(LOGIN)
     input_control = require_file(INPUT_CONTROL)
     dns_access_form = require_file(DNS_ACCESS_FORM)
@@ -208,6 +210,18 @@ def main() -> int:
             "[dispatch]",
             "checkConfig.cancel()",
             "[checkConfig]",
+        ],
+    )
+
+    require_markers(
+        "Setup credential cross-field validation",
+        setup_auth,
+        [
+            "const password = watch('password')",
+            "name=\"confirm_password\"",
+            "deps: ['password']",
+            "confirmPassword: validateConfirmPassword",
+            "<Controls isDirty={isDirty} isValid={isValid} />",
         ],
     )
 
@@ -391,6 +405,7 @@ def main() -> int:
             "native keyboard-operable mobile navigation button",
             "setup configuration validation debounce is memoized and canceled on teardown",
             "authentication password-help disclosure exposes its expanded state and controlled help region",
+            "password confirmation explicitly depends on the password field",
             "strict-search guidance directly associated with the search input through `aria-describedby`",
             "Compact: through 599 px",
             "Medium: 600–1023 px",
