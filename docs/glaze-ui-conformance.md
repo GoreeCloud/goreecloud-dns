@@ -50,6 +50,18 @@ The Query Log search/status toolbar uses canonical target sizing, semantic contr
 
 This is presentation and semantics work only. It does not alter query collection, retention, filtering decisions, DNS processing, client policy, upstream selection, cache behavior, encryption behavior, DHCP behavior, or backend configuration behavior.
 
+## Advanced Settings Accessibility
+
+Advanced Settings now maps inherited error, secondary-text, icon-target, and transition behavior onto semantic Glaze danger, muted-text, target-size, motion, and interaction-state roles.
+
+DNS access-control textarea descriptions are programmatically associated with their fields through stable description IDs and `aria-describedby` while preserving existing normalization and submission behavior.
+
+The client add/edit modal is explicitly associated with its visible title through ReactModal ARIA labeling, preserving the existing close and submit workflows.
+
+Certificate-chain and private-key validation results are exposed as polite status regions so assistive technologies can announce validation outcomes without changing TLS validation behavior.
+
+These advanced-settings requirements are included in the fail-closed Glaze source validator.
+
 ## Interaction Contract
 
 The current foundation establishes consistent rounded control geometry, semantic accent treatment, visible `:focus-visible` focus, coarse-pointer minimum target sizing, hover/pressed/selected state layers, and the canonical Glaze motion vocabulary:
@@ -79,6 +91,9 @@ The source layer includes:
 - visible keyboard focus;
 - 44 px minimum and 48 px comfortable target semantics;
 - explicit Query Log search/status/refresh accessibility semantics;
+- programmatic DNS access-field descriptions;
+- client-modal title association;
+- polite certificate/key validation status announcements;
 - touch-safe dense-table and pagination treatment;
 - reduced-motion handling;
 - reduced-transparency handling;
@@ -105,10 +120,10 @@ The browser-facing SVG mark is established as the current canonical source asset
 
 ## Validation Boundary
 
-`scripts/validate_glaze_ui.py` and `scripts/validate_product_identity.py` are source-controlled fail-closed contracts. The Glaze validator requires the Stable 1.1 version claim, state layers, icon and density semantics, adaptive gutters, safe-area markers, dense settings/table coverage, Query Log accessibility semantics, and resilience behavior. Executable GitHub Actions status must still be observed separately; source-marker validation does not substitute for lint, typecheck, tests, production build, or compiled visual acceptance.
+`scripts/validate_glaze_ui.py` and `scripts/validate_product_identity.py` are source-controlled fail-closed contracts. The Glaze validator requires the Stable 1.1 version claim, state layers, icon and density semantics, adaptive gutters, safe-area markers, dense settings/table coverage, advanced-settings accessibility semantics, Query Log accessibility semantics, and resilience behavior. Executable GitHub Actions status must still be observed separately; source-marker validation does not substitute for lint, typecheck, tests, production build, or compiled visual acceptance.
 
 ## Stable-Release Boundary
 
-Source conformance does not establish visual completion. Before GoreeCloud DNS can be classified Stable, representative acceptance must cover light and dark appearance, Compact and Expanded layouts, keyboard navigation, zoom/reflow, contrast, screen-reader semantics, reduced-motion behavior, reduced-transparency fallback, forms, tables, dialogs, menus, query-log surfaces, advanced filtering/settings surfaces, and installation/authentication flows.
+Source conformance does not establish visual completion. Before GoreeCloud DNS can be classified Stable, representative acceptance must cover light and dark appearance, Compact and Expanded layouts, keyboard navigation, zoom/reflow, contrast, screen-reader semantics, reduced-motion behavior, reduced-transparency fallback, forms, tables, dialogs, menus, query-log surfaces, DNS access controls, client dialogs, encryption status surfaces, advanced filtering/settings surfaces, and installation/authentication flows.
 
 No production DNS cutover is authorized by this conformance record.
