@@ -81,10 +81,11 @@ const Modal = ({
             className="Modal__Bootstrap modal-dialog modal-dialog-centered modal-dialog--clients"
             closeTimeoutMS={0}
             isOpen={isModalOpen}
+            aria={{ labelledby: 'client-modal-title' }}
             onRequestClose={handleClose}>
             <div className="modal-content">
                 <div className="modal-header">
-                    <h4 className="modal-title">
+                    <h4 id="client-modal-title" className="modal-title">
                         {modalType === MODAL_TYPE.EDIT_CLIENT ? <Trans>client_edit</Trans> : <Trans>client_new</Trans>}
                     </h4>
 
