@@ -42,10 +42,12 @@ const FormDHCPv6 = ({ processingConfig, ipv6placeholders, interfaces, onSubmit }
         <form onSubmit={handleSubmit(onSubmit)}>
             <div className="row">
                 <div className="col-lg-6">
-                    <div className="form__group mb-0">
+                    <div className="form__group mb-0" role="group" aria-labelledby="dhcp-v6-range-title">
                         <div className="row">
                             <div className="col-12">
-                                <label>{t('dhcp_form_range_title')}</label>
+                                <div id="dhcp-v6-range-title" className="form__label">
+                                    {t('dhcp_form_range_title')}
+                                </div>
                             </div>
 
                             <div className="col">
