@@ -127,6 +127,8 @@ for marker in (
     "ServeStale bool",
     "NegativeEntries uint64",
     "cache shard count must be a power of two",
+    "gate       sync.RWMutex",
+    "func ageResultTTL",
     "func isNegativeResponse",
     "func cloneResult",
 ):
@@ -136,6 +138,7 @@ for marker in (
 cache_tests = (ROOT / "internal" / "gcdns" / "cache_test.go").read_text(encoding="utf-8")
 for marker in (
     "TestMemoryCachePutGetAndCopyIsolation",
+    "TestMemoryCacheAgesWireTTL",
     "TestMemoryCacheExpires",
     "TestMemoryCacheServeStale",
     "TestMemoryCacheNegativeEntryAccounting",
