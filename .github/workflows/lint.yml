@@ -1,4 +1,4 @@
-# GoreeCloud DNS lint, product identity, design-system, and frontend validation.
+# GoreeCloud DNS lint, product identity, design-system, resolver, and frontend validation.
 name: lint
 
 permissions: {}
@@ -46,6 +46,42 @@ jobs:
 
       - name: Validate GoreeCloud DNS product identity contract
         run: python3 scripts/validate_product_identity.py
+
+  first-party-resolver-contract:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Validate integrated resolver architecture and capability contract
+        run: python3 scripts/validate_resolver_backend.py
+
+      - name: Validate Beacon iterative DNSSEC source contract
+        run: python3 scripts/validate_dnssec_iterative.py
+
+  native-dns-core:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+          cache-dependency-path: go.sum
+
+      - name: Test native GoreeCloud DNS core contracts
+        run: go test ./internal/gcdns
 
   go-lint:
     runs-on: ubuntu-latest
