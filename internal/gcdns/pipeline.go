@@ -18,7 +18,7 @@ type Pipeline struct {
 }
 
 // Resolve processes req through policy, authoritative, cache, and recursive
-// stages in that order.  Required subsystem dependencies must not be nil.
+// stages in that order. Required subsystem dependencies must not be nil.
 func (p *Pipeline) Resolve(ctx context.Context, req *Request) (res *Result, err error) {
 	if req == nil || req.Message == nil {
 		return nil, errors.New("goreecloud dns: nil request")
@@ -57,6 +57,15 @@ func (p *Pipeline) Resolve(ctx context.Context, req *Request) (res *Result, err 
 	}
 	if res == nil || res.Message == nil {
 		return nil, errors.New("goreecloud dns: resolver returned nil response")
+	}
+
+	if res.CacheTTL > 0 {
+		started = time.Now()
+		err = p.Cache.Put(ctx, req, res, res.CacheTTL)
+		p.observe(ctx, "cache-store", res, false, err, time.Since(started))
+		if err != nil {
+			return nil, fmt.Errorf("goreecloud dns: cache put: %w", err)
+		}
 	}
 
 	return res, nil
