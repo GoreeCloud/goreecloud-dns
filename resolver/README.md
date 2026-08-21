@@ -84,7 +84,7 @@ Persistent cache and prefetch are therefore native GoreeCloud DNS capabilities, 
 
 ## Beacon Resolver scheduler
 
-`internal/gcdns/resolver_scheduler.go` provides bounded concurrent target execution, per-attempt deadlines, first-valid-result cancellation, failure fallback, latency-aware target ordering, caller cancellation propagation, and privacy-safe success/failure/latency accounting. `ResolveTargets` extends the same scheduler behavior to delegation-specific target sets, allowing iterative recursion to change authoritative servers at each hop without duplicating concurrency or timeout logic.
+`internal/gcdns/resolver_scheduler.go` provides bounded concurrent target execution, per-attempt deadlines, first-valid-result cancellation, failure fallback, latency-aware target ordering, caller cancellation propagation, and privacy-safe success/failure/latency accounting. `ResolveTargets` extends the same scheduler behavior to delegation-specific target sets, allowing iterative recursion to change authoritative servers at each hop without duplicating concurrency or timeout logic. SERVFAIL, REFUSED, NOTIMP, and FORMERR responses are treated as target failures so a faster unhealthy authority cannot win the scheduler race; NXDOMAIN remains a legitimate DNS result.
 
 `internal/gcdns/prefetch_runner.go` executes Beacon Cache proactive refresh candidates through a complete request resolver such as the native pipeline rather than contacting a network target directly. This preserves the normal policy, authority, cache, resolver, DNSSEC, observability, and cancellation boundaries.
 
@@ -102,7 +102,15 @@ The classic DNS transport is intentionally separate from Beacon Secure DNS. DoT,
 
 Referral processing is deliberately conservative. Additional-section addresses are accepted only when they correspond to an advertised NS name and that NS name is inside the delegated zone. Out-of-bailiwick glue is ignored rather than trusted. Referrals with no usable in-bailiwick glue currently fail closed because recursive address discovery for out-of-bailiwick name servers is not implemented yet.
 
-This iterative foundation is not a production-complete recursive resolver. DNSSEC chain validation and root trust anchors, DS/DNSKEY processing, out-of-bailiwick NS address discovery, CNAME/DNAME chasing, QNAME minimization, lame-delegation handling, EDNS policy, richer retry policy, and production runtime integration remain required before production acceptance.
+## Beacon Resolver DNSSEC validation foundation
+
+`internal/gcdns/dnssec_validator.go` establishes native DNSSEC validation primitives without claiming a complete chain validator. Results now carry explicit `indeterminate`, `insecure`, `secure`, or `bogus` DNSSEC states. The validator can verify a uniform RRset against matching trusted DNSKEY/RRSIG material with signature-time checks, and can authenticate a child DNSKEY against a parent-validated DS RRset using supported SHA-1, SHA-256, or SHA-384 DS digests.
+
+An absent DS RRset is represented as an insecure delegation, while a DS/DNSKEY mismatch is bogus. Unsupported DS-only delegations remain indeterminate rather than being silently accepted. The request pipeline refuses bogus resolver results before they can be inserted into Beacon Cache, and DNSSEC status is propagated into the privacy-aware observer event contract.
+
+This is deliberately a validation foundation, not a completed DNSSEC trust chain. Root trust-anchor lifecycle and rollover, iterative DS/DNSKEY acquisition, validation of DNSKEY RRsets themselves, authenticated denial with NSEC/NSEC3, wildcard proof handling, algorithm-policy decisions, and integration of validation at every iterative delegation remain required before DNSSEC can be considered production-complete.
+
+This iterative and DNSSEC foundation is not a production-complete recursive resolver. Out-of-bailiwick NS address discovery, CNAME/DNAME chasing, QNAME minimization, lame-delegation handling, EDNS policy, richer retry policy, complete DNSSEC trust-chain processing, and production runtime integration remain required before production acceptance.
 
 ## Configuration model
 
