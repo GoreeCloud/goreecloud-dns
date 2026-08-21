@@ -10,9 +10,13 @@ import (
 )
 
 // ResolverTarget identifies a recursive, forwarder, conditional-forwarder, or
-// stub resolution target owned by Beacon Resolver.
+// stub resolution target owned by Beacon Resolver. Address is a host:port
+// endpoint used by network transports. Network is transport-specific and
+// defaults to UDP for the classic DNS transport.
 type ResolverTarget struct {
-	ID string
+	ID      string
+	Address string
+	Network string
 }
 
 // TargetResolver executes one resolution attempt against a specific target.
