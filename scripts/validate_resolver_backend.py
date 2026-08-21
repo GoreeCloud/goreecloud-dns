@@ -12,6 +12,8 @@ for path in (README, CAPABILITIES):
 
 contract = json.loads(CAPABILITIES.read_text(encoding="utf-8"))
 
+if contract.get("schema_version") != 2:
+    raise SystemExit("resolver contract validation failed; expected schema version 2")
 if contract.get("product") != "GoreeCloud DNS":
     raise SystemExit("resolver contract validation failed; wrong product authority")
 if contract.get("architecture") != "single-service":
@@ -28,14 +30,30 @@ if contract.get("runtime_acceptance_required") is not True:
     raise SystemExit("resolver contract validation failed; runtime acceptance must remain required")
 
 required = {
-    "recursive-resolution", "dns-cache", "negative-cache", "aggressive-negative-cache",
-    "cache-ttl-controls", "serve-stale", "prefetch", "forward-zones",
-    "multi-upstream-failover", "dnssec-validation", "qname-minimization",
-    "minimal-responses", "local-zones", "local-data", "response-policy-zones",
-    "dns-rebinding-protection", "client-access-control", "multi-threading",
-    "cache-sharding", "runtime-statistics", "runtime-administration",
-    "interface-restrictions", "query-restrictions", "privilege-separation",
-    "resolver-hardening",
+    "recursive-resolution", "authoritative-dns", "internal-zones", "public-zones",
+    "primary-zones", "secondary-zones", "forwarder-zones", "stub-zones",
+    "catalog-zones", "zone-transfer", "zone-notify", "dnssec-validation",
+    "dnssec-signing", "trust-anchor-management", "dns-cache", "persistent-cache",
+    "negative-cache", "aggressive-negative-cache", "cache-ttl-controls", "serve-stale",
+    "prefetch", "auto-prefetch", "concurrent-recursion",
+    "latency-based-nameserver-selection", "forward-zones", "conditional-forwarding",
+    "multi-upstream-failover", "encrypted-forwarding", "dns-over-https",
+    "dns-over-tls", "dns-over-quic", "qname-minimization", "minimal-responses",
+    "split-horizon-dns", "local-zones", "local-data", "response-policy-zones",
+    "domain-blocking", "blocklists", "allowlists", "wildcard-filtering",
+    "regex-filtering", "client-specific-policies", "subnet-groups",
+    "advertisement-blocking", "tracker-blocking", "malware-blocking",
+    "phishing-blocking", "telemetry-blocking", "dns-rebinding-protection",
+    "client-access-control", "integrated-dhcp", "dhcp-dns-registration",
+    "clustering", "centralized-multi-instance-management",
+    "browser-administration-console", "http-api", "multi-user-administration",
+    "role-based-access-control", "api-tokens", "totp-two-factor-authentication",
+    "oidc-single-sign-on", "query-logging", "audit-logging", "runtime-statistics",
+    "dashboards", "health-monitoring", "metrics", "runtime-administration",
+    "multi-threading", "cache-sharding", "interface-restrictions",
+    "query-restrictions", "privilege-separation", "resolver-hardening",
+    "extensible-processing-framework", "geolocation-responses", "dns64",
+    "custom-dns-processing",
 }
 missing = sorted(required - set(contract.get("capabilities", [])))
 if missing:
@@ -45,7 +63,12 @@ readme = README.read_text(encoding="utf-8")
 for marker in (
     "complete DNS service",
     "replaces both AdGuard Home and Unbound",
-    "There is no permanent Unbound backend boundary",
+    "authoritative DNS hosting for internal and public zones",
+    "DNS-over-HTTPS, DNS-over-TLS, and DNS-over-QUIC",
+    "integrated DHCP server",
+    "role-based access control",
+    "managed cluster",
+    "Extensible processing framework",
     "Approved Client -> GoreeCloud DNS listener",
 ):
     if marker not in readme:
@@ -56,4 +79,4 @@ unbound_dir = ROOT / "resolver" / "unbound"
 if unbound_dir.exists() and any(unbound_dir.iterdir()):
     raise SystemExit("resolver contract validation failed; separate Unbound backend files are prohibited")
 
-print("GoreeCloud DNS first-party resolver source contract: PASS")
+print("GoreeCloud DNS integrated first-party DNS platform source contract: PASS")
