@@ -78,7 +78,8 @@ func TestMemoryCachePersistentRejectsInvalidState(t *testing.T) {
 	require.NoError(t, err)
 
 	path := filepath.Join(t.TempDir(), "bad.json")
-	require.NoError(t, os.WriteFile(path, []byte("{\"version\":99,\"entries\":[]}"), 0o600))
+	data := []byte{'{', '"', 'v', 'e', 'r', 's', 'i', 'o', 'n', '"', ':', '9', '9', ',', '"', 'e', 'n', 't', 'r', 'i', 'e', 's', '"', ':', '[', ']', '}'}
+	require.NoError(t, os.WriteFile(path, data, 0o600))
 	_, err = cache.LoadPersistent(path)
 	require.ErrorContains(t, err, "unsupported persistent cache version")
 }
