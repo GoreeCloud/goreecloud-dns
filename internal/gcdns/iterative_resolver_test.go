@@ -3,6 +3,7 @@ package gcdns
 import (
 	"context"
 	"errors"
+	"net"
 	"sync"
 	"testing"
 	"time"
@@ -49,19 +50,8 @@ func referralResponse(query *dns.Msg, zone, nsName, glue string) *dns.Msg {
 	msg.Authoritative = false
 	msg.Answer = nil
 	msg.Ns = []dns.RR{&dns.NS{Hdr: dns.RR_Header{Name: zone, Rrtype: dns.TypeNS, Class: dns.ClassINET, Ttl: 3600}, Ns: nsName}}
-	msg.Extra = []dns.RR{&dns.A{Hdr: dns.RR_Header{Name: nsName, Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: 3600}, A: []byte{192, 0, 2, 53}}}
-	if glue != "" {
-		msg.Extra[0].(*dns.A).A = netParseIPForTest(glue)
-	}
+	msg.Extra = []dns.RR{&dns.A{Hdr: dns.RR_Header{Name: nsName, Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: 3600}, A: net.ParseIP(glue).To4()}}
 	return msg
-}
-
-func netParseIPForTest(value string) []byte {
-	parts := map[string][]byte{
-		"192.0.2.53": {192, 0, 2, 53},
-		"192.0.2.54": {192, 0, 2, 54},
-	}
-	return parts[value]
 }
 
 func TestIterativeResolverFollowsReferralAndReturnsAnswer(t *testing.T) {
@@ -72,7 +62,7 @@ func TestIterativeResolverFollowsReferralAndReturnsAnswer(t *testing.T) {
 	final.Authoritative = true
 	final.Answer = []dns.RR{&dns.A{
 		Hdr: dns.RR_Header{Name: "www.example.test.", Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: 120},
-		A:   []byte{203, 0, 113, 10},
+		A:   net.ParseIP("203.0.113.10").To4(),
 	}}
 
 	executor := &scriptedIterativeTargetResolver{responses: map[string]*dns.Msg{
@@ -101,8 +91,8 @@ func TestReferralTargetsAcceptsInBailiwickIPv4AndIPv6Glue(t *testing.T) {
 		&dns.NS{Hdr: dns.RR_Header{Name: "example.test.", Rrtype: dns.TypeNS, Class: dns.ClassINET, Ttl: 3600}, Ns: "ns2.example.test."},
 	}
 	msg.Extra = []dns.RR{
-		&dns.A{Hdr: dns.RR_Header{Name: "ns1.example.test.", Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: 3600}, A: []byte{192, 0, 2, 53}},
-		&dns.AAAA{Hdr: dns.RR_Header{Name: "ns2.example.test.", Rrtype: dns.TypeAAAA, Class: dns.ClassINET, Ttl: 3600}, AAAA: []byte{0x20, 0x01, 0x0d, 0xb8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x53}},
+		&dns.A{Hdr: dns.RR_Header{Name: "ns1.example.test.", Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: 3600}, A: net.ParseIP("192.0.2.53").To4()},
+		&dns.AAAA{Hdr: dns.RR_Header{Name: "ns2.example.test.", Rrtype: dns.TypeAAAA, Class: dns.ClassINET, Ttl: 3600}, AAAA: net.ParseIP("2001:db8::53")},
 	}
 
 	zone, targets, err := referralTargets(msg, "www.example.test.")
@@ -118,7 +108,7 @@ func TestReferralTargetsRejectsOutOfBailiwickGlue(t *testing.T) {
 	msg := new(dns.Msg)
 	msg.SetReply(req.Message)
 	msg.Ns = []dns.RR{&dns.NS{Hdr: dns.RR_Header{Name: "example.test.", Rrtype: dns.TypeNS, Class: dns.ClassINET, Ttl: 3600}, Ns: "ns.external.test."}}
-	msg.Extra = []dns.RR{&dns.A{Hdr: dns.RR_Header{Name: "ns.external.test.", Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: 3600}, A: []byte{192, 0, 2, 54}}}
+	msg.Extra = []dns.RR{&dns.A{Hdr: dns.RR_Header{Name: "ns.external.test.", Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: 3600}, A: net.ParseIP("192.0.2.54").To4()}}
 
 	_, _, err := referralTargets(msg, "www.example.test.")
 	require.ErrorContains(t, err, "no usable in-bailiwick glue")
