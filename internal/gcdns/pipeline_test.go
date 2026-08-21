@@ -169,3 +169,24 @@ func TestPipelineResolverSkipsNonCacheableResult(t *testing.T) {
 	require.NoError(t, err)
 	assert.Zero(t, cache.putCalls)
 }
+
+func TestPipelineRejectsBogusDNSSECResultBeforeCache(t *testing.T) {
+	cache := &cacheStub{}
+	p := &gcdns.Pipeline{
+		Policy:    passPolicy(),
+		Authority: passAuthority(),
+		Cache:     cache,
+		Resolver: resolverFunc(func(context.Context, *gcdns.Request) (*gcdns.Result, error) {
+			return &gcdns.Result{
+				Message:      new(dns.Msg),
+				Source:       "recursive",
+				CacheTTL:     time.Minute,
+				DNSSECStatus: gcdns.DNSSECBogus,
+			}, nil
+		}),
+	}
+
+	_, err := p.Resolve(context.Background(), newRequest())
+	require.ErrorContains(t, err, "bogus dnssec")
+	assert.Zero(t, cache.putCalls)
+}
