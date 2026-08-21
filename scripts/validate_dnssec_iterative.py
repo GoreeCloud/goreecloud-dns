@@ -5,6 +5,8 @@ ROOT = Path(__file__).resolve().parents[1]
 FILES = {
     "iterative DNSSEC resolver": ROOT / "internal" / "gcdns" / "iterative_dnssec.go",
     "iterative DNSSEC tests": ROOT / "internal" / "gcdns" / "iterative_dnssec_test.go",
+    "authenticated denial": ROOT / "internal" / "gcdns" / "authenticated_denial.go",
+    "authenticated denial tests": ROOT / "internal" / "gcdns" / "authenticated_denial_test.go",
     "root trust anchors": ROOT / "internal" / "gcdns" / "root_trust_anchors.go",
     "DNSSEC chain": ROOT / "internal" / "gcdns" / "dnssec_chain.go",
     "iterative resolver": ROOT / "internal" / "gcdns" / "iterative_resolver.go",
@@ -23,9 +25,10 @@ for marker in (
     "ValidateRootDNSKEY",
     "ValidateSignedDelegation",
     "validateTerminalPositive",
+    "validateAuthenticatedDenial",
+    "isNegativeDNSResponse",
     "terminalSignerKeys",
     "no authenticated signer key",
-    "authenticated denial with NSEC/NSEC3 is required",
     "out.DNSSECStatus = status",
     "ensureDNSSECOK(query)",
 ):
@@ -42,6 +45,35 @@ for marker in (
 ):
     if marker not in tests:
         raise SystemExit(f"dnssec iterative validation failed; test missing marker: {marker}")
+
+denial = FILES["authenticated denial"].read_text(encoding="utf-8")
+for marker in (
+    "validateAuthenticatedDenial",
+    "collectDenialMaterial",
+    "validateDenialRRsets",
+    "proveNSECNXDOMAIN",
+    "proveNSECNODATA",
+    "proveNSEC3NXDOMAIN",
+    "proveNSEC3NODATA",
+    "NSEC3 opt-out denial is not yet supported",
+    "closestNSEC3Encloser",
+    "wildcardName",
+):
+    if marker not in denial:
+        raise SystemExit(f"dnssec iterative validation failed; authenticated denial missing marker: {marker}")
+
+denial_tests = FILES["authenticated denial tests"].read_text(encoding="utf-8")
+for marker in (
+    "TestAuthenticatedDenialNSECNODATA",
+    "TestAuthenticatedDenialNSECNXDOMAIN",
+    "TestAuthenticatedDenialRejectsUnsignedNSEC",
+    "TestAuthenticatedDenialNSEC3NODATA",
+    "TestAuthenticatedDenialNSEC3NXDOMAIN",
+    "TestAuthenticatedDenialNSEC3OptOutFailsClosed",
+    "TestDNSSECIterativeResolverAcceptsAuthenticatedNSECNXDOMAIN",
+):
+    if marker not in denial_tests:
+        raise SystemExit(f"dnssec iterative validation failed; authenticated denial test missing marker: {marker}")
 
 anchors = FILES["root trust anchors"].read_text(encoding="utf-8")
 for marker in (
@@ -73,11 +105,13 @@ integrated = FILES["integrated resolver validator"].read_text(encoding="utf-8")
 for marker in (
     'ROOT / "internal" / "gcdns" / "iterative_dnssec.go"',
     'ROOT / "internal" / "gcdns" / "iterative_dnssec_test.go"',
+    'ROOT / "internal" / "gcdns" / "authenticated_denial.go"',
+    'ROOT / "internal" / "gcdns" / "authenticated_denial_test.go"',
     'ROOT / "internal" / "gcdns" / "root_trust_anchors.go"',
     'ROOT / "internal" / "gcdns" / "dnssec_chain.go"',
     '"type DNSSECIterativeResolver struct"',
+    '"validateAuthenticatedDenial"',
     '"terminalSignerKeys"',
-    '"authenticated denial with NSEC/NSEC3 is required"',
 ):
     if marker not in integrated:
         raise SystemExit(f"dnssec iterative validation failed; integrated resolver validator missing marker: {marker}")
@@ -87,8 +121,8 @@ for marker in (
     "Beacon Resolver DNSSEC trust-chain execution",
     "DNSSECIterativeResolver",
     "restricts candidate authenticated DNSKEYs to the RRSIG signer zone",
-    "no authenticated signer key",
-    "NSEC/NSEC3",
+    "authenticated denial",
+    "NSEC3 opt-out",
 ):
     if marker not in documentation:
         raise SystemExit(f"dnssec iterative validation failed; resolver documentation missing marker: {marker}")
