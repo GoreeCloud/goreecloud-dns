@@ -81,7 +81,11 @@ func (t *ResolverTransport) ResolveTarget(ctx context.Context, req *Request, tar
 		if err != nil {
 			return nil, err
 		}
-		if response.Truncated && t.conf.AllowTCPFallback {
+		if response.Truncated {
+			if !t.conf.AllowTCPFallback {
+				return nil, fmt.Errorf("goreecloud dns: resolver target %q returned a truncated udp response and tcp fallback is disabled", target.ID)
+			}
+
 			response, err = t.exchangeAndValidate(ctx, t.tcp, query, target)
 			if err != nil {
 				return nil, fmt.Errorf("goreecloud dns: resolver target %q tcp fallback failed: %w", target.ID, err)
