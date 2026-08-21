@@ -38,6 +38,7 @@ for marker in (
     "TestDNSSECIterativeResolverFailsClosedOnNegativeWithoutDenialProof",
     "TestDNSSECIterativeResolverRequiresTrustInputs",
     "TestTerminalSignerKeysFiltersToAuthenticatedSignerZone",
+    "TestDNSSECIterativeResolverRejectsTerminalAnswerWithoutAuthenticatedSignerKey",
 ):
     if marker not in tests:
         raise SystemExit(f"dnssec iterative validation failed; test missing marker: {marker}")
