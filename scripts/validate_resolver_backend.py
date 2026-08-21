@@ -197,6 +197,17 @@ for marker in (
     if marker not in prefetch_tests:
         raise SystemExit(f"resolver contract validation failed; prefetch cache test missing: {marker}")
 
+readme = README.read_text(encoding="utf-8")
+for marker in (
+    "Native cache implementation",
+    "cache_persistence.go",
+    "cache_prefetch.go",
+    "owner-only temporary file and atomic rename",
+    "native resolver scheduler",
+):
+    if marker not in readme:
+        raise SystemExit(f"resolver contract validation failed; cache documentation missing marker: {marker}")
+
 unbound_dir = ROOT / "resolver" / "unbound"
 if unbound_dir.exists() and any(unbound_dir.iterdir()):
     raise SystemExit("resolver contract validation failed; separate Unbound backend files are prohibited")
