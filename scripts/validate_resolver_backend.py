@@ -5,12 +5,16 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 README = ROOT / "resolver" / "README.md"
 CAPABILITIES = ROOT / "resolver" / "capabilities.json"
+SUBSYSTEMS = ROOT / "resolver" / "subsystems.json"
+CONFIG = ROOT / "resolver" / "config.example.json"
 
-for path in (README, CAPABILITIES):
+for path in (README, CAPABILITIES, SUBSYSTEMS, CONFIG):
     if not path.is_file():
         raise SystemExit(f"resolver contract validation failed; missing {path.relative_to(ROOT)}")
 
 contract = json.loads(CAPABILITIES.read_text(encoding="utf-8"))
+subsystems = json.loads(SUBSYSTEMS.read_text(encoding="utf-8"))
+config = json.loads(CONFIG.read_text(encoding="utf-8"))
 
 if contract.get("schema_version") != 2:
     raise SystemExit("resolver contract validation failed; expected schema version 2")
@@ -58,6 +62,58 @@ required = {
 missing = sorted(required - set(contract.get("capabilities", [])))
 if missing:
     raise SystemExit(f"resolver contract validation failed; missing capabilities: {missing}")
+
+if subsystems.get("product") != "GoreeCloud DNS":
+    raise SystemExit("resolver contract validation failed; subsystem product mismatch")
+if subsystems.get("production_approved") is not False:
+    raise SystemExit("resolver contract validation failed; subsystem contract cannot self-approve production")
+subsystem_ids = {item.get("id") for item in subsystems.get("subsystems", [])}
+required_subsystems = {
+    "listener", "identity-policy", "query-pipeline", "filtering", "authoritative",
+    "cache", "resolver", "dhcp", "cluster", "administration", "observability",
+    "configuration", "security-runtime", "extensions",
+}
+missing_subsystems = sorted(required_subsystems - subsystem_ids)
+if missing_subsystems:
+    raise SystemExit(f"resolver contract validation failed; missing subsystems: {missing_subsystems}")
+
+# Verify every declared capability is owned by at least one subsystem, except platform-level
+# capabilities that are represented by a higher-order subsystem relationship.
+owned = set()
+for item in subsystems.get("subsystems", []):
+    owned.update(item.get("owns", []))
+platform_relationship_capabilities = {
+    "public-zones", "local-zones", "local-data", "domain-blocking",
+    "client-specific-policies", "centralized-multi-instance-management",
+    "multi-user-administration", "dashboards", "health-monitoring",
+    "runtime-statistics", "geolocation-responses", "custom-dns-processing",
+}
+unowned = sorted(required - owned - platform_relationship_capabilities)
+if unowned:
+    raise SystemExit(f"resolver contract validation failed; capabilities without subsystem ownership: {unowned}")
+
+if config.get("production_approved") is not False:
+    raise SystemExit("resolver contract validation failed; example configuration cannot self-approve production")
+if config.get("security", {}).get("public_recursive_resolver") is not False:
+    raise SystemExit("resolver contract validation failed; example config must not enable a public recursive resolver")
+if set(config.get("security", {}).get("allow_recursion_from", [])) != {"127.0.0.0/8", "::1/128"}:
+    raise SystemExit("resolver contract validation failed; example recursion ACL must remain loopback-only")
+for listener_name in ("doh", "dot", "doq"):
+    listener = config.get("listeners", {}).get(listener_name, {})
+    if listener.get("enabled") is not False:
+        raise SystemExit(f"resolver contract validation failed; {listener_name} must be disabled by default in example config")
+if config.get("authoritative", {}).get("enabled") is not False:
+    raise SystemExit("resolver contract validation failed; authoritative serving must be disabled by default in example config")
+if config.get("dhcp", {}).get("enabled") is not False:
+    raise SystemExit("resolver contract validation failed; DHCP must be disabled by default in example config")
+if config.get("cluster", {}).get("enabled") is not False:
+    raise SystemExit("resolver contract validation failed; clustering must be disabled by default in example config")
+if config.get("extensions", {}).get("enabled") is not False:
+    raise SystemExit("resolver contract validation failed; extensions must be disabled by default in example config")
+if config.get("resolver", {}).get("dnssec_validation") is not True:
+    raise SystemExit("resolver contract validation failed; DNSSEC validation must default on")
+if config.get("filtering", {}).get("rebinding_protection") is not True:
+    raise SystemExit("resolver contract validation failed; rebinding protection must default on")
 
 readme = README.read_text(encoding="utf-8")
 for marker in (
