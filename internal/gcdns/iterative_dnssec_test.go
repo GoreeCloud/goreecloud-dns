@@ -37,6 +37,7 @@ func (s *dnssecScriptedResolver) ResolveTarget(_ context.Context, req *Request, 
 type dnssecValidatorStub struct {
 	rootCalls       int
 	delegationCalls int
+	insecureCalls   int
 	rrsetCalls      int
 	rootKeys        []*dns.DNSKEY
 	childKeys       []*dns.DNSKEY
@@ -50,6 +51,11 @@ func (v *dnssecValidatorStub) ValidateRootDNSKEY(_ *dns.Msg, _ []*dns.DS) (DNSSE
 func (v *dnssecValidatorStub) ValidateSignedDelegation(_ []*dns.DNSKEY, _ *dns.Msg, _ *dns.Msg, _ string) (DNSSECStatus, []*dns.DNSKEY, error) {
 	v.delegationCalls++
 	return DNSSECSecure, v.childKeys, nil
+}
+
+func (v *dnssecValidatorStub) ValidateInsecureDelegation(_ []*dns.DNSKEY, _ *dns.Msg, _ string) (DNSSECStatus, error) {
+	v.insecureCalls++
+	return DNSSECInsecure, nil
 }
 
 func (v *dnssecValidatorStub) ValidateRRSet(_ []dns.RR, _ []*dns.RRSIG, _ []*dns.DNSKEY) (DNSSECStatus, error) {
@@ -98,13 +104,7 @@ func TestDNSSECIterativeResolverCarriesAuthenticatedKeysAcrossReferral(t *testin
 	rootKey := &dns.DNSKEY{Hdr: dns.RR_Header{Name: ".", Rrtype: dns.TypeDNSKEY, Class: dns.ClassINET}, Protocol: 3}
 	childKey := &dns.DNSKEY{Hdr: dns.RR_Header{Name: "test.", Rrtype: dns.TypeDNSKEY, Class: dns.ClassINET}, Protocol: 3}
 	validator := &dnssecValidatorStub{rootKeys: []*dns.DNSKEY{rootKey}, childKeys: []*dns.DNSKEY{childKey}}
-	resolver, err := NewDNSSECIterativeResolver(
-		IterativeResolverConfig{MaxDepth: 8},
-		scheduler,
-		[]ResolverTarget{rootTarget},
-		validator,
-		DefaultRootTrustAnchors(),
-	)
+	resolver, err := NewDNSSECIterativeResolver(IterativeResolverConfig{MaxDepth: 8}, scheduler, []ResolverTarget{rootTarget}, validator, DefaultRootTrustAnchors())
 	require.NoError(t, err)
 
 	res, err := resolver.Resolve(context.Background(), iterativeQuery("www.example.test.", dns.TypeA))
@@ -113,6 +113,7 @@ func TestDNSSECIterativeResolverCarriesAuthenticatedKeysAcrossReferral(t *testin
 	require.Equal(t, 120*time.Second, res.CacheTTL)
 	require.Equal(t, 1, validator.rootCalls)
 	require.Equal(t, 1, validator.delegationCalls)
+	require.Equal(t, 0, validator.insecureCalls)
 	require.Equal(t, 1, validator.rrsetCalls)
 	require.Equal(t, []string{
 		"root|.|DNSKEY",
@@ -161,10 +162,7 @@ func TestTerminalSignerKeysFiltersToAuthenticatedSignerZone(t *testing.T) {
 		{Hdr: dns.RR_Header{Name: "example.test.", Rrtype: dns.TypeDNSKEY, Class: dns.ClassINET}, Protocol: 3},
 		{Hdr: dns.RR_Header{Name: "other.test.", Rrtype: dns.TypeDNSKEY, Class: dns.ClassINET}, Protocol: 3},
 	}
-	sigs := []*dns.RRSIG{
-		{Hdr: dns.RR_Header{Name: "www.example.test.", Rrtype: dns.TypeRRSIG, Class: dns.ClassINET}, TypeCovered: dns.TypeA, SignerName: "EXAMPLE.TEST."},
-	}
-
+	sigs := []*dns.RRSIG{{Hdr: dns.RR_Header{Name: "www.example.test.", Rrtype: dns.TypeRRSIG, Class: dns.ClassINET}, TypeCovered: dns.TypeA, SignerName: "EXAMPLE.TEST."}}
 	matched := terminalSignerKeys(sigs, keys)
 	require.Len(t, matched, 1)
 	require.Equal(t, "example.test.", matched[0].Hdr.Name)
@@ -180,7 +178,6 @@ func TestDNSSECIterativeResolverRejectsTerminalAnswerWithoutAuthenticatedSignerK
 		&dns.RRSIG{Hdr: dns.RR_Header{Name: "www.example.test.", Rrtype: dns.TypeRRSIG, Class: dns.ClassINET, Ttl: 120}, TypeCovered: dns.TypeA, SignerName: "example.test."},
 	}
 	keys := []*dns.DNSKEY{{Hdr: dns.RR_Header{Name: "other.test.", Rrtype: dns.TypeDNSKEY, Class: dns.ClassINET}, Protocol: 3}}
-
 	status, err := resolver.validateTerminalPositive(msg, keys)
 	require.ErrorContains(t, err, "no authenticated signer key")
 	require.Equal(t, DNSSECBogus, status)
