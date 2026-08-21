@@ -224,7 +224,8 @@ for marker in ("ValidateSignedDelegation", "authenticated denial is required", "
 iterative_dnssec = (ROOT / "internal" / "gcdns" / "iterative_dnssec.go").read_text(encoding="utf-8")
 for marker in (
     "type DNSSECIterativeResolver struct", "func NewDNSSECIterativeResolver", "authenticateRoot",
-    "fetchDNSKEY", "ValidateSignedDelegation", "validateTerminalPositive", "out.DNSSECStatus = status",
+    "fetchDNSKEY", "ValidateSignedDelegation", "validateTerminalPositive", "terminalSignerKeys",
+    "no authenticated signer key", "out.DNSSECStatus = status",
     "authenticated denial with NSEC/NSEC3 is required",
 ):
     if marker not in iterative_dnssec:
@@ -235,6 +236,7 @@ for marker in (
     "TestDNSSECIterativeResolverCarriesAuthenticatedKeysAcrossReferral",
     "TestDNSSECIterativeResolverFailsClosedOnNegativeWithoutDenialProof",
     "TestDNSSECIterativeResolverRequiresTrustInputs",
+    "TestTerminalSignerKeysFiltersToAuthenticatedSignerZone",
 ):
     if marker not in iterative_dnssec_tests:
         raise SystemExit(f"resolver contract validation failed; iterative dnssec test missing: {marker}")
