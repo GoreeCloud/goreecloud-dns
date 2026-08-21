@@ -2,6 +2,12 @@
 
 GoreeCloud DNS is the complete DNS service. Its long-term architecture replaces both AdGuard Home and Unbound with one GoreeCloud-controlled application and runtime.
 
+## GoreeCloud Beacon
+
+**GoreeCloud Beacon** is the official umbrella identity for the first-party capabilities of GoreeCloud DNS. GoreeCloud DNS remains the application and service name; Beacon provides the shared feature identity for the integrated resolution, authoritative DNS, security, filtering, caching, encrypted DNS, DHCP, clustering, administration, identity, observability, automation, and extensibility capabilities inside the single GoreeCloud DNS runtime.
+
+The canonical Beacon feature-family definitions and naming boundaries are documented in `docs/beacon.md`.
+
 ## Single-service architecture
 
 Approved clients communicate only with GoreeCloud DNS. Filtering, policy enforcement, local/private DNS, recursive resolution, authoritative DNS, encrypted DNS, forwarding, caching, DNSSEC, DHCP, clustering, identity, observability, APIs, administration, and extensibility are all first-party GoreeCloud DNS responsibilities.
