@@ -122,7 +122,7 @@ for marker in (
     "DNSSECIterativeResolver",
     "restricts candidate authenticated DNSKEYs to the RRSIG signer zone",
     "authenticated denial",
-    "NSEC3 opt-out",
+    "NSEC3 opt-out denial is not yet supported",
 ):
     if marker not in documentation:
         raise SystemExit(f"dnssec iterative validation failed; resolver documentation missing marker: {marker}")
