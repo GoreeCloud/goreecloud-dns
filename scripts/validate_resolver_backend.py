@@ -267,7 +267,8 @@ for marker in (
     "Native cache implementation", "cache_persistence.go", "cache_prefetch.go",
     "owner-only temporary file and atomic rename", "Beacon Resolver scheduler", "classic DNS transport",
     "iterative delegation walker", "in-bailiwick glue", "DNSSEC trust-chain execution",
-    "DNSSECIterativeResolver", "no authenticated signer key", "authenticated denial", "NSEC3 opt-out",
+    "DNSSECIterativeResolver", "no authenticated signer key", "authenticated denial",
+    "NSEC3 opt-out denial is not yet supported",
 ):
     if marker not in readme:
         raise SystemExit(f"resolver contract validation failed; resolver documentation missing marker: {marker}")
