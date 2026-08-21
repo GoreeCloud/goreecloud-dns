@@ -74,7 +74,8 @@ func TestMemoryCacheExpires(t *testing.T) {
 	require.NoError(t, err)
 
 	req := cacheRequest("expired.example.", "client-a")
-	require.NoError(t, cache.Put(context.Background(), req, positiveResult(t, "expired.example."), time.Minute))
+	res := positiveResult(t, "expired.example.")
+	require.NoError(t, cache.Put(context.Background(), req, res, time.Minute))
 	now = now.Add(time.Minute + time.Nanosecond)
 
 	got, ok, err := cache.Get(context.Background(), req)
@@ -98,7 +99,8 @@ func TestMemoryCacheServeStale(t *testing.T) {
 	require.NoError(t, err)
 
 	req := cacheRequest("stale.example.", "client-a")
-	require.NoError(t, cache.Put(context.Background(), req, positiveResult(t, "stale.example."), time.Minute))
+	res := positiveResult(t, "stale.example.")
+	require.NoError(t, cache.Put(context.Background(), req, res, time.Minute))
 	now = now.Add(2 * time.Minute)
 
 	got, ok, err := cache.Get(context.Background(), req)
@@ -140,23 +142,58 @@ func TestMemoryCachePartitionsClients(t *testing.T) {
 
 	reqA := cacheRequest("partition.example.", "client-a")
 	reqB := cacheRequest("partition.example.", "client-b")
-	require.NoError(t, cache.Put(context.Background(), reqA, positiveResult(t, "partition.example."), time.Minute))
+	res := positiveResult(t, "partition.example.")
+	require.NoError(t, cache.Put(context.Background(), reqA, res, time.Minute))
 
 	_, ok, err := cache.Get(context.Background(), reqB)
 	require.NoError(t, err)
 	assert.False(t, ok)
 }
 
+func TestMemoryCacheEvictsOldestEntryWithinShard(t *testing.T) {
+	now := time.Date(2026, 8, 21, 9, 0, 0, 0, time.UTC)
+	cache, err := gcdns.NewMemoryCache(gcdns.MemoryCacheConfig{
+		Shards:     1,
+		MaxEntries: 1,
+		Now:        func() time.Time { return now },
+	})
+	require.NoError(t, err)
+
+	first := cacheRequest("first.example.", "client-a")
+	second := cacheRequest("second.example.", "client-a")
+	require.NoError(t, cache.Put(context.Background(), first, positiveResult(t, "first.example."), time.Minute))
+	now = now.Add(time.Second)
+	require.NoError(t, cache.Put(context.Background(), second, positiveResult(t, "second.example."), time.Minute))
+
+	_, ok, err := cache.Get(context.Background(), first)
+	require.NoError(t, err)
+	assert.False(t, ok)
+
+	_, ok, err = cache.Get(context.Background(), second)
+	require.NoError(t, err)
+	assert.True(t, ok)
+	assert.Equal(t, uint64(1), cache.Stats().Evictions)
+	assert.Equal(t, uint64(1), cache.Stats().Entries)
+}
+
 func TestMemoryCacheValidation(t *testing.T) {
 	_, err := gcdns.NewMemoryCache(gcdns.MemoryCacheConfig{Shards: 3})
 	require.ErrorContains(t, err, "power of two")
+
+	_, err = gcdns.NewMemoryCache(gcdns.MemoryCacheConfig{Shards: 4, MaxEntries: 2})
+	require.ErrorContains(t, err, "at least the shard count")
 
 	_, err = gcdns.NewMemoryCache(gcdns.MemoryCacheConfig{ServeStale: true})
 	require.ErrorContains(t, err, "stale ttl")
 
 	cache, err := gcdns.NewMemoryCache(gcdns.MemoryCacheConfig{})
 	require.NoError(t, err)
-	err = cache.Put(context.Background(), cacheRequest("ttl.example.", "client-a"), positiveResult(t, "ttl.example."), 0)
+	err = cache.Put(
+		context.Background(),
+		cacheRequest("ttl.example.", "client-a"),
+		positiveResult(t, "ttl.example."),
+		0,
+	)
 	require.ErrorContains(t, err, "ttl must be positive")
 }
 
@@ -173,7 +210,8 @@ func TestMemoryCacheConcurrentAccess(t *testing.T) {
 
 			name := fmt.Sprintf("worker-%d.example.", i)
 			req := cacheRequest(name, fmt.Sprintf("client-%d", i))
-			if putErr := cache.Put(context.Background(), req, positiveResult(t, name), time.Minute); putErr != nil {
+			res := &gcdns.Result{Message: new(dns.Msg), Source: "recursive"}
+			if putErr := cache.Put(context.Background(), req, res, time.Minute); putErr != nil {
 				t.Errorf("put: %v", putErr)
 				return
 			}
