@@ -13,17 +13,15 @@ import (
 type dnssecChainValidator interface {
 	ValidateRootDNSKEY(msg *dns.Msg, anchors []*dns.DS) (DNSSECStatus, []*dns.DNSKEY, error)
 	ValidateSignedDelegation(parentKeys []*dns.DNSKEY, referral, childDNSKEY *dns.Msg, zone string) (DNSSECStatus, []*dns.DNSKEY, error)
+	ValidateInsecureDelegation(parentKeys []*dns.DNSKEY, referral *dns.Msg, zone string) (DNSSECStatus, error)
 	ValidateRRSet(rrset []dns.RR, signatures []*dns.RRSIG, keys []*dns.DNSKEY) (DNSSECStatus, error)
 }
 
 // DNSSECIterativeResolver performs the same local authoritative delegation walk
-// as IterativeResolver while carrying an authenticated DNSSEC key chain from
-// the root trust anchor to terminal positive and negative answers.
-//
-// Authenticated denial supports conservative NSEC and NSEC3 proofs. NSEC3
-// opt-out and ambiguous wildcard NODATA cases remain fail-closed. This resolver
-// is intentionally isolated from the inherited production request path until
-// the remaining DNSSEC and recursion acceptance gates are complete.
+// as IterativeResolver while carrying an authenticated DNSSEC trust state from
+// the root anchor to terminal answers. Once DS absence is authenticated for a
+// delegated child, the child subtree is explicitly insecure and cannot regain
+// secure status without a new external trust anchor.
 type DNSSECIterativeResolver struct {
 	conf      IterativeResolverConfig
 	scheduler *ResolverScheduler
@@ -68,18 +66,11 @@ func NewDNSSECIterativeResolver(
 	if len(anchorCopy) == 0 {
 		return nil, errors.New("goreecloud dns: dnssec iterative resolver has no usable root trust anchors")
 	}
-	return &DNSSECIterativeResolver{
-		conf:      conf,
-		scheduler: scheduler,
-		roots:     validated,
-		validator: validator,
-		anchors:   anchorCopy,
-	}, nil
+	return &DNSSECIterativeResolver{conf: conf, scheduler: scheduler, roots: validated, validator: validator, anchors: anchorCopy}, nil
 }
 
-// Resolve authenticates the root DNSKEY RRset, walks referrals, authenticates
-// each signed DS -> DNSKEY transition, and validates terminal positive RRsets
-// or authenticated denial proof material before returning a secure result.
+// Resolve authenticates the root DNSKEY RRset and then walks referrals while
+// carrying either a secure key chain or an authenticated insecure state.
 func (r *DNSSECIterativeResolver) Resolve(ctx context.Context, req *Request) (*Result, error) {
 	if req == nil || req.Message == nil {
 		return nil, errors.New("goreecloud dns: nil dnssec iterative resolver request")
@@ -104,6 +95,7 @@ func (r *DNSSECIterativeResolver) Resolve(ctx context.Context, req *Request) (*R
 
 	targets := append([]ResolverTarget(nil), r.roots...)
 	parentKeys := rootKeys
+	trustStatus := DNSSECSecure
 	seenDelegations := make(map[string]struct{}, r.conf.MaxDepth)
 
 	for depth := 0; depth < r.conf.MaxDepth; depth++ {
@@ -116,6 +108,13 @@ func (r *DNSSECIterativeResolver) Resolve(ctx context.Context, req *Request) (*R
 		}
 
 		if isTerminalDNSResponse(res.Message) {
+			out := cloneResult(res)
+			out.CacheTTL = responseCacheTTL(out.Message)
+			if trustStatus == DNSSECInsecure {
+				out.DNSSECStatus = DNSSECInsecure
+				return out, nil
+			}
+
 			var status DNSSECStatus
 			if isNegativeDNSResponse(res.Message) {
 				status, err = r.validateAuthenticatedDenial(res.Message, query.Question[0], parentKeys)
@@ -125,8 +124,6 @@ func (r *DNSSECIterativeResolver) Resolve(ctx context.Context, req *Request) (*R
 			if err != nil {
 				return nil, fmt.Errorf("goreecloud dns: terminal dnssec validation failed: %w", err)
 			}
-			out := cloneResult(res)
-			out.CacheTTL = responseCacheTTL(out.Message)
 			out.DNSSECStatus = status
 			return out, nil
 		}
@@ -140,6 +137,26 @@ func (r *DNSSECIterativeResolver) Resolve(ctx context.Context, req *Request) (*R
 			return nil, fmt.Errorf("goreecloud dns: dnssec iterative delegation loop detected for %s", zone)
 		}
 		seenDelegations[key] = struct{}{}
+
+		if trustStatus == DNSSECInsecure {
+			targets = nextTargets
+			continue
+		}
+
+		_, dsRecords, _ := delegationDSMaterial(res.Message, zone)
+		if len(dsRecords) == 0 {
+			status, err := r.validator.ValidateInsecureDelegation(parentKeys, res.Message, zone)
+			if err != nil || status != DNSSECInsecure {
+				if err == nil {
+					err = fmt.Errorf("unexpected validation state %s", status)
+				}
+				return nil, fmt.Errorf("goreecloud dns: insecure delegation validation failed for %s: %w", zone, err)
+			}
+			trustStatus = DNSSECInsecure
+			parentKeys = nil
+			targets = nextTargets
+			continue
+		}
 
 		childDNSKEY, err := r.fetchDNSKEY(ctx, req, zone, nextTargets)
 		if err != nil {
@@ -213,10 +230,7 @@ func (r *DNSSECIterativeResolver) validateTerminalPositive(msg *dns.Msg, keys []
 		return DNSSECIndeterminate, errors.New("terminal response has no authenticated zone keys")
 	}
 
-	type rrsetKey struct {
-		name   string
-		rrtype uint16
-	}
+	type rrsetKey struct { name string; rrtype uint16 }
 	rrsets := make(map[rrsetKey][]dns.RR)
 	signatures := make(map[rrsetKey][]*dns.RRSIG)
 	for _, rr := range msg.Answer {
@@ -225,9 +239,7 @@ func (r *DNSSECIterativeResolver) validateTerminalPositive(msg *dns.Msg, keys []
 			key := rrsetKey{name: strings.ToLower(dns.Fqdn(record.Hdr.Name)), rrtype: record.TypeCovered}
 			signatures[key] = append(signatures[key], record)
 		default:
-			if rr.Header().Rrtype == dns.TypeOPT {
-				continue
-			}
+			if rr.Header().Rrtype == dns.TypeOPT { continue }
 			key := rrsetKey{name: strings.ToLower(dns.Fqdn(rr.Header().Name)), rrtype: rr.Header().Rrtype}
 			rrsets[key] = append(rrsets[key], rr)
 		}
@@ -237,13 +249,9 @@ func (r *DNSSECIterativeResolver) validateTerminalPositive(msg *dns.Msg, keys []
 	}
 
 	ordered := make([]rrsetKey, 0, len(rrsets))
-	for key := range rrsets {
-		ordered = append(ordered, key)
-	}
+	for key := range rrsets { ordered = append(ordered, key) }
 	sort.Slice(ordered, func(i, j int) bool {
-		if ordered[i].name == ordered[j].name {
-			return ordered[i].rrtype < ordered[j].rrtype
-		}
+		if ordered[i].name == ordered[j].name { return ordered[i].rrtype < ordered[j].rrtype }
 		return ordered[i].name < ordered[j].name
 	})
 	for _, key := range ordered {
@@ -257,9 +265,7 @@ func (r *DNSSECIterativeResolver) validateTerminalPositive(msg *dns.Msg, keys []
 		}
 		status, err := r.validator.ValidateRRSet(rrsets[key], sigs, zoneKeys)
 		if err != nil || status != DNSSECSecure {
-			if err == nil {
-				err = fmt.Errorf("unexpected validation state %s", status)
-			}
+			if err == nil { err = fmt.Errorf("unexpected validation state %s", status) }
 			return DNSSECBogus, fmt.Errorf("terminal RRset %s/%s failed validation: %w", key.name, dns.TypeToString[key.rrtype], err)
 		}
 	}
@@ -269,19 +275,12 @@ func (r *DNSSECIterativeResolver) validateTerminalPositive(msg *dns.Msg, keys []
 func terminalSignerKeys(signatures []*dns.RRSIG, keys []*dns.DNSKEY) []*dns.DNSKEY {
 	signerNames := make(map[string]struct{}, len(signatures))
 	for _, sig := range signatures {
-		if sig == nil {
-			continue
-		}
-		signerNames[strings.ToLower(dns.Fqdn(sig.SignerName))] = struct{}{}
+		if sig != nil { signerNames[strings.ToLower(dns.Fqdn(sig.SignerName))] = struct{}{} }
 	}
 	matched := make([]*dns.DNSKEY, 0, len(keys))
 	for _, key := range keys {
-		if key == nil {
-			continue
-		}
-		if _, ok := signerNames[strings.ToLower(dns.Fqdn(key.Hdr.Name))]; ok {
-			matched = append(matched, key)
-		}
+		if key == nil { continue }
+		if _, ok := signerNames[strings.ToLower(dns.Fqdn(key.Hdr.Name))]; ok { matched = append(matched, key) }
 	}
 	return matched
 }
