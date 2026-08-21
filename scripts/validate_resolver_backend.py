@@ -15,6 +15,10 @@ NATIVE_CORE = (
     ROOT / "internal" / "gcdns" / "pipeline_test.go",
     ROOT / "internal" / "gcdns" / "cache.go",
     ROOT / "internal" / "gcdns" / "cache_test.go",
+    ROOT / "internal" / "gcdns" / "cache_persistence.go",
+    ROOT / "internal" / "gcdns" / "cache_persistence_test.go",
+    ROOT / "internal" / "gcdns" / "cache_prefetch.go",
+    ROOT / "internal" / "gcdns" / "cache_prefetch_test.go",
 )
 
 for path in (README, CAPABILITIES, SUBSYSTEMS, CONFIG, *NATIVE_CORE):
@@ -47,8 +51,8 @@ if contract.get("runtime_acceptance_required") is not True:
 required = set(contract.get("capabilities", []))
 for capability in (
     "recursive-resolution", "authoritative-dns", "dnssec-validation", "dnssec-signing",
-    "dns-cache", "persistent-cache", "serve-stale", "prefetch", "dns-over-https",
-    "dns-over-tls", "dns-over-quic", "integrated-dhcp", "clustering",
+    "dns-cache", "persistent-cache", "serve-stale", "prefetch", "auto-prefetch",
+    "dns-over-https", "dns-over-tls", "dns-over-quic", "integrated-dhcp", "clustering",
     "role-based-access-control", "oidc-single-sign-on", "metrics",
     "extensible-processing-framework",
 ):
@@ -148,6 +152,50 @@ for marker in (
 ):
     if marker not in cache_tests:
         raise SystemExit(f"resolver contract validation failed; native cache test missing: {marker}")
+
+persistence = (ROOT / "internal" / "gcdns" / "cache_persistence.go").read_text(encoding="utf-8")
+for marker in (
+    "persistentCacheVersion = 1",
+    "func (c *MemoryCache) SavePersistent",
+    "func (c *MemoryCache) LoadPersistent",
+    "os.CreateTemp",
+    "tmp.Chmod(0o600)",
+    "os.Rename",
+):
+    if marker not in persistence:
+        raise SystemExit(f"resolver contract validation failed; persistent cache missing marker: {marker}")
+
+persistence_tests = (ROOT / "internal" / "gcdns" / "cache_persistence_test.go").read_text(encoding="utf-8")
+for marker in (
+    "TestMemoryCachePersistentRoundTrip",
+    "TestMemoryCachePersistentSkipsExpired",
+    "TestMemoryCachePersistentRejectsInvalidState",
+):
+    if marker not in persistence_tests:
+        raise SystemExit(f"resolver contract validation failed; persistent cache test missing: {marker}")
+
+prefetch = (ROOT / "internal" / "gcdns" / "cache_prefetch.go").read_text(encoding="utf-8")
+for marker in (
+    "type PrefetchConfig struct",
+    "type PrefetchCandidate struct",
+    "type PrefetchCache struct",
+    "func NewPrefetchCache",
+    "func (p *PrefetchCache) Candidates",
+    "MinimumHits uint64",
+    "RefreshWithin time.Duration",
+):
+    if marker not in prefetch:
+        raise SystemExit(f"resolver contract validation failed; prefetch cache missing marker: {marker}")
+
+prefetch_tests = (ROOT / "internal" / "gcdns" / "cache_prefetch_test.go").read_text(encoding="utf-8")
+for marker in (
+    "TestPrefetchCacheSelectsPopularExpiringEntry",
+    "TestPrefetchCacheDoesNotSelectColdOrFreshEntry",
+    "TestPrefetchCacheFlushClearsPopularity",
+    "TestPrefetchCacheValidation",
+):
+    if marker not in prefetch_tests:
+        raise SystemExit(f"resolver contract validation failed; prefetch cache test missing: {marker}")
 
 unbound_dir = ROOT / "resolver" / "unbound"
 if unbound_dir.exists() and any(unbound_dir.iterdir()):
