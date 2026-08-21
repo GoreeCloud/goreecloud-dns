@@ -1,60 +1,59 @@
 #!/usr/bin/env python3
+import json
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-UNBOUND = ROOT / "resolver" / "unbound" / "unbound.conf"
-LOCAL_ZONES = ROOT / "resolver" / "unbound" / "local-zones.conf"
-RPZ = ROOT / "resolver" / "unbound" / "rpz.conf"
 README = ROOT / "resolver" / "README.md"
+CAPABILITIES = ROOT / "resolver" / "capabilities.json"
 
-for path in (UNBOUND, LOCAL_ZONES, RPZ, README):
+for path in (README, CAPABILITIES):
     if not path.is_file():
-        raise SystemExit(f"resolver backend validation failed; missing {path.relative_to(ROOT)}")
+        raise SystemExit(f"resolver contract validation failed; missing {path.relative_to(ROOT)}")
 
-text = UNBOUND.read_text(encoding="utf-8")
-required = (
-    'interface: 127.0.0.1@5353',
-    'access-control: 0.0.0.0/0 refuse',
-    'auto-trust-anchor-file:',
-    'aggressive-nsec: yes',
-    'serve-expired: yes',
-    'prefetch: yes',
-    'qname-minimisation: yes',
-    'minimal-responses: yes',
-    'cache-min-ttl:',
-    'cache-max-ttl:',
-    'cache-max-negative-ttl:',
-    'num-threads:',
-    'msg-cache-slabs:',
-    'rrset-cache-slabs:',
-    'private-address: 10.0.0.0/8',
-    'control-enable: yes',
-    'control-interface: 127.0.0.1',
-    'extended-statistics: yes',
-    'forward-zone:',
-)
-missing = [marker for marker in required if marker not in text]
+contract = json.loads(CAPABILITIES.read_text(encoding="utf-8"))
+
+if contract.get("product") != "GoreeCloud DNS":
+    raise SystemExit("resolver contract validation failed; wrong product authority")
+if contract.get("architecture") != "single-service":
+    raise SystemExit("resolver contract validation failed; architecture must be single-service")
+if contract.get("runtime_authority") != "GoreeCloud/goreecloud-dns":
+    raise SystemExit("resolver contract validation failed; runtime authority must be GoreeCloud DNS")
+if contract.get("external_recursive_resolver_required") is not False:
+    raise SystemExit("resolver contract validation failed; external recursive resolver must not be required")
+if set(contract.get("target_replaces", [])) != {"AdGuard Home", "Unbound"}:
+    raise SystemExit("resolver contract validation failed; target must replace AdGuard Home and Unbound")
+if contract.get("production_approved") is not False:
+    raise SystemExit("resolver contract validation failed; source contract cannot self-approve production")
+if contract.get("runtime_acceptance_required") is not True:
+    raise SystemExit("resolver contract validation failed; runtime acceptance must remain required")
+
+required = {
+    "recursive-resolution", "dns-cache", "negative-cache", "aggressive-negative-cache",
+    "cache-ttl-controls", "serve-stale", "prefetch", "forward-zones",
+    "multi-upstream-failover", "dnssec-validation", "qname-minimization",
+    "minimal-responses", "local-zones", "local-data", "response-policy-zones",
+    "dns-rebinding-protection", "client-access-control", "multi-threading",
+    "cache-sharding", "runtime-statistics", "runtime-administration",
+    "interface-restrictions", "query-restrictions", "privilege-separation",
+    "resolver-hardening",
+}
+missing = sorted(required - set(contract.get("capabilities", [])))
 if missing:
-    raise SystemExit(f"resolver backend validation failed; missing markers: {missing}")
+    raise SystemExit(f"resolver contract validation failed; missing capabilities: {missing}")
 
-# Fail closed against accidental broad exposure or permissive validation.
-prohibited = (
-    'interface: 0.0.0.0',
-    'interface: ::0',
-    'access-control: 0.0.0.0/0 allow',
-    'access-control: ::0/0 allow',
-    'val-permissive-mode: yes',
-    'control-use-cert: no',
-)
-present = [marker for marker in prohibited if marker in text]
-if present:
-    raise SystemExit(f"resolver backend validation failed; prohibited markers: {present}")
+readme = README.read_text(encoding="utf-8")
+for marker in (
+    "complete DNS service",
+    "replaces both AdGuard Home and Unbound",
+    "There is no permanent Unbound backend boundary",
+    "Approved Client -> GoreeCloud DNS listener",
+):
+    if marker not in readme:
+        raise SystemExit(f"resolver contract validation failed; README missing marker: {marker}")
 
-# Cache slab counts must be powers of two and no smaller than one.
-for key in ('msg-cache-slabs', 'rrset-cache-slabs', 'infra-cache-slabs', 'key-cache-slabs'):
-    line = next(line for line in text.splitlines() if line.strip().startswith(f'{key}:'))
-    value = int(line.split(':', 1)[1].strip())
-    if value < 1 or value & (value - 1):
-        raise SystemExit(f"resolver backend validation failed; {key} must be a power of two")
+# Fail closed if the removed sidecar architecture is accidentally reintroduced.
+unbound_dir = ROOT / "resolver" / "unbound"
+if unbound_dir.exists() and any(unbound_dir.iterdir()):
+    raise SystemExit("resolver contract validation failed; separate Unbound backend files are prohibited")
 
-print("GoreeCloud DNS resolver backend source contract: PASS")
+print("GoreeCloud DNS first-party resolver source contract: PASS")
