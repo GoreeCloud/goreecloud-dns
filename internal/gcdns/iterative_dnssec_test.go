@@ -169,3 +169,20 @@ func TestTerminalSignerKeysFiltersToAuthenticatedSignerZone(t *testing.T) {
 	require.Len(t, matched, 1)
 	require.Equal(t, "example.test.", matched[0].Hdr.Name)
 }
+
+func TestDNSSECIterativeResolverRejectsTerminalAnswerWithoutAuthenticatedSignerKey(t *testing.T) {
+	validator := &dnssecValidatorStub{}
+	resolver := &DNSSECIterativeResolver{validator: validator}
+	msg := dnssecReply("www.example.test.", dns.TypeA)
+	msg.Authoritative = true
+	msg.Answer = []dns.RR{
+		&dns.A{Hdr: dns.RR_Header{Name: "www.example.test.", Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: 120}, A: net.ParseIP("203.0.113.10").To4()},
+		&dns.RRSIG{Hdr: dns.RR_Header{Name: "www.example.test.", Rrtype: dns.TypeRRSIG, Class: dns.ClassINET, Ttl: 120}, TypeCovered: dns.TypeA, SignerName: "example.test."},
+	}
+	keys := []*dns.DNSKEY{{Hdr: dns.RR_Header{Name: "other.test.", Rrtype: dns.TypeDNSKEY, Class: dns.ClassINET}, Protocol: 3}}
+
+	status, err := resolver.validateTerminalPositive(msg, keys)
+	require.ErrorContains(t, err, "no authenticated signer key")
+	require.Equal(t, DNSSECBogus, status)
+	require.Zero(t, validator.rrsetCalls)
+}
