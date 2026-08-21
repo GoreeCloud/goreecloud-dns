@@ -155,3 +155,17 @@ func TestDNSSECIterativeResolverRequiresTrustInputs(t *testing.T) {
 	_, err = NewDNSSECIterativeResolver(IterativeResolverConfig{MaxDepth: 4}, scheduler, []ResolverTarget{rootTarget}, &dnssecValidatorStub{}, nil)
 	require.ErrorContains(t, err, "requires root trust anchors")
 }
+
+func TestTerminalSignerKeysFiltersToAuthenticatedSignerZone(t *testing.T) {
+	keys := []*dns.DNSKEY{
+		{Hdr: dns.RR_Header{Name: "example.test.", Rrtype: dns.TypeDNSKEY, Class: dns.ClassINET}, Protocol: 3},
+		{Hdr: dns.RR_Header{Name: "other.test.", Rrtype: dns.TypeDNSKEY, Class: dns.ClassINET}, Protocol: 3},
+	}
+	sigs := []*dns.RRSIG{
+		{Hdr: dns.RR_Header{Name: "www.example.test.", Rrtype: dns.TypeRRSIG, Class: dns.ClassINET}, TypeCovered: dns.TypeA, SignerName: "EXAMPLE.TEST."},
+	}
+
+	matched := terminalSignerKeys(sigs, keys)
+	require.Len(t, matched, 1)
+	require.Equal(t, "example.test.", matched[0].Hdr.Name)
+}
