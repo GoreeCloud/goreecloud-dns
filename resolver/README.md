@@ -66,6 +66,16 @@ These subsystem boundaries exist for maintainability and testing; they do not cr
 
 The `native-dns-core` CI job executes `go test ./internal/gcdns`, while the architecture validator also requires the native core files and pipeline stage markers. This converts part of the DNS platform plan from documentation-only contracts into compilable first-party Go code without changing production behavior.
 
+## Native cache implementation
+
+`internal/gcdns/cache.go` provides the first substantive GoreeCloud-owned runtime subsystem. It implements sharded concurrency-safe in-memory caching, bounded capacity, TTL expiration and wire-TTL aging, serve-stale, positive and negative caching, defensive DNS message copies, client-aware cache partitioning, cache statistics, and flush serialization.
+
+`internal/gcdns/cache_persistence.go` adds opt-in persistent cache snapshots. Persistent state is versioned, stores packed DNS messages rather than process-specific objects, is written through an owner-only temporary file and atomic rename, and restores only entries that remain usable under the active cache policy. Persistence paths are explicitly supplied by configuration or runtime management; no repository path or production state location is assumed.
+
+`internal/gcdns/cache_prefetch.go` adds first-party prefetch and auto-prefetch selection primitives. Popularity is tracked from successful fresh-cache hits. Entries become refresh candidates only after a configurable hit threshold and when their remaining positive TTL enters a configurable refresh window. Candidate generation does not itself contact the network; the native resolver scheduler will own controlled concurrent refresh execution so prefetch cannot bypass normal policy, DNSSEC, forwarding, observability, or cancellation behavior.
+
+Persistent cache and prefetch are therefore native GoreeCloud DNS capabilities, not external daemons or Unbound dependencies. Their deterministic tests cover persistence round trips, owner-only persistence permissions, expiry rejection, schema-version rejection, popular-entry selection, cold-entry exclusion, and prefetch state flushing in addition to the existing cache TTL, stale, negative, partitioning, capacity, and concurrency tests.
+
 ## Configuration model
 
 `resolver/config.example.json` is the safe configuration-model baseline. It intentionally defaults to:
