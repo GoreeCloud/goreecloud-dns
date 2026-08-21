@@ -19,6 +19,16 @@ const (
 	TransportDoQ Transport = "doq"
 )
 
+// DNSSECStatus describes the validation state attached to a DNS result.
+type DNSSECStatus string
+
+const (
+	DNSSECIndeterminate DNSSECStatus = "indeterminate"
+	DNSSECInsecure      DNSSECStatus = "insecure"
+	DNSSECSecure        DNSSECStatus = "secure"
+	DNSSECBogus         DNSSECStatus = "bogus"
+)
+
 // Request is the normalized query passed through the native GoreeCloud DNS
 // processing pipeline. Message must not be nil.
 type Request struct {
@@ -30,10 +40,11 @@ type Request struct {
 
 // Result is the normalized result returned by a first-party DNS subsystem.
 type Result struct {
-	Message  *dns.Msg
-	Source   string
-	CacheTTL time.Duration
-	Stale    bool
+	Message      *dns.Msg
+	Source       string
+	CacheTTL     time.Duration
+	Stale        bool
+	DNSSECStatus DNSSECStatus
 }
 
 // Policy evaluates request policy before recursive or authoritative resolution.
@@ -66,10 +77,11 @@ type Observer interface {
 
 // Event is a minimal pipeline-observability record.
 type Event struct {
-	Stage    string
-	Source   string
-	Duration time.Duration
-	CacheHit bool
-	Stale    bool
-	Err      error
+	Stage        string
+	Source       string
+	Duration     time.Duration
+	CacheHit     bool
+	Stale        bool
+	DNSSECStatus DNSSECStatus
+	Err          error
 }
