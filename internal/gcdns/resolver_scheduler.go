@@ -87,13 +87,16 @@ func NewResolverScheduler(conf ResolverSchedulerConfig, executor TargetResolver,
 // Resolve implements Resolver. Targets with successful measured latency are
 // preferred, while unseen targets remain eligible. Work is bounded by
 // MaxParallel and canceled as soon as one target returns a valid response.
-func (s *ResolverScheduler) Resolve(ctx context.Context, req *Request) (*Result, error) {
+func (s *ResolverScheduler) Resolve(parent context.Context, req *Request) (*Result, error) {
 	if req == nil || req.Message == nil {
 		return nil, errors.New("goreecloud dns: nil resolver request")
 	}
+	if err := parent.Err(); err != nil {
+		return nil, err
+	}
 
 	targets := s.orderedTargets()
-	ctx, cancel := context.WithCancel(ctx)
+	ctx, cancel := context.WithCancel(parent)
 	defer cancel()
 
 	type attemptResult struct {
@@ -147,12 +150,16 @@ func (s *ResolverScheduler) Resolve(ctx context.Context, req *Request) (*Result,
 			cancel()
 			return attempt.result, nil
 		}
-		if attempt.err != nil {
+		if attempt.err != nil && !errors.Is(attempt.err, context.Canceled) {
 			lastErr = attempt.err
+		}
+		if err := parent.Err(); err != nil {
+			cancel()
+			return nil, err
 		}
 	}
 
-	if err := ctx.Err(); err != nil && !errors.Is(err, context.Canceled) {
+	if err := parent.Err(); err != nil {
 		return nil, err
 	}
 	if lastErr != nil {
@@ -202,6 +209,10 @@ func (s *ResolverScheduler) orderedTargets() []ResolverTarget {
 }
 
 func (s *ResolverScheduler) recordAttempt(id string, latency time.Duration, err error) {
+	if errors.Is(err, context.Canceled) {
+		return
+	}
+
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
