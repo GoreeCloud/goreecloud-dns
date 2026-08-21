@@ -7,6 +7,8 @@ import (
 	"sort"
 	"sync"
 	"time"
+
+	"github.com/miekg/dns"
 )
 
 // ResolverTarget identifies a recursive, forwarder, conditional-forwarder, or
@@ -132,6 +134,9 @@ func (s *ResolverScheduler) ResolveTargets(parent context.Context, req *Request,
 			if err == nil && (res == nil || res.Message == nil) {
 				err = errors.New("resolver target returned nil response")
 			}
+			if err == nil {
+				err = resolverTargetResponseError(res.Message)
+			}
 			s.recordAttempt(target.ID, latency, err)
 
 			select {
@@ -228,6 +233,18 @@ func (s *ResolverScheduler) orderedTargets(targets []ResolverTarget) []ResolverT
 		return ordered[i].ID < ordered[j].ID
 	})
 	return ordered
+}
+
+func resolverTargetResponseError(msg *dns.Msg) error {
+	if msg == nil {
+		return errors.New("resolver target returned nil response")
+	}
+	switch msg.Rcode {
+	case dns.RcodeServerFailure, dns.RcodeRefused, dns.RcodeNotImplemented, dns.RcodeFormatError:
+		return fmt.Errorf("resolver target returned retryable response code %s", dns.RcodeToString[msg.Rcode])
+	default:
+		return nil
+	}
 }
 
 func (s *ResolverScheduler) recordAttempt(id string, latency time.Duration, err error) {
