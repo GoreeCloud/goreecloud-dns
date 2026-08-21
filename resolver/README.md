@@ -4,66 +4,92 @@ GoreeCloud DNS is the complete DNS service. Its long-term architecture replaces 
 
 ## Single-service architecture
 
-Approved clients communicate only with GoreeCloud DNS. Recursive resolution, authoritative DNS, encrypted DNS, filtering, DHCP, local/private DNS, forwarding, caching, DNSSEC, clustering, administration, automation, observability, and extensible DNS processing are first-party GoreeCloud DNS responsibilities.
+Approved clients communicate only with GoreeCloud DNS. Filtering, policy enforcement, local/private DNS, recursive resolution, authoritative DNS, encrypted DNS, forwarding, caching, DNSSEC, DHCP, clustering, identity, observability, APIs, administration, and extensibility are all first-party GoreeCloud DNS responsibilities.
 
 There is no permanent Unbound backend boundary in the target architecture. Unbound is a capability reference and migration source only. AdGuard Home is the initial maintained-fork engineering foundation only. Neither remains a required production dependency after the GoreeCloud DNS native transition is complete.
 
-## Recursive, authoritative, and zone services
+## Integrated capability areas
 
-GoreeCloud DNS will provide a full recursive resolver for direct root-to-authority resolution and controlled forwarding; authoritative DNS hosting for internal and public zones; primary, secondary, forwarder, and stub zones; catalog-based zone provisioning; zone transfer and notification; split-horizon answers based on client, subnet, or network identity; and conditional forwarding for private namespaces, directories, VPNs, branch offices, hybrid environments, and other internal DNS systems.
+### Recursive and forwarding engine
 
-DNSSEC is a native responsibility in both directions: recursive responses are validated, while authoritative zones can be signed and have signing state managed by GoreeCloud DNS.
+The native resolver provides full recursive DNS resolution, concurrent recursion, latency-based name-server selection, DNSSEC validation and trust-anchor management, QNAME minimization, minimal responses, conditional forwarding, forward zones, encrypted forwarding, multiple-upstream failover, and compatibility with private and hybrid DNS infrastructures.
 
-## Filtering and security policy
+### Authoritative DNS
 
-The DNS policy engine will provide network-wide advertisement, tracker, malware, phishing, telemetry, and unwanted-domain blocking using blocklists, allowlists, wildcard rules, regular expressions, response-policy zones, client-specific rules, subnet groups, and other native policy sources. Rebinding protection, interface/query restrictions, least-privilege operation, access controls, DNSSEC, and resolver hardening remain part of the same service security boundary.
+GoreeCloud DNS provides authoritative DNS hosting for internal and public zones, including primary, secondary, forwarder, and stub zones; zone transfer and notify; catalog-based zone provisioning and synchronization; and DNSSEC signing for authoritative zones.
 
-## Encrypted DNS
+### Cache and resilience
 
-The service will accept encrypted client DNS through DNS-over-HTTPS, DNS-over-TLS, and DNS-over-QUIC. It will also support authenticated encrypted forwarding to compatible upstream resolvers when forwarding is selected instead of full recursion.
+The cache layer provides positive, negative, and aggressive-negative caching, configurable TTL controls, serve-stale, prefetch, auto-prefetch, persistent caching, and sharded cache structures designed to reduce contention while preserving predictable recovery behavior.
 
-## Performance and resilience
+### Filtering and policy
 
-Caching includes positive, negative, aggressive negative, persistent, serve-stale, prefetch, auto-prefetch, configurable TTL controls, and sharded/partitioned caches. The resolver will support concurrent recursive work, health-aware multi-upstream failover, latency-based name-server selection, and multi-threaded request processing.
+The filtering engine provides network-wide advertisement, tracker, malware, phishing, telemetry, and unwanted-domain blocking with blocklists, allowlists, wildcard rules, regular expressions, response-policy zones, client-specific policies, subnet-based groups, split-horizon evaluation, and DNS rebinding protection.
 
-## DHCP and dynamic DNS
+### Encrypted DNS
 
-An integrated DHCP server will share the GoreeCloud DNS configuration and policy model. DHCP leases may automatically register and maintain approved DNS records so address allocation, naming, client identity, and policy can remain synchronized.
+The listener layer supports DNS-over-HTTPS, DNS-over-TLS, and DNS-over-QUIC. Encrypted forwarding is independently configurable for compatible upstream resolvers. Encrypted listeners are opt-in in the example configuration so TLS/QUIC material and exposure cannot be enabled accidentally.
 
-## Administration, identity, and automation
+### DHCP and dynamic DNS
 
-GoreeCloud DNS will provide a browser-based administration console and comprehensive HTTP API. Administration will support multiple users, role-based access control, scoped API tokens, TOTP two-factor authentication, and OIDC single sign-on. Runtime controls will include safe configuration reload, cache management, statistics, zone operations, upstream/resolver management, service health, and other approved administrative actions.
+The integrated DHCP server provides address assignment and automatic DNS record registration so managed leases and local DNS state can share a first-party lifecycle.
 
-## Clustering and high availability
+### Identity and administration
 
-Multiple GoreeCloud DNS instances may form a managed cluster with centrally coordinated configuration, zone/catalog synchronization, health state, and operational control while retaining independent DNS-serving capability for redundancy and scale. Cluster design must avoid turning the control plane into a mandatory single point of DNS failure.
+The administration plane provides a browser-based Glaze UI console and comprehensive HTTP API. Identity capabilities include multi-user administration, role-based access control, scoped API tokens, TOTP two-factor authentication, and OpenID Connect single sign-on.
 
-## Observability
+### Clustering and availability
 
-The service will provide detailed query logging, audit logging, resolver and authoritative statistics, cache metrics, DNSSEC outcomes, forwarding and recursion health, latency, failures, DHCP state, dashboards, health information, and metrics suitable for GoreeCloud Monitor and other approved systems. Privacy controls must minimize or disable sensitive query retention when detailed logs are not operationally required.
+A managed cluster can centrally coordinate multiple GoreeCloud DNS instances, synchronize approved configuration and zone state, and support redundant deployments. Clustering is disabled by default until explicit node identity, trust, synchronization, failure, and recovery configuration is supplied.
 
-## Extensible processing framework
+### Observability
 
-The DNS request pipeline will expose controlled first-party extension points for advanced blocking, split-horizon processing, geolocation-based responses, DNS64, rebinding protection, advanced forwarding, and custom DNS processing logic. Extensions must execute inside defined policy, security, privacy, resource, and observability boundaries rather than bypassing the core DNS engine.
+First-party observability includes detailed query logging, audit logging, runtime statistics, dashboards, health information, metrics, resolver/upstream health, cache behavior, DNSSEC outcomes, authoritative-zone state, DHCP state, and cluster status. Privacy-sensitive query data remains subject to GoreeCloud privacy and retention controls.
 
-## Product request path
+### Extensible processing framework
 
-A representative request path is:
+The Extensible processing framework supports controlled additions for advanced blocking, split-horizon processing, geolocation-based responses, DNS64, advanced forwarding, and custom DNS processing. Extensions must not bypass policy enforcement, gain secret access without an explicit grant, or operate without observability and disable controls.
 
-Approved Client -> GoreeCloud DNS listener (DNS/DoH/DoT/DoQ) -> identity/access policy -> split-horizon/local/authoritative evaluation -> filtering and custom processing -> cache -> recursive/forward/stub resolution -> DNSSEC validation -> response policy -> client response
+## Native subsystem ownership
 
-Authoritative queries may terminate at the authoritative zone stage. DHCP, clustering, administration, API, metrics, auditing, and extension management are supporting first-party subsystems of the same product.
+`resolver/subsystems.json` is the source-controlled internal-boundary contract. It divides the single product into coordinated first-party subsystems for listeners, identity/policy, the query pipeline, filtering, authoritative DNS, caching, recursive resolution, DHCP, clustering, administration, observability, configuration, runtime security, and extensions.
+
+These subsystem boundaries exist for maintainability and testing; they do not create external sidecar services or restore an AdGuard Home/Unbound split.
+
+## Configuration model
+
+`resolver/config.example.json` is the safe configuration-model baseline. It intentionally defaults to:
+
+- recursive access from loopback networks only;
+- `public_recursive_resolver: false`;
+- DNSSEC validation enabled;
+- DNS rebinding protection enabled;
+- DoH, DoT, and DoQ listeners disabled until explicitly configured;
+- authoritative serving disabled until zones are explicitly provisioned;
+- DHCP disabled until scopes are explicitly configured;
+- clustering disabled until node trust and peers are explicitly configured;
+- extensions disabled until modules are explicitly approved;
+- administration/API binding on loopback by default;
+- production approval remaining false.
+
+Public authoritative DNS is a separate exposure class from public recursive DNS. A public authoritative zone may be intentionally served without ever allowing unrestricted recursive resolution.
+
+## Target request path
+
+Approved Client -> GoreeCloud DNS listener (DNS/DoH/DoT/DoQ) -> identity/access policy -> split-horizon/local/authoritative evaluation -> filtering/custom processing -> cache -> recursive/forward/stub resolution -> DNSSEC validation -> response policy -> client response
+
+Authoritative queries can terminate at the authoritative stage. DHCP, clustering, administration, auditing, metrics, configuration, and extension management are supporting first-party subsystems of the same GoreeCloud DNS product.
 
 ## Migration direction
 
-The transition remains incremental:
+The transition is incremental:
 
 1. Preserve inherited AdGuard Home behavior while GoreeCloud DNS stabilizes.
-2. Introduce native internal interfaces for resolver, authoritative, policy, encrypted-DNS, DHCP, identity, API, observability, and cluster subsystems.
-3. Replace inherited or external behavior capability-by-capability with GoreeCloud-owned implementations.
-4. Route production query and management paths through the native subsystems after executable validation.
-5. Migrate required configuration and state from current AdGuard Home and Unbound deployments.
-6. Validate feature parity, DNS correctness, DNSSEC, security, privacy, performance, high availability, failure recovery, backup/restore, migration, and rollback.
-7. Retire the separate AdGuard Home and Unbound production services only after explicit acceptance.
+2. Establish explicit internal subsystem interfaces and a GoreeCloud-owned configuration model.
+3. Implement and validate the native resolver, cache, authoritative, filtering, encrypted-DNS, DHCP, identity, cluster, observability, and extension subsystems incrementally.
+4. Route production-equivalent query execution through native GoreeCloud DNS paths as each subsystem passes isolated acceptance.
+5. Migrate required configuration and state from existing AdGuard Home and Unbound deployments.
+6. Validate feature parity, correctness, DNSSEC behavior, authoritative serving/signing, filtering, DHCP, encrypted DNS, performance, privacy, security, high availability, recovery, and rollback.
+7. Retire the separate AdGuard Home and Unbound production services only after explicit production acceptance.
 
-The source capability contract is an implementation requirement, not evidence that every subsystem is already complete. Production replacement requires executable integration and target-environment acceptance.
+The project must not claim that AdGuard Home or Unbound has already been replaced merely because these source contracts exist. Production replacement requires executable integration and target-environment acceptance.
