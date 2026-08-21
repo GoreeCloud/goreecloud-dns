@@ -68,6 +68,16 @@ func TestResolverTransportTruncatedUDPFallsBackToTCP(t *testing.T) {
 	require.Equal(t, 1, tcp.calls)
 }
 
+func TestResolverTransportRejectsTruncatedUDPWithoutFallback(t *testing.T) {
+	query := transportQuery()
+	truncated := transportReply(query)
+	truncated.Truncated = true
+
+	transport := newResolverTransportWithExchangers(ResolverTransportConfig{}, &fakeDNSExchanger{resp: truncated}, &fakeDNSExchanger{})
+	_, err := transport.ResolveTarget(context.Background(), &Request{Message: query}, ResolverTarget{ID: "root-a", Address: "192.0.2.53:53"})
+	require.ErrorContains(t, err, "tcp fallback is disabled")
+}
+
 func TestResolverTransportRejectsMismatchedResponse(t *testing.T) {
 	query := transportQuery()
 	response := transportReply(query)
