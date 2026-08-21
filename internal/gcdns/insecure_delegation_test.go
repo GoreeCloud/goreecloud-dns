@@ -54,20 +54,11 @@ func TestDNSSECIterativeResolverTransitionsToInsecureWithoutDNSKEYFetch(t *testi
 	childTargetID := "ns.test./192.0.2.53"
 	rootDNSKEY := dnssecReply(".", dns.TypeDNSKEY)
 	referral := dnssecReply("www.unsigned.test.", dns.TypeA)
-	referral.Ns = []dns.RR{&dns.NS{
-		Hdr: dns.RR_Header{Name: "test.", Rrtype: dns.TypeNS, Class: dns.ClassINET, Ttl: 3600},
-		Ns:  "ns.test.",
-	}}
-	referral.Extra = []dns.RR{&dns.A{
-		Hdr: dns.RR_Header{Name: "ns.test.", Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: 3600},
-		A:   net.ParseIP("192.0.2.53").To4(),
-	}}
+	referral.Ns = []dns.RR{&dns.NS{Hdr: dns.RR_Header{Name: "test.", Rrtype: dns.TypeNS, Class: dns.ClassINET, Ttl: 3600}, Ns: "ns.test."}}
+	referral.Extra = []dns.RR{&dns.A{Hdr: dns.RR_Header{Name: "ns.test.", Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: 3600}, A: net.ParseIP("192.0.2.53").To4()}}
 	final := dnssecReply("www.unsigned.test.", dns.TypeA)
 	final.Authoritative = true
-	final.Answer = []dns.RR{&dns.A{
-		Hdr: dns.RR_Header{Name: "www.unsigned.test.", Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: 90},
-		A:   net.ParseIP("203.0.113.20").To4(),
-	}}
+	final.Answer = []dns.RR{&dns.A{Hdr: dns.RR_Header{Name: "www.unsigned.test.", Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: 90}, A: net.ParseIP("203.0.113.20").To4()}}
 
 	executor := &dnssecScriptedResolver{responses: map[string]*dns.Msg{
 		"root|.|DNSKEY":                           rootDNSKEY,
@@ -86,11 +77,7 @@ func TestDNSSECIterativeResolverTransitionsToInsecureWithoutDNSKEYFetch(t *testi
 	require.Equal(t, 90*time.Second, res.CacheTTL)
 	require.Equal(t, 1, validator.insecureCalls)
 	require.Zero(t, validator.delegationCalls)
-	require.Equal(t, []string{
-		"root|.|DNSKEY",
-		"root|www.unsigned.test.|A",
-		childTargetID + "|www.unsigned.test.|A",
-	}, executor.requests)
+	require.Equal(t, []string{"root|.|DNSKEY", "root|www.unsigned.test.|A", childTargetID + "|www.unsigned.test.|A"}, executor.requests)
 }
 
 func TestDNSSECIterativeResolverDoesNotRegainTrustBelowInsecureDelegation(t *testing.T) {
@@ -115,8 +102,8 @@ func TestDNSSECIterativeResolverDoesNotRegainTrustBelowInsecureDelegation(t *tes
 	final.Answer = []dns.RR{&dns.A{Hdr: dns.RR_Header{Name: "www.deep.test.", Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: 45}, A: net.ParseIP("203.0.113.45").To4()}}
 
 	executor := &dnssecScriptedResolver{responses: map[string]*dns.Msg{
-		"root|.|DNSKEY":                     rootDNSKEY,
-		"root|www.deep.test.|A":             firstReferral,
+		"root|.|DNSKEY":                         rootDNSKEY,
+		"root|www.deep.test.|A":                firstReferral,
 		unsignedTargetID + "|www.deep.test.|A": secondReferral,
 		deepTargetID + "|www.deep.test.|A":     final,
 	}}
@@ -131,8 +118,8 @@ func TestDNSSECIterativeResolverDoesNotRegainTrustBelowInsecureDelegation(t *tes
 	require.Equal(t, DNSSECInsecure, res.DNSSECStatus)
 	require.Equal(t, 1, validator.insecureCalls)
 	require.Zero(t, validator.delegationCalls)
-	for _, request := range executor.requests {
+	require.Equal(t, "root|.|DNSKEY", executor.requests[0])
+	for _, request := range executor.requests[1:] {
 		require.NotContains(t, request, "|DNSKEY")
 	}
-	require.Equal(t, "root|.|DNSKEY", executor.requests[0])
 }
