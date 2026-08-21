@@ -7,8 +7,14 @@ README = ROOT / "resolver" / "README.md"
 CAPABILITIES = ROOT / "resolver" / "capabilities.json"
 SUBSYSTEMS = ROOT / "resolver" / "subsystems.json"
 CONFIG = ROOT / "resolver" / "config.example.json"
+NATIVE_CORE = (
+    ROOT / "internal" / "gcdns" / "contracts.go",
+    ROOT / "internal" / "gcdns" / "pipeline.go",
+    ROOT / "internal" / "gcdns" / "config.go",
+    ROOT / "internal" / "gcdns" / "config_test.go",
+)
 
-for path in (README, CAPABILITIES, SUBSYSTEMS, CONFIG):
+for path in (README, CAPABILITIES, SUBSYSTEMS, CONFIG, *NATIVE_CORE):
     if not path.is_file():
         raise SystemExit(f"resolver contract validation failed; missing {path.relative_to(ROOT)}")
 
@@ -114,6 +120,21 @@ if config.get("resolver", {}).get("dnssec_validation") is not True:
     raise SystemExit("resolver contract validation failed; DNSSEC validation must default on")
 if config.get("filtering", {}).get("rebinding_protection") is not True:
     raise SystemExit("resolver contract validation failed; rebinding protection must default on")
+
+native_contracts = (ROOT / "internal" / "gcdns" / "contracts.go").read_text(encoding="utf-8")
+for marker in ("type Policy interface", "type Authority interface", "type Cache interface", "type Resolver interface"):
+    if marker not in native_contracts:
+        raise SystemExit(f"resolver contract validation failed; native contracts missing marker: {marker}")
+
+native_pipeline = (ROOT / "internal" / "gcdns" / "pipeline.go").read_text(encoding="utf-8")
+for marker in ("p.Policy.Evaluate", "p.Authority.ResolveAuthoritative", "p.Cache.Get", "p.Resolver.Resolve"):
+    if marker not in native_pipeline:
+        raise SystemExit(f"resolver contract validation failed; native pipeline missing stage: {marker}")
+
+native_config = (ROOT / "internal" / "gcdns" / "config.go").read_text(encoding="utf-8")
+for marker in ("PublicRecursive", "DNSSECValidation", "RebindingProtect", "unrestricted recursive network"):
+    if marker not in native_config:
+        raise SystemExit(f"resolver contract validation failed; native config missing safety marker: {marker}")
 
 readme = README.read_text(encoding="utf-8")
 for marker in (
