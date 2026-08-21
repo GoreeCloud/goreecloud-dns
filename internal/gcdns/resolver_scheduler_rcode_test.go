@@ -13,12 +13,20 @@ import (
 type rcodeTargetResolver struct {
 	mu     sync.Mutex
 	rcodes map[string]int
+	delays map[string]time.Duration
 }
 
-func (r *rcodeTargetResolver) ResolveTarget(_ context.Context, req *Request, target ResolverTarget) (*Result, error) {
+func (r *rcodeTargetResolver) ResolveTarget(ctx context.Context, req *Request, target ResolverTarget) (*Result, error) {
 	r.mu.Lock()
 	rcode := r.rcodes[target.ID]
+	delay := r.delays[target.ID]
 	r.mu.Unlock()
+
+	select {
+	case <-time.After(delay):
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
 
 	msg := new(dns.Msg)
 	msg.SetReply(req.Message)
@@ -29,7 +37,10 @@ func (r *rcodeTargetResolver) ResolveTarget(_ context.Context, req *Request, tar
 func TestResolverSchedulerFailsOverRetryableResponseCodes(t *testing.T) {
 	for _, rcode := range []int{dns.RcodeServerFailure, dns.RcodeRefused, dns.RcodeNotImplemented, dns.RcodeFormatError} {
 		t.Run(dns.RcodeToString[rcode], func(t *testing.T) {
-			executor := &rcodeTargetResolver{rcodes: map[string]int{"bad": rcode, "good": dns.RcodeSuccess}}
+			executor := &rcodeTargetResolver{
+				rcodes: map[string]int{"bad": rcode, "good": dns.RcodeSuccess},
+				delays: map[string]time.Duration{"bad": time.Millisecond, "good": 15 * time.Millisecond},
+			}
 			scheduler, err := NewResolverScheduler(
 				ResolverSchedulerConfig{MaxParallel: 2, AttemptTimeout: time.Second},
 				executor,
@@ -46,7 +57,10 @@ func TestResolverSchedulerFailsOverRetryableResponseCodes(t *testing.T) {
 }
 
 func TestResolverSchedulerAcceptsNXDOMAIN(t *testing.T) {
-	executor := &rcodeTargetResolver{rcodes: map[string]int{"nxdomain": dns.RcodeNameError}}
+	executor := &rcodeTargetResolver{
+		rcodes: map[string]int{"nxdomain": dns.RcodeNameError},
+		delays: map[string]time.Duration{"nxdomain": 0},
+	}
 	scheduler, err := NewResolverScheduler(
 		ResolverSchedulerConfig{MaxParallel: 1, AttemptTimeout: time.Second},
 		executor,
