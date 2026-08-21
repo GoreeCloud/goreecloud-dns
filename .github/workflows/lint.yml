@@ -60,6 +60,9 @@ jobs:
       - name: Validate integrated resolver architecture and capability contract
         run: python3 scripts/validate_resolver_backend.py
 
+      - name: Validate Beacon iterative DNSSEC source contract
+        run: python3 scripts/validate_dnssec_iterative.py
+
   native-dns-core:
     runs-on: ubuntu-latest
     permissions:
