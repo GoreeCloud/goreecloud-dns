@@ -56,6 +56,16 @@ The Extensible processing framework supports controlled additions for advanced b
 
 These subsystem boundaries exist for maintainability and testing; they do not create external sidecar services or restore an AdGuard Home/Unbound split.
 
+## Executable native core foundation
+
+`internal/gcdns` is the first executable GoreeCloud-owned DNS core package introduced during the fork-to-native transition. It currently establishes normalized request/result types and first-party interfaces for policy evaluation, authoritative resolution, caching, recursive/forward resolution, and privacy-aware observation.
+
+`internal/gcdns/pipeline.go` implements the initial deterministic native path: policy -> authoritative DNS -> cache -> recursive/forward resolver. This package is deliberately not connected to the inherited production request path yet. It exists so native behavior can be built, unit-tested, and accepted independently before traffic is migrated.
+
+`internal/gcdns/config.go` introduces typed security-sensitive configuration validation. The initial invariants reject missing listeners, disabled DNSSEC validation, disabled rebinding protection, missing recursive ACLs, unrestricted recursive ACLs when public recursion is disabled, and unrestricted administrative networks.
+
+The `native-dns-core` CI job executes `go test ./internal/gcdns`, while the architecture validator also requires the native core files and pipeline stage markers. This converts part of the DNS platform plan from documentation-only contracts into compilable first-party Go code without changing production behavior.
+
 ## Configuration model
 
 `resolver/config.example.json` is the safe configuration-model baseline. It intentionally defaults to:
