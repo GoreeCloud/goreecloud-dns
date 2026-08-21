@@ -28,6 +28,8 @@ if contract.get("external_recursive_resolver_required") is not False:
     raise SystemExit("resolver contract validation failed; external recursive resolver must not be required")
 if set(contract.get("target_replaces", [])) != {"AdGuard Home", "Unbound"}:
     raise SystemExit("resolver contract validation failed; target must replace AdGuard Home and Unbound")
+if set(contract.get("architecture_contracts", [])) != {"resolver/subsystems.json", "resolver/config.example.json"}:
+    raise SystemExit("resolver contract validation failed; architecture contract references are incomplete")
 if contract.get("production_approved") is not False:
     raise SystemExit("resolver contract validation failed; source contract cannot self-approve production")
 if contract.get("runtime_acceptance_required") is not True:
