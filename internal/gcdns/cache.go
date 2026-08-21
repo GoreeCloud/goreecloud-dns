@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"hash/fnv"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -43,13 +44,13 @@ type CacheStats struct {
 }
 
 type cacheCounters struct {
-	hits       atomic.Uint64
-	misses     atomic.Uint64
-	staleHits  atomic.Uint64
-	puts       atomic.Uint64
-	evictions  atomic.Uint64
-	entries    atomic.Uint64
-	negative   atomic.Uint64
+	hits      atomic.Uint64
+	misses    atomic.Uint64
+	staleHits atomic.Uint64
+	puts      atomic.Uint64
+	evictions atomic.Uint64
+	entries   atomic.Uint64
+	negative  atomic.Uint64
 }
 
 type memoryCacheEntry struct {
@@ -87,6 +88,9 @@ func NewMemoryCache(conf MemoryCacheConfig) (*MemoryCache, error) {
 	}
 	if conf.MaxEntries < 0 {
 		return nil, errors.New("goreecloud dns: cache max entries must not be negative")
+	}
+	if conf.MaxEntries > 0 && conf.MaxEntries < int(shards) {
+		return nil, errors.New("goreecloud dns: cache max entries must be at least the shard count")
 	}
 	if conf.StaleTTL < 0 {
 		return nil, errors.New("goreecloud dns: cache stale ttl must not be negative")
@@ -310,7 +314,8 @@ func cacheKey(req *Request) (string, error) {
 	}
 
 	return strings.ToLower(dns.Fqdn(q.Name)) + "|" +
-		dns.TypeToString[q.Qtype] + "|" + dns.ClassToString[q.Qclass] + "|" + clientPartition, nil
+		strconv.FormatUint(uint64(q.Qtype), 10) + "|" +
+		strconv.FormatUint(uint64(q.Qclass), 10) + "|" + clientPartition, nil
 }
 
 func cloneResult(res *Result) *Result {
