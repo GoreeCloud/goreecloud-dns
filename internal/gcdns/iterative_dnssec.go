@@ -242,7 +242,11 @@ func (r *DNSSECIterativeResolver) validateTerminalPositive(msg *dns.Msg, keys []
 		if len(sigs) == 0 {
 			return DNSSECBogus, fmt.Errorf("terminal RRset %s/%s has no RRSIG", key.name, dns.TypeToString[key.rrtype])
 		}
-		status, err := r.validator.ValidateRRSet(rrsets[key], sigs, keys)
+		zoneKeys := terminalSignerKeys(sigs, keys)
+		if len(zoneKeys) == 0 {
+			return DNSSECBogus, fmt.Errorf("terminal RRset %s/%s has no authenticated signer key", key.name, dns.TypeToString[key.rrtype])
+		}
+		status, err := r.validator.ValidateRRSet(rrsets[key], sigs, zoneKeys)
 		if err != nil || status != DNSSECSecure {
 			if err == nil {
 				err = fmt.Errorf("unexpected validation state %s", status)
@@ -251,4 +255,24 @@ func (r *DNSSECIterativeResolver) validateTerminalPositive(msg *dns.Msg, keys []
 		}
 	}
 	return DNSSECSecure, nil
+}
+
+func terminalSignerKeys(signatures []*dns.RRSIG, keys []*dns.DNSKEY) []*dns.DNSKEY {
+	signerNames := make(map[string]struct{}, len(signatures))
+	for _, sig := range signatures {
+		if sig == nil {
+			continue
+		}
+		signerNames[strings.ToLower(dns.Fqdn(sig.SignerName))] = struct{}{}
+	}
+	matched := make([]*dns.DNSKEY, 0, len(keys))
+	for _, key := range keys {
+		if key == nil {
+			continue
+		}
+		if _, ok := signerNames[strings.ToLower(dns.Fqdn(key.Hdr.Name))]; ok {
+			matched = append(matched, key)
+		}
+	}
+	return matched
 }
