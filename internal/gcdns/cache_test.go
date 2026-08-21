@@ -65,6 +65,26 @@ func TestMemoryCachePutGetAndCopyIsolation(t *testing.T) {
 	assert.Equal(t, uint64(1), stats.Entries)
 }
 
+func TestMemoryCacheAgesWireTTL(t *testing.T) {
+	now := time.Date(2026, 8, 21, 9, 0, 0, 0, time.UTC)
+	cache, err := gcdns.NewMemoryCache(gcdns.MemoryCacheConfig{
+		Shards: 2,
+		Now:    func() time.Time { return now },
+	})
+	require.NoError(t, err)
+
+	req := cacheRequest("ttl.example.", "client-a")
+	require.NoError(t, cache.Put(context.Background(), req, positiveResult(t, "ttl.example."), time.Minute))
+	now = now.Add(10 * time.Second)
+
+	got, ok, err := cache.Get(context.Background(), req)
+	require.NoError(t, err)
+	require.True(t, ok)
+	require.Len(t, got.Message.Answer, 1)
+	assert.Equal(t, uint32(50), got.Message.Answer[0].Header().Ttl)
+	assert.Equal(t, 50*time.Second, got.CacheTTL)
+}
+
 func TestMemoryCacheExpires(t *testing.T) {
 	now := time.Date(2026, 8, 21, 9, 0, 0, 0, time.UTC)
 	cache, err := gcdns.NewMemoryCache(gcdns.MemoryCacheConfig{
@@ -108,6 +128,9 @@ func TestMemoryCacheServeStale(t *testing.T) {
 	require.True(t, ok)
 	require.NotNil(t, got)
 	assert.True(t, got.Stale)
+	assert.Zero(t, got.CacheTTL)
+	require.Len(t, got.Message.Answer, 1)
+	assert.Zero(t, got.Message.Answer[0].Header().Ttl)
 
 	stats := cache.Stats()
 	assert.Equal(t, uint64(1), stats.Hits)
