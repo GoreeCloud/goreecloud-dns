@@ -78,9 +78,31 @@ The `native-dns-core` CI job executes `go test ./internal/gcdns`, while the arch
 
 `internal/gcdns/cache_persistence.go` adds opt-in persistent cache snapshots. Persistent state is versioned, stores packed DNS messages rather than process-specific objects, is written through an owner-only temporary file and atomic rename, and restores only entries that remain usable under the active cache policy. Persistence paths are explicitly supplied by configuration or runtime management; no repository path or production state location is assumed. Persistent state remains ordinary runtime cache data rather than source-controlled configuration and must follow GoreeCloud data-protection, permission, backup, and privacy requirements.
 
-`internal/gcdns/cache_prefetch.go` adds first-party prefetch and auto-prefetch selection primitives. Popularity is tracked from successful fresh-cache hits. Entries become refresh candidates only after a configurable hit threshold and when their remaining positive TTL enters a configurable refresh window. Candidate generation does not itself contact the network; the native resolver scheduler will own controlled concurrent refresh execution so prefetch cannot bypass normal policy, DNSSEC, forwarding, observability, or cancellation behavior.
+`internal/gcdns/cache_prefetch.go` adds first-party prefetch and auto-prefetch selection primitives. Popularity is tracked from successful fresh-cache hits. Entries become refresh candidates only after a configurable hit threshold and when their remaining positive TTL enters a configurable refresh window. Candidate generation does not itself contact the network; the native resolver scheduler owns controlled refresh execution through the normal pipeline so prefetch cannot bypass policy, DNSSEC, forwarding, observability, or cancellation behavior.
 
 Persistent cache and prefetch are therefore native GoreeCloud DNS capabilities, not external daemons or Unbound dependencies. Their deterministic tests cover persistence round trips, owner-only persistence permissions, expiry rejection, schema-version rejection, popular-entry selection, cold-entry exclusion, and prefetch state flushing in addition to the existing cache TTL, stale, negative, partitioning, capacity, and concurrency tests.
+
+## Beacon Resolver scheduler
+
+`internal/gcdns/resolver_scheduler.go` provides bounded concurrent target execution, per-attempt deadlines, first-valid-result cancellation, failure fallback, latency-aware target ordering, caller cancellation propagation, and privacy-safe success/failure/latency accounting. `ResolveTargets` extends the same scheduler behavior to delegation-specific target sets, allowing iterative recursion to change authoritative servers at each hop without duplicating concurrency or timeout logic.
+
+`internal/gcdns/prefetch_runner.go` executes Beacon Cache proactive refresh candidates through a complete request resolver such as the native pipeline rather than contacting a network target directly. This preserves the normal policy, authority, cache, resolver, DNSSEC, observability, and cancellation boundaries.
+
+## Beacon Resolver classic DNS transport
+
+`internal/gcdns/resolver_transport.go` is the first classic DNS transport implementation. It performs context-bound DNS exchanges over UDP or TCP, validates response identity and question equivalence, detects UDP truncation, and can retry through TCP when explicitly enabled. Truncated UDP responses fail closed when fallback is disabled, and truncated TCP responses are rejected.
+
+The classic DNS transport is intentionally separate from Beacon Secure DNS. DoT, DoH, and DoQ require their own certificate, endpoint, policy, and exposure controls and are not silently treated as ordinary UDP/TCP resolver targets.
+
+## Beacon Resolver iterative delegation walker
+
+`internal/gcdns/iterative_resolver.go` adds the first native recursive delegation walker. It starts from an approved root/bootstrap target set, disables the recursion-desired bit for authoritative queries, follows NS referrals, accepts A/AAAA in-bailiwick glue, changes target sets through the shared scheduler, derives positive or RFC-style SOA-bounded negative cache lifetimes, and stops on bounded depth or repeated delegation state.
+
+`internal/gcdns/root_hints.go` contains a built-in bootstrap set derived from the IANA root-server registry reviewed on August 21, 2026. IPv4 and IPv6 addresses are represented independently so Beacon Insights can eventually retain address-specific health and latency information. A future runtime root-hints lifecycle must support controlled refresh and validation rather than assuming the compiled list is permanent.
+
+Referral processing is deliberately conservative. Additional-section addresses are accepted only when they correspond to an advertised NS name and that NS name is inside the delegated zone. Out-of-bailiwick glue is ignored rather than trusted. Referrals with no usable in-bailiwick glue currently fail closed because recursive address discovery for out-of-bailiwick name servers is not implemented yet.
+
+This iterative foundation is not a production-complete recursive resolver. DNSSEC chain validation and root trust anchors, DS/DNSKEY processing, out-of-bailiwick NS address discovery, CNAME/DNAME chasing, QNAME minimization, lame-delegation handling, EDNS policy, richer retry policy, and production runtime integration remain required before production acceptance.
 
 ## Configuration model
 
