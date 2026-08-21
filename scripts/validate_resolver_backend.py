@@ -38,6 +38,8 @@ NATIVE_CORE = (
     ROOT / "internal" / "gcdns" / "iterative_dnssec.go",
     ROOT / "internal" / "gcdns" / "iterative_dnssec_test.go",
     ROOT / "internal" / "gcdns" / "iterative_dnssec_query_test.go",
+    ROOT / "internal" / "gcdns" / "authenticated_denial.go",
+    ROOT / "internal" / "gcdns" / "authenticated_denial_test.go",
 )
 
 for path in (README, CAPABILITIES, SUBSYSTEMS, CONFIG, *NATIVE_CORE):
@@ -224,9 +226,8 @@ for marker in ("ValidateSignedDelegation", "authenticated denial is required", "
 iterative_dnssec = (ROOT / "internal" / "gcdns" / "iterative_dnssec.go").read_text(encoding="utf-8")
 for marker in (
     "type DNSSECIterativeResolver struct", "func NewDNSSECIterativeResolver", "authenticateRoot",
-    "fetchDNSKEY", "ValidateSignedDelegation", "validateTerminalPositive", "terminalSignerKeys",
-    "no authenticated signer key", "out.DNSSECStatus = status",
-    "authenticated denial with NSEC/NSEC3 is required",
+    "fetchDNSKEY", "ValidateSignedDelegation", "validateTerminalPositive", "validateAuthenticatedDenial",
+    "isNegativeDNSResponse", "terminalSignerKeys", "no authenticated signer key", "out.DNSSECStatus = status",
 ):
     if marker not in iterative_dnssec:
         raise SystemExit(f"resolver contract validation failed; iterative dnssec resolver missing marker: {marker}")
@@ -242,8 +243,32 @@ for marker in (
     if marker not in iterative_dnssec_tests:
         raise SystemExit(f"resolver contract validation failed; iterative dnssec test missing: {marker}")
 
+authenticated_denial = (ROOT / "internal" / "gcdns" / "authenticated_denial.go").read_text(encoding="utf-8")
+for marker in (
+    "validateAuthenticatedDenial", "collectDenialMaterial", "validateDenialRRsets",
+    "proveNSECNXDOMAIN", "proveNSECNODATA", "proveNSEC3NXDOMAIN", "proveNSEC3NODATA",
+    "NSEC3 opt-out denial is not yet supported", "closestNSEC3Encloser", "wildcardName",
+):
+    if marker not in authenticated_denial:
+        raise SystemExit(f"resolver contract validation failed; authenticated denial missing marker: {marker}")
+
+authenticated_denial_tests = (ROOT / "internal" / "gcdns" / "authenticated_denial_test.go").read_text(encoding="utf-8")
+for marker in (
+    "TestAuthenticatedDenialNSECNODATA", "TestAuthenticatedDenialNSECNXDOMAIN",
+    "TestAuthenticatedDenialRejectsUnsignedNSEC", "TestAuthenticatedDenialNSEC3NODATA",
+    "TestAuthenticatedDenialNSEC3NXDOMAIN", "TestAuthenticatedDenialNSEC3OptOutFailsClosed",
+    "TestDNSSECIterativeResolverAcceptsAuthenticatedNSECNXDOMAIN",
+):
+    if marker not in authenticated_denial_tests:
+        raise SystemExit(f"resolver contract validation failed; authenticated denial test missing: {marker}")
+
 readme = README.read_text(encoding="utf-8")
-for marker in ("Native cache implementation", "cache_persistence.go", "cache_prefetch.go", "owner-only temporary file and atomic rename", "Beacon Resolver scheduler", "classic DNS transport", "iterative delegation walker", "in-bailiwick glue", "DNSSEC trust-chain execution", "DNSSECIterativeResolver", "no authenticated signer key", "NSEC/NSEC3"):
+for marker in (
+    "Native cache implementation", "cache_persistence.go", "cache_prefetch.go",
+    "owner-only temporary file and atomic rename", "Beacon Resolver scheduler", "classic DNS transport",
+    "iterative delegation walker", "in-bailiwick glue", "DNSSEC trust-chain execution",
+    "DNSSECIterativeResolver", "no authenticated signer key", "authenticated denial", "NSEC3 opt-out",
+):
     if marker not in readme:
         raise SystemExit(f"resolver contract validation failed; resolver documentation missing marker: {marker}")
 
