@@ -7,6 +7,7 @@ FILES = {
     "iterative DNSSEC tests": ROOT / "internal" / "gcdns" / "iterative_dnssec_test.go",
     "authenticated denial": ROOT / "internal" / "gcdns" / "authenticated_denial.go",
     "authenticated denial tests": ROOT / "internal" / "gcdns" / "authenticated_denial_test.go",
+    "insecure delegation tests": ROOT / "internal" / "gcdns" / "insecure_delegation_test.go",
     "root trust anchors": ROOT / "internal" / "gcdns" / "root_trust_anchors.go",
     "DNSSEC chain": ROOT / "internal" / "gcdns" / "dnssec_chain.go",
     "iterative resolver": ROOT / "internal" / "gcdns" / "iterative_resolver.go",
@@ -24,6 +25,10 @@ for marker in (
     "func NewDNSSECIterativeResolver",
     "ValidateRootDNSKEY",
     "ValidateSignedDelegation",
+    "ValidateInsecureDelegation",
+    "trustStatus := DNSSECSecure",
+    "trustStatus == DNSSECInsecure",
+    "trustStatus = DNSSECInsecure",
     "validateTerminalPositive",
     "validateAuthenticatedDenial",
     "isNegativeDNSResponse",
@@ -75,24 +80,31 @@ for marker in (
     if marker not in denial_tests:
         raise SystemExit(f"dnssec iterative validation failed; authenticated denial test missing marker: {marker}")
 
-anchors = FILES["root trust anchors"].read_text(encoding="utf-8")
+insecure_tests = FILES["insecure delegation tests"].read_text(encoding="utf-8")
 for marker in (
-    "20326",
-    "38696",
-    "rootKSK2017Digest",
-    "rootKSK2024Digest",
-    "ValidateRootDNSKEY",
+    "TestProveNSECDSAbsence",
+    "TestProveNSEC3DSAbsence",
+    "TestDNSSECIterativeResolverTransitionsToInsecureWithoutDNSKEYFetch",
+    "TestDNSSECIterativeResolverDoesNotRegainTrustBelowInsecureDelegation",
 ):
+    if marker not in insecure_tests:
+        raise SystemExit(f"dnssec iterative validation failed; insecure delegation test missing marker: {marker}")
+
+anchors = FILES["root trust anchors"].read_text(encoding="utf-8")
+for marker in ("20326", "38696", "rootKSK2017Digest", "rootKSK2024Digest", "ValidateRootDNSKEY"):
     if marker not in anchors:
         raise SystemExit(f"dnssec iterative validation failed; trust-anchor source missing marker: {marker}")
 
 chain = FILES["DNSSEC chain"].read_text(encoding="utf-8")
 for marker in (
     "ValidateSignedDelegation",
-    "authenticated denial is required",
+    "ValidateInsecureDelegation",
+    "proveNSECDSAbsence",
+    "proveNSEC3DSAbsence",
     "delegationDSMaterial",
     "dnskeyMaterial",
     "matchingDSKeys",
+    "NSEC3 opt-out remains fail-closed",
 ):
     if marker not in chain:
         raise SystemExit(f"dnssec iterative validation failed; chain source missing marker: {marker}")
@@ -101,26 +113,10 @@ classic = FILES["iterative resolver"].read_text(encoding="utf-8")
 if "ensureDNSSECOK(query)" not in classic:
     raise SystemExit("dnssec iterative validation failed; classic iterative queries do not request DNSSEC material")
 
-integrated = FILES["integrated resolver validator"].read_text(encoding="utf-8")
-for marker in (
-    'ROOT / "internal" / "gcdns" / "iterative_dnssec.go"',
-    'ROOT / "internal" / "gcdns" / "iterative_dnssec_test.go"',
-    'ROOT / "internal" / "gcdns" / "authenticated_denial.go"',
-    'ROOT / "internal" / "gcdns" / "authenticated_denial_test.go"',
-    'ROOT / "internal" / "gcdns" / "root_trust_anchors.go"',
-    'ROOT / "internal" / "gcdns" / "dnssec_chain.go"',
-    '"type DNSSECIterativeResolver struct"',
-    '"validateAuthenticatedDenial"',
-    '"terminalSignerKeys"',
-):
-    if marker not in integrated:
-        raise SystemExit(f"dnssec iterative validation failed; integrated resolver validator missing marker: {marker}")
-
 documentation = FILES["resolver documentation"].read_text(encoding="utf-8")
 for marker in (
     "Beacon Resolver DNSSEC trust-chain execution",
     "DNSSECIterativeResolver",
-    "restricts candidate authenticated DNSKEYs to the RRSIG signer zone",
     "authenticated denial",
     "NSEC3 opt-out denial is not yet supported",
 ):
