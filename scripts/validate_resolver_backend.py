@@ -31,6 +31,13 @@ NATIVE_CORE = (
     ROOT / "internal" / "gcdns" / "iterative_resolver_test.go",
     ROOT / "internal" / "gcdns" / "dnssec_validator.go",
     ROOT / "internal" / "gcdns" / "dnssec_validator_test.go",
+    ROOT / "internal" / "gcdns" / "root_trust_anchors.go",
+    ROOT / "internal" / "gcdns" / "root_trust_anchors_test.go",
+    ROOT / "internal" / "gcdns" / "dnssec_chain.go",
+    ROOT / "internal" / "gcdns" / "dnssec_chain_test.go",
+    ROOT / "internal" / "gcdns" / "iterative_dnssec.go",
+    ROOT / "internal" / "gcdns" / "iterative_dnssec_test.go",
+    ROOT / "internal" / "gcdns" / "iterative_dnssec_query_test.go",
 )
 
 for path in (README, CAPABILITIES, SUBSYSTEMS, CONFIG, *NATIVE_CORE):
@@ -180,7 +187,7 @@ for marker in ("type ResolverTransport struct", "AllowTCPFallback bool", "Exchan
         raise SystemExit(f"resolver contract validation failed; classic DNS transport missing marker: {marker}")
 
 iterative = (ROOT / "internal" / "gcdns" / "iterative_resolver.go").read_text(encoding="utf-8")
-for marker in ("type IterativeResolver struct", "MaxDepth int", "RecursionDesired = false", "referralTargets", "dns.IsSubDomain(zone, host)", "delegation loop detected", "responseCacheTTL"):
+for marker in ("type IterativeResolver struct", "MaxDepth int", "RecursionDesired = false", "ensureDNSSECOK(query)", "referralTargets", "dns.IsSubDomain(zone, host)", "delegation loop detected", "responseCacheTTL"):
     if marker not in iterative:
         raise SystemExit(f"resolver contract validation failed; iterative resolver missing marker: {marker}")
 
@@ -204,8 +211,36 @@ for marker in ("TestDNSSECValidatorMatchDS", "TestDNSSECValidatorUnsignedDelegat
     if marker not in dnssec_tests:
         raise SystemExit(f"resolver contract validation failed; dnssec validator test missing: {marker}")
 
+root_anchors = (ROOT / "internal" / "gcdns" / "root_trust_anchors.go").read_text(encoding="utf-8")
+for marker in ("func DefaultRootTrustAnchors", "20326", "38696", "ValidateRootDNSKEY", "matchingTrustAnchorKeys"):
+    if marker not in root_anchors:
+        raise SystemExit(f"resolver contract validation failed; root trust-anchor source missing marker: {marker}")
+
+dnssec_chain = (ROOT / "internal" / "gcdns" / "dnssec_chain.go").read_text(encoding="utf-8")
+for marker in ("ValidateSignedDelegation", "authenticated denial is required", "delegationDSMaterial", "dnskeyMaterial", "matchingDSKeys"):
+    if marker not in dnssec_chain:
+        raise SystemExit(f"resolver contract validation failed; dnssec chain missing marker: {marker}")
+
+iterative_dnssec = (ROOT / "internal" / "gcdns" / "iterative_dnssec.go").read_text(encoding="utf-8")
+for marker in (
+    "type DNSSECIterativeResolver struct", "func NewDNSSECIterativeResolver", "authenticateRoot",
+    "fetchDNSKEY", "ValidateSignedDelegation", "validateTerminalPositive", "out.DNSSECStatus = status",
+    "authenticated denial with NSEC/NSEC3 is required",
+):
+    if marker not in iterative_dnssec:
+        raise SystemExit(f"resolver contract validation failed; iterative dnssec resolver missing marker: {marker}")
+
+iterative_dnssec_tests = (ROOT / "internal" / "gcdns" / "iterative_dnssec_test.go").read_text(encoding="utf-8")
+for marker in (
+    "TestDNSSECIterativeResolverCarriesAuthenticatedKeysAcrossReferral",
+    "TestDNSSECIterativeResolverFailsClosedOnNegativeWithoutDenialProof",
+    "TestDNSSECIterativeResolverRequiresTrustInputs",
+):
+    if marker not in iterative_dnssec_tests:
+        raise SystemExit(f"resolver contract validation failed; iterative dnssec test missing: {marker}")
+
 readme = README.read_text(encoding="utf-8")
-for marker in ("Native cache implementation", "cache_persistence.go", "cache_prefetch.go", "owner-only temporary file and atomic rename", "Beacon Resolver scheduler", "classic DNS transport", "iterative delegation walker", "in-bailiwick glue", "DNSSEC validation foundation"):
+for marker in ("Native cache implementation", "cache_persistence.go", "cache_prefetch.go", "owner-only temporary file and atomic rename", "Beacon Resolver scheduler", "classic DNS transport", "iterative delegation walker", "in-bailiwick glue", "DNSSEC trust-chain execution", "DNSSECIterativeResolver", "NSEC/NSEC3"):
     if marker not in readme:
         raise SystemExit(f"resolver contract validation failed; resolver documentation missing marker: {marker}")
 
