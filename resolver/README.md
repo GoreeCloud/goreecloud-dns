@@ -1,58 +1,56 @@
-# GoreeCloud DNS Resolver Backend
+# GoreeCloud DNS First-Party Resolver Engine
 
-This directory defines the first-party recursive, caching, and forwarding resolver backend used behind the client-facing GoreeCloud DNS policy layer.
+GoreeCloud DNS is the complete DNS service. Its long-term architecture replaces both AdGuard Home and Unbound with one GoreeCloud-controlled application and runtime.
 
-## Role boundary
+## Single-service architecture
 
-GoreeCloud DNS / AdGuard Home remains responsible for downstream client handling, filtering, policy enforcement, client-aware controls, query-log presentation, and private DNS rewrites. The resolver backend is responsible for recursive/cached resolution, forwarding policy, DNSSEC validation, stale-cache resilience, privacy minimization, negative caching, resolver hardening, and resolver statistics/administration.
+Approved clients communicate only with GoreeCloud DNS. Filtering, policy enforcement, local/private DNS, recursive resolution, forwarding, caching, DNSSEC validation, resilience, privacy controls, statistics, and runtime administration are all first-party GoreeCloud DNS responsibilities.
 
-The default configuration binds only to loopback on port 5353. A production deployment must explicitly approve any different bind interface, network exposure, firewall rule, or container/network topology.
+There is no permanent Unbound backend boundary in the target architecture. Unbound is a capability reference and migration source only. AdGuard Home is the initial maintained-fork engineering foundation only. Neither remains a required production dependency after the GoreeCloud DNS native resolver transition is complete.
 
-## Implemented resolver capabilities
+## Native resolver capabilities
 
-The checked-in Unbound configuration establishes source-controlled defaults and extension points for:
+The first-party resolver engine must provide:
 
-- positive and negative DNS caching;
-- configurable minimum and maximum TTLs;
-- aggressive NSEC/NSEC3 negative caching;
-- DNSSEC validation using an automatically maintained root trust anchor;
-- stale-cache serving when upstream resolution is unavailable or slow;
-- prefetching of frequently used records and DNSSEC keys;
-- query-name minimization;
+- high-performance positive DNS caching;
+- negative caching and aggressive DNSSEC negative caching;
+- configurable minimum and maximum cache TTL controls;
+- stale-cache serving during upstream degradation;
+- prefetching of frequently requested records;
+- recursive resolution and configurable forwarding modes;
+- forward zones for selected namespaces;
+- multiple upstream resolvers with health-aware redundancy and failover;
+- DNSSEC validation and trust-anchor lifecycle management;
+- query-name minimization where applicable;
 - minimal DNS responses;
-- configurable forward zones and multiple forward addresses;
-- local zones, local data, and private-domain exceptions;
-- DNS-rebinding/private-address protections;
-- optional Response Policy Zones (RPZ);
-- multi-threaded processing and power-of-two cache slabs to reduce contention;
-- bounded socket/EDNS behavior;
-- extended runtime statistics;
-- local certificate-authenticated `unbound-control` administration;
-- loopback-only resolver and control interfaces by default;
-- allow/refuse client ACLs;
-- identity/version hiding and resolver hardening.
+- local zones, local records, private service discovery, and custom overrides;
+- response-policy zones and native DNS policy/filter integration;
+- private-address and DNS-rebinding protection;
+- client/network access-control policy;
+- multi-threaded processing;
+- partitioned/sharded caches that reduce worker contention;
+- runtime statistics covering query volume, cache behavior, latency, failures, DNSSEC results, upstream health, stale answers, and resolver performance;
+- authenticated runtime administration for reload, cache flush, statistics, upstream control, and resolver lifecycle management;
+- interface restrictions, query restrictions, least-privilege operation, privilege separation where supported, and resolver hardening.
 
-## Runtime administration
+## Product boundary
 
-The intended administrative surface is `unbound-control` over the loopback control channel. Supported operational actions include configuration reload, cache flushes, statistics retrieval/reset, status inspection, local-zone management, and controlled resolver lifecycle actions supported by Unbound.
+The target request path is:
 
-Administrative access must not be exposed as a public network service. Production automation should execute through the approved host/container administration boundary and should record only the minimum operational data needed for troubleshooting and performance analysis.
+Approved Client -> GoreeCloud DNS listener -> client/access policy -> local/private DNS and policy evaluation -> cache -> recursive/forward resolver -> DNSSEC validation -> response policy -> client response
 
-## Forwarding and recursion
+All stages remain inside the GoreeCloud DNS service and use one configuration, observability, administration, security, privacy, backup, and release lifecycle.
 
-The repository configuration intentionally does not embed a production upstream DNS provider. Deployment-specific configuration must choose one of the following explicitly:
+## Migration direction
 
-1. recursive resolution through root/authoritative DNS; or
-2. one or more approved upstream forwarders, optionally scoped to selected domain zones.
+The transition is incremental:
 
-When multiple upstream resolvers are configured for a forward zone, they provide redundancy and availability. Forward-zone decisions must be documented and must not silently bypass GoreeCloud DNS filtering or privacy policy.
+1. Preserve the inherited AdGuard Home behavior while GoreeCloud DNS stabilizes.
+2. Introduce a native resolver subsystem behind explicit internal interfaces.
+3. Implement and validate caching, recursion/forwarding, DNSSEC, resilience, privacy, and administration as GoreeCloud-owned capabilities.
+4. Route GoreeCloud DNS query execution through the native resolver engine.
+5. Migrate required configuration/state from the existing AdGuard Home and Unbound deployments.
+6. Validate feature parity, performance, security, recovery, and rollback.
+7. Retire the separate AdGuard Home and Unbound production services only after explicit acceptance.
 
-## Local DNS and RPZ
-
-`local-zones.conf` is the repository contract for internal authoritative DNS data and private-domain exceptions. Production addresses and internal records belong in deployment-controlled configuration rather than this public repository when they would disclose private infrastructure details.
-
-`rpz.conf` defines the supported RPZ integration point. RPZ is disabled until an approved feed or locally maintained policy zone exists. RPZ must complement, not ambiguously duplicate, the client-facing GoreeCloud DNS filtering policy.
-
-## Validation and production status
-
-These files establish the source-controlled resolver foundation only. They do not indicate that a production Unbound instance has been upgraded, reconfigured, migrated, or accepted. Production acceptance requires isolated configuration validation, DNSSEC tests, cache/stale-cache tests, failover tests, ACL and rebinding tests, performance/load tests, runtime statistics verification, administrative-control verification, and rollback/recovery evidence on the target environment.
+The project must not claim that Unbound has already been replaced merely because these source contracts exist. Production replacement requires executable integration and target-environment acceptance.
