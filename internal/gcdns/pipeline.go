@@ -58,6 +58,9 @@ func (p *Pipeline) Resolve(ctx context.Context, req *Request) (res *Result, err 
 	if res == nil || res.Message == nil {
 		return nil, errors.New("goreecloud dns: resolver returned nil response")
 	}
+	if res.DNSSECStatus == DNSSECBogus {
+		return nil, errors.New("goreecloud dns: refusing bogus dnssec result")
+	}
 
 	if res.CacheTTL > 0 {
 		started = time.Now()
@@ -92,6 +95,7 @@ func (p *Pipeline) observe(
 	if res != nil {
 		e.Source = res.Source
 		e.Stale = res.Stale
+		e.DNSSECStatus = res.DNSSECStatus
 	}
 
 	p.Observer.Record(ctx, e)
