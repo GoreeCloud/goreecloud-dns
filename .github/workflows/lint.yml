@@ -47,7 +47,7 @@ jobs:
       - name: Validate GoreeCloud DNS product identity contract
         run: python3 scripts/validate_product_identity.py
 
-  resolver-backend-contract:
+  first-party-resolver-contract:
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -57,20 +57,8 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Install Unbound validation tools
-        run: sudo apt-get update && sudo apt-get install --yes unbound
-
-      - name: Validate resolver source contract
+      - name: Validate integrated resolver architecture and capability contract
         run: python3 scripts/validate_resolver_backend.py
-
-      - name: Validate Unbound configuration syntax
-        run: |
-          sudo mkdir -p /etc/unbound/goreecloud /var/lib/unbound
-          sudo cp resolver/unbound/local-zones.conf /etc/unbound/goreecloud/local-zones.conf
-          sudo cp resolver/unbound/rpz.conf /etc/unbound/goreecloud/rpz.conf
-          sudo touch /var/lib/unbound/root.key
-          sudo unbound-control-setup >/dev/null 2>&1
-          sudo unbound-checkconf resolver/unbound/unbound.conf
 
   go-lint:
     runs-on: ubuntu-latest
