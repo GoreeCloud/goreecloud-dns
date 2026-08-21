@@ -87,6 +87,7 @@ for marker in (
     "Beacon Resolver DNSSEC trust-chain execution",
     "DNSSECIterativeResolver",
     "restricts candidate authenticated DNSKEYs to the RRSIG signer zone",
+    "no authenticated signer key",
     "NSEC/NSEC3",
 ):
     if marker not in documentation:
