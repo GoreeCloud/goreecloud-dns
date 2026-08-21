@@ -1,7 +1,7 @@
 package gcdns
 
 import (
-	"net"
+	"context"
 	"strings"
 	"testing"
 	"time"
@@ -186,15 +186,9 @@ func TestDNSSECIterativeResolverAcceptsAuthenticatedNSECNXDOMAIN(t *testing.T) {
 	resolver, err := NewDNSSECIterativeResolver(IterativeResolverConfig{MaxDepth: 4}, scheduler, []ResolverTarget{rootTarget}, validator, DefaultRootTrustAnchors())
 	require.NoError(t, err)
 
-	res, err := resolver.Resolve(testContext(), iterativeQuery("missing.", dns.TypeA))
+	res, err := resolver.Resolve(context.Background(), iterativeQuery("missing.", dns.TypeA))
 	require.NoError(t, err)
 	require.Equal(t, DNSSECSecure, res.DNSSECStatus)
 	require.Equal(t, 30*time.Second, res.CacheTTL)
 	require.GreaterOrEqual(t, validator.rrsetCalls, 2)
 }
-
-func testContext() interface{ Done() <-chan struct{} } {
-	panic("unreachable")
-}
-
-var _ = net.IPv4len
