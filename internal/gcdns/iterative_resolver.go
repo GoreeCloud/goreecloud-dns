@@ -47,7 +47,9 @@ func NewIterativeResolver(conf IterativeResolverConfig, scheduler *ResolverSched
 // Resolve walks referrals from the root/bootstrap authority to a terminal
 // response. Each network step disables recursion-desired because Beacon
 // Resolver is performing recursion locally rather than delegating recursive
-// work to an upstream resolver.
+// work to an upstream resolver. The DNSSEC OK bit is set so authoritative
+// servers return the signatures and delegation material required by the native
+// validation chain.
 func (r *IterativeResolver) Resolve(ctx context.Context, req *Request) (*Result, error) {
 	if req == nil || req.Message == nil {
 		return nil, errors.New("goreecloud dns: nil iterative resolver request")
@@ -61,6 +63,7 @@ func (r *IterativeResolver) Resolve(ctx context.Context, req *Request) (*Result,
 
 	query := req.Message.Copy()
 	query.RecursionDesired = false
+	ensureDNSSECOK(query)
 	stepReq := *req
 	stepReq.Message = query
 
@@ -95,6 +98,20 @@ func (r *IterativeResolver) Resolve(ctx context.Context, req *Request) (*Result,
 	}
 
 	return nil, fmt.Errorf("goreecloud dns: iterative resolver exceeded maximum delegation depth %d", r.conf.MaxDepth)
+}
+
+func ensureDNSSECOK(msg *dns.Msg) {
+	if msg == nil {
+		return
+	}
+	if opt := msg.IsEdns0(); opt != nil {
+		opt.SetDo()
+		if opt.UDPSize() < 1232 {
+			opt.SetUDPSize(1232)
+		}
+		return
+	}
+	msg.SetEdns0(1232, true)
 }
 
 func isTerminalDNSResponse(msg *dns.Msg) bool {
