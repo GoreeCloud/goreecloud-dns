@@ -69,6 +69,7 @@ type memoryCacheShard struct {
 
 // MemoryCache is a sharded, concurrency-safe first-party DNS cache.
 type MemoryCache struct {
+	gate       sync.RWMutex
 	shards     []memoryCacheShard
 	shardMask  uint64
 	serveStale bool
@@ -136,6 +137,9 @@ func NewMemoryCache(conf MemoryCacheConfig) (*MemoryCache, error) {
 // mutate cached state. Expired entries are removed unless serve-stale permits
 // a bounded stale response.
 func (c *MemoryCache) Get(_ context.Context, req *Request) (*Result, bool, error) {
+	c.gate.RLock()
+	defer c.gate.RUnlock()
+
 	key, err := cacheKey(req)
 	if err != nil {
 		return nil, false, err
@@ -147,7 +151,10 @@ func (c *MemoryCache) Get(_ context.Context, req *Request) (*Result, bool, error
 	shard.mu.RLock()
 	entry, ok := shard.entries[key]
 	if ok && now.Before(entry.expiresAt) {
+		remaining := entry.expiresAt.Sub(now)
 		res := cloneResult(entry.result)
+		res.CacheTTL = remaining
+		ageResultTTL(res, remaining)
 		shard.mu.RUnlock()
 		c.stats.hits.Add(1)
 
@@ -155,7 +162,9 @@ func (c *MemoryCache) Get(_ context.Context, req *Request) (*Result, bool, error
 	}
 	if ok && c.serveStale && now.Before(entry.staleAt) {
 		res := cloneResult(entry.result)
+		res.CacheTTL = 0
 		res.Stale = true
+		ageResultTTL(res, 0)
 		shard.mu.RUnlock()
 		c.stats.hits.Add(1)
 		c.stats.staleHits.Add(1)
@@ -181,6 +190,9 @@ func (c *MemoryCache) Get(_ context.Context, req *Request) (*Result, bool, error
 // Put implements Cache. Non-positive TTLs are rejected so callers cannot
 // accidentally create immortal or immediately invalid entries.
 func (c *MemoryCache) Put(_ context.Context, req *Request, res *Result, ttl time.Duration) error {
+	c.gate.RLock()
+	defer c.gate.RUnlock()
+
 	if ttl <= 0 {
 		return errors.New("goreecloud dns: cache ttl must be positive")
 	}
@@ -221,8 +233,12 @@ func (c *MemoryCache) Put(_ context.Context, req *Request, res *Result, ttl time
 	return nil
 }
 
-// Flush implements Cache and atomically clears each shard.
+// Flush implements Cache and excludes concurrent cache reads and writes while
+// all shards are cleared.
 func (c *MemoryCache) Flush(_ context.Context) error {
+	c.gate.Lock()
+	defer c.gate.Unlock()
+
 	for i := range c.shards {
 		shard := &c.shards[i]
 		shard.mu.Lock()
@@ -329,6 +345,34 @@ func cloneResult(res *Result) *Result {
 	}
 
 	return &clone
+}
+
+func ageResultTTL(res *Result, remaining time.Duration) {
+	if res == nil || res.Message == nil {
+		return
+	}
+
+	var ttl uint32
+	if remaining > 0 {
+		seconds := remaining / time.Second
+		if seconds > time.Duration(^uint32(0)) {
+			ttl = ^uint32(0)
+		} else {
+			ttl = uint32(seconds)
+		}
+	}
+
+	ageRRs := func(records []dns.RR) {
+		for _, rr := range records {
+			header := rr.Header()
+			if header.Ttl > ttl {
+				header.Ttl = ttl
+			}
+		}
+	}
+	ageRRs(res.Message.Answer)
+	ageRRs(res.Message.Ns)
+	ageRRs(res.Message.Extra)
 }
 
 func isNegativeResponse(msg *dns.Msg) bool {
