@@ -13,6 +13,8 @@ NATIVE_CORE = (
     ROOT / "internal" / "gcdns" / "config.go",
     ROOT / "internal" / "gcdns" / "config_test.go",
     ROOT / "internal" / "gcdns" / "pipeline_test.go",
+    ROOT / "internal" / "gcdns" / "cache.go",
+    ROOT / "internal" / "gcdns" / "cache_test.go",
 )
 
 for path in (README, CAPABILITIES, SUBSYSTEMS, CONFIG, *NATIVE_CORE):
@@ -85,19 +87,64 @@ if config.get("filtering", {}).get("rebinding_protection") is not True:
     raise SystemExit("resolver contract validation failed; rebinding protection must default on")
 
 native_contracts = (ROOT / "internal" / "gcdns" / "contracts.go").read_text(encoding="utf-8")
-for marker in ("type Policy interface", "type Authority interface", "type Cache interface", "type Resolver interface", "CacheTTL time.Duration"):
+for marker in (
+    "type Policy interface",
+    "type Authority interface",
+    "type Cache interface",
+    "type Resolver interface",
+    "CacheTTL time.Duration",
+):
     if marker not in native_contracts:
         raise SystemExit(f"resolver contract validation failed; native contracts missing marker: {marker}")
 
 native_pipeline = (ROOT / "internal" / "gcdns" / "pipeline.go").read_text(encoding="utf-8")
-for marker in ("p.Policy.Evaluate", "p.Authority.ResolveAuthoritative", "p.Cache.Get", "p.Resolver.Resolve", "p.Cache.Put", '"cache-store"'):
+for marker in (
+    "p.Policy.Evaluate",
+    "p.Authority.ResolveAuthoritative",
+    "p.Cache.Get",
+    "p.Resolver.Resolve",
+    "p.Cache.Put",
+    '"cache-store"',
+):
     if marker not in native_pipeline:
         raise SystemExit(f"resolver contract validation failed; native pipeline missing stage: {marker}")
 
 pipeline_tests = (ROOT / "internal" / "gcdns" / "pipeline_test.go").read_text(encoding="utf-8")
-for marker in ("TestPipelinePolicyShortCircuit", "TestPipelineAuthoritativeShortCircuit", "TestPipelineCacheHit", "TestPipelineResolverStoresCacheableResult"):
+for marker in (
+    "TestPipelinePolicyShortCircuit",
+    "TestPipelineAuthoritativeShortCircuit",
+    "TestPipelineCacheHit",
+    "TestPipelineResolverStoresCacheableResult",
+):
     if marker not in pipeline_tests:
         raise SystemExit(f"resolver contract validation failed; native pipeline test missing: {marker}")
+
+native_cache = (ROOT / "internal" / "gcdns" / "cache.go").read_text(encoding="utf-8")
+for marker in (
+    "type MemoryCache struct",
+    "type MemoryCacheConfig struct",
+    "type CacheStats struct",
+    "ServeStale bool",
+    "NegativeEntries uint64",
+    "cache shard count must be a power of two",
+    "func isNegativeResponse",
+    "func cloneResult",
+):
+    if marker not in native_cache:
+        raise SystemExit(f"resolver contract validation failed; native cache missing marker: {marker}")
+
+cache_tests = (ROOT / "internal" / "gcdns" / "cache_test.go").read_text(encoding="utf-8")
+for marker in (
+    "TestMemoryCachePutGetAndCopyIsolation",
+    "TestMemoryCacheExpires",
+    "TestMemoryCacheServeStale",
+    "TestMemoryCacheNegativeEntryAccounting",
+    "TestMemoryCachePartitionsClients",
+    "TestMemoryCacheEvictsOldestEntryWithinShard",
+    "TestMemoryCacheConcurrentAccess",
+):
+    if marker not in cache_tests:
+        raise SystemExit(f"resolver contract validation failed; native cache test missing: {marker}")
 
 unbound_dir = ROOT / "resolver" / "unbound"
 if unbound_dir.exists() and any(unbound_dir.iterdir()):
