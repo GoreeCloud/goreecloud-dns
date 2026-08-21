@@ -9,6 +9,7 @@ FILES = {
     "DNSSEC chain": ROOT / "internal" / "gcdns" / "dnssec_chain.go",
     "iterative resolver": ROOT / "internal" / "gcdns" / "iterative_resolver.go",
     "integrated resolver validator": ROOT / "scripts" / "validate_resolver_backend.py",
+    "resolver documentation": ROOT / "resolver" / "README.md",
 }
 
 for label, path in FILES.items():
@@ -74,9 +75,20 @@ for marker in (
     'ROOT / "internal" / "gcdns" / "root_trust_anchors.go"',
     'ROOT / "internal" / "gcdns" / "dnssec_chain.go"',
     '"type DNSSECIterativeResolver struct"',
+    '"terminalSignerKeys"',
     '"authenticated denial with NSEC/NSEC3 is required"',
 ):
     if marker not in integrated:
         raise SystemExit(f"dnssec iterative validation failed; integrated resolver validator missing marker: {marker}")
+
+documentation = FILES["resolver documentation"].read_text(encoding="utf-8")
+for marker in (
+    "Beacon Resolver DNSSEC trust-chain execution",
+    "DNSSECIterativeResolver",
+    "restricts candidate authenticated DNSKEYs to the RRSIG signer zone",
+    "NSEC/NSEC3",
+):
+    if marker not in documentation:
+        raise SystemExit(f"dnssec iterative validation failed; resolver documentation missing marker: {marker}")
 
 print("GoreeCloud DNS Beacon iterative DNSSEC source contract: PASS")
