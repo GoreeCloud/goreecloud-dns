@@ -77,8 +77,6 @@ missing_subsystems = sorted(required_subsystems - subsystem_ids)
 if missing_subsystems:
     raise SystemExit(f"resolver contract validation failed; missing subsystems: {missing_subsystems}")
 
-# Verify every declared capability is owned by at least one subsystem, except platform-level
-# capabilities that are represented by a higher-order subsystem relationship.
 owned = set()
 for item in subsystems.get("subsystems", []):
     owned.update(item.get("owns", []))
@@ -125,12 +123,14 @@ for marker in (
     "role-based access control",
     "managed cluster",
     "Extensible processing framework",
+    "Native subsystem ownership",
+    "Configuration model",
+    "public_recursive_resolver: false",
     "Approved Client -> GoreeCloud DNS listener",
 ):
     if marker not in readme:
         raise SystemExit(f"resolver contract validation failed; README missing marker: {marker}")
 
-# Fail closed if the removed sidecar architecture is accidentally reintroduced.
 unbound_dir = ROOT / "resolver" / "unbound"
 if unbound_dir.exists() and any(unbound_dir.iterdir()):
     raise SystemExit("resolver contract validation failed; separate Unbound backend files are prohibited")
