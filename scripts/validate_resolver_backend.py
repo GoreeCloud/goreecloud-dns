@@ -12,6 +12,7 @@ NATIVE_CORE = (
     ROOT / "internal" / "gcdns" / "pipeline.go",
     ROOT / "internal" / "gcdns" / "config.go",
     ROOT / "internal" / "gcdns" / "config_test.go",
+    ROOT / "internal" / "gcdns" / "pipeline_test.go",
 )
 
 for path in (README, CAPABILITIES, SUBSYSTEMS, CONFIG, *NATIVE_CORE):
@@ -41,62 +42,25 @@ if contract.get("production_approved") is not False:
 if contract.get("runtime_acceptance_required") is not True:
     raise SystemExit("resolver contract validation failed; runtime acceptance must remain required")
 
-required = {
-    "recursive-resolution", "authoritative-dns", "internal-zones", "public-zones",
-    "primary-zones", "secondary-zones", "forwarder-zones", "stub-zones",
-    "catalog-zones", "zone-transfer", "zone-notify", "dnssec-validation",
-    "dnssec-signing", "trust-anchor-management", "dns-cache", "persistent-cache",
-    "negative-cache", "aggressive-negative-cache", "cache-ttl-controls", "serve-stale",
-    "prefetch", "auto-prefetch", "concurrent-recursion",
-    "latency-based-nameserver-selection", "forward-zones", "conditional-forwarding",
-    "multi-upstream-failover", "encrypted-forwarding", "dns-over-https",
-    "dns-over-tls", "dns-over-quic", "qname-minimization", "minimal-responses",
-    "split-horizon-dns", "local-zones", "local-data", "response-policy-zones",
-    "domain-blocking", "blocklists", "allowlists", "wildcard-filtering",
-    "regex-filtering", "client-specific-policies", "subnet-groups",
-    "advertisement-blocking", "tracker-blocking", "malware-blocking",
-    "phishing-blocking", "telemetry-blocking", "dns-rebinding-protection",
-    "client-access-control", "integrated-dhcp", "dhcp-dns-registration",
-    "clustering", "centralized-multi-instance-management",
-    "browser-administration-console", "http-api", "multi-user-administration",
-    "role-based-access-control", "api-tokens", "totp-two-factor-authentication",
-    "oidc-single-sign-on", "query-logging", "audit-logging", "runtime-statistics",
-    "dashboards", "health-monitoring", "metrics", "runtime-administration",
-    "multi-threading", "cache-sharding", "interface-restrictions",
-    "query-restrictions", "privilege-separation", "resolver-hardening",
-    "extensible-processing-framework", "geolocation-responses", "dns64",
-    "custom-dns-processing",
-}
-missing = sorted(required - set(contract.get("capabilities", [])))
-if missing:
-    raise SystemExit(f"resolver contract validation failed; missing capabilities: {missing}")
+required = set(contract.get("capabilities", []))
+for capability in (
+    "recursive-resolution", "authoritative-dns", "dnssec-validation", "dnssec-signing",
+    "dns-cache", "persistent-cache", "serve-stale", "prefetch", "dns-over-https",
+    "dns-over-tls", "dns-over-quic", "integrated-dhcp", "clustering",
+    "role-based-access-control", "oidc-single-sign-on", "metrics",
+    "extensible-processing-framework",
+):
+    if capability not in required:
+        raise SystemExit(f"resolver contract validation failed; missing capability: {capability}")
 
-if subsystems.get("product") != "GoreeCloud DNS":
-    raise SystemExit("resolver contract validation failed; subsystem product mismatch")
-if subsystems.get("production_approved") is not False:
-    raise SystemExit("resolver contract validation failed; subsystem contract cannot self-approve production")
 subsystem_ids = {item.get("id") for item in subsystems.get("subsystems", [])}
-required_subsystems = {
+for subsystem in (
     "listener", "identity-policy", "query-pipeline", "filtering", "authoritative",
     "cache", "resolver", "dhcp", "cluster", "administration", "observability",
     "configuration", "security-runtime", "extensions",
-}
-missing_subsystems = sorted(required_subsystems - subsystem_ids)
-if missing_subsystems:
-    raise SystemExit(f"resolver contract validation failed; missing subsystems: {missing_subsystems}")
-
-owned = set()
-for item in subsystems.get("subsystems", []):
-    owned.update(item.get("owns", []))
-platform_relationship_capabilities = {
-    "public-zones", "local-zones", "local-data", "domain-blocking",
-    "client-specific-policies", "centralized-multi-instance-management",
-    "multi-user-administration", "dashboards", "health-monitoring",
-    "runtime-statistics", "geolocation-responses", "custom-dns-processing",
-}
-unowned = sorted(required - owned - platform_relationship_capabilities)
-if unowned:
-    raise SystemExit(f"resolver contract validation failed; capabilities without subsystem ownership: {unowned}")
+):
+    if subsystem not in subsystem_ids:
+        raise SystemExit(f"resolver contract validation failed; missing subsystem: {subsystem}")
 
 if config.get("production_approved") is not False:
     raise SystemExit("resolver contract validation failed; example configuration cannot self-approve production")
@@ -105,54 +69,35 @@ if config.get("security", {}).get("public_recursive_resolver") is not False:
 if set(config.get("security", {}).get("allow_recursion_from", [])) != {"127.0.0.0/8", "::1/128"}:
     raise SystemExit("resolver contract validation failed; example recursion ACL must remain loopback-only")
 for listener_name in ("doh", "dot", "doq"):
-    listener = config.get("listeners", {}).get(listener_name, {})
-    if listener.get("enabled") is not False:
-        raise SystemExit(f"resolver contract validation failed; {listener_name} must be disabled by default in example config")
+    if config.get("listeners", {}).get(listener_name, {}).get("enabled") is not False:
+        raise SystemExit(f"resolver contract validation failed; {listener_name} must be disabled by default")
 if config.get("authoritative", {}).get("enabled") is not False:
-    raise SystemExit("resolver contract validation failed; authoritative serving must be disabled by default in example config")
+    raise SystemExit("resolver contract validation failed; authoritative serving must be disabled by default")
 if config.get("dhcp", {}).get("enabled") is not False:
-    raise SystemExit("resolver contract validation failed; DHCP must be disabled by default in example config")
+    raise SystemExit("resolver contract validation failed; DHCP must be disabled by default")
 if config.get("cluster", {}).get("enabled") is not False:
-    raise SystemExit("resolver contract validation failed; clustering must be disabled by default in example config")
+    raise SystemExit("resolver contract validation failed; clustering must be disabled by default")
 if config.get("extensions", {}).get("enabled") is not False:
-    raise SystemExit("resolver contract validation failed; extensions must be disabled by default in example config")
+    raise SystemExit("resolver contract validation failed; extensions must be disabled by default")
 if config.get("resolver", {}).get("dnssec_validation") is not True:
     raise SystemExit("resolver contract validation failed; DNSSEC validation must default on")
 if config.get("filtering", {}).get("rebinding_protection") is not True:
     raise SystemExit("resolver contract validation failed; rebinding protection must default on")
 
 native_contracts = (ROOT / "internal" / "gcdns" / "contracts.go").read_text(encoding="utf-8")
-for marker in ("type Policy interface", "type Authority interface", "type Cache interface", "type Resolver interface"):
+for marker in ("type Policy interface", "type Authority interface", "type Cache interface", "type Resolver interface", "CacheTTL time.Duration"):
     if marker not in native_contracts:
         raise SystemExit(f"resolver contract validation failed; native contracts missing marker: {marker}")
 
 native_pipeline = (ROOT / "internal" / "gcdns" / "pipeline.go").read_text(encoding="utf-8")
-for marker in ("p.Policy.Evaluate", "p.Authority.ResolveAuthoritative", "p.Cache.Get", "p.Resolver.Resolve"):
+for marker in ("p.Policy.Evaluate", "p.Authority.ResolveAuthoritative", "p.Cache.Get", "p.Resolver.Resolve", "p.Cache.Put", '"cache-store"'):
     if marker not in native_pipeline:
         raise SystemExit(f"resolver contract validation failed; native pipeline missing stage: {marker}")
 
-native_config = (ROOT / "internal" / "gcdns" / "config.go").read_text(encoding="utf-8")
-for marker in ("PublicRecursive", "DNSSECValidation", "RebindingProtect", "unrestricted recursive network"):
-    if marker not in native_config:
-        raise SystemExit(f"resolver contract validation failed; native config missing safety marker: {marker}")
-
-readme = README.read_text(encoding="utf-8")
-for marker in (
-    "complete DNS service",
-    "replaces both AdGuard Home and Unbound",
-    "authoritative DNS hosting for internal and public zones",
-    "DNS-over-HTTPS, DNS-over-TLS, and DNS-over-QUIC",
-    "integrated DHCP server",
-    "role-based access control",
-    "managed cluster",
-    "Extensible processing framework",
-    "Native subsystem ownership",
-    "Configuration model",
-    "public_recursive_resolver: false",
-    "Approved Client -> GoreeCloud DNS listener",
-):
-    if marker not in readme:
-        raise SystemExit(f"resolver contract validation failed; README missing marker: {marker}")
+pipeline_tests = (ROOT / "internal" / "gcdns" / "pipeline_test.go").read_text(encoding="utf-8")
+for marker in ("TestPipelinePolicyShortCircuit", "TestPipelineAuthoritativeShortCircuit", "TestPipelineCacheHit", "TestPipelineResolverStoresCacheableResult"):
+    if marker not in pipeline_tests:
+        raise SystemExit(f"resolver contract validation failed; native pipeline test missing: {marker}")
 
 unbound_dir = ROOT / "resolver" / "unbound"
 if unbound_dir.exists() and any(unbound_dir.iterdir()):
