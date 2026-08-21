@@ -63,21 +63,9 @@ func NewResolverScheduler(conf ResolverSchedulerConfig, executor TargetResolver,
 	if conf.AttemptTimeout <= 0 {
 		return nil, errors.New("goreecloud dns: resolver scheduler attempt timeout must be positive")
 	}
-	if len(targets) == 0 {
-		return nil, errors.New("goreecloud dns: resolver scheduler requires at least one target")
-	}
-
-	seen := make(map[string]struct{}, len(targets))
-	copyTargets := make([]ResolverTarget, len(targets))
-	for i, target := range targets {
-		if target.ID == "" {
-			return nil, errors.New("goreecloud dns: resolver target id must not be empty")
-		}
-		if _, ok := seen[target.ID]; ok {
-			return nil, fmt.Errorf("goreecloud dns: duplicate resolver target %q", target.ID)
-		}
-		seen[target.ID] = struct{}{}
-		copyTargets[i] = target
+	copyTargets, err := validateResolverTargets(targets)
+	if err != nil {
+		return nil, err
 	}
 
 	return &ResolverScheduler{
@@ -88,10 +76,16 @@ func NewResolverScheduler(conf ResolverSchedulerConfig, executor TargetResolver,
 	}, nil
 }
 
-// Resolve implements Resolver. Targets with successful measured latency are
-// preferred, while unseen targets remain eligible. Work is bounded by
-// MaxParallel and canceled as soon as one target returns a valid response.
+// Resolve implements Resolver against the scheduler's configured target set.
 func (s *ResolverScheduler) Resolve(parent context.Context, req *Request) (*Result, error) {
+	return s.ResolveTargets(parent, req, s.targets)
+}
+
+// ResolveTargets executes one resolver step against a caller-supplied target
+// set. It is used by iterative recursion when each delegation produces a new
+// authoritative name-server set while preserving scheduler concurrency,
+// timeout, cancellation, ordering, and health accounting.
+func (s *ResolverScheduler) ResolveTargets(parent context.Context, req *Request, targets []ResolverTarget) (*Result, error) {
 	if req == nil || req.Message == nil {
 		return nil, errors.New("goreecloud dns: nil resolver request")
 	}
@@ -99,7 +93,11 @@ func (s *ResolverScheduler) Resolve(parent context.Context, req *Request) (*Resu
 		return nil, err
 	}
 
-	targets := s.orderedTargets()
+	copyTargets, err := validateResolverTargets(targets)
+	if err != nil {
+		return nil, err
+	}
+	ordered := s.orderedTargets(copyTargets)
 	ctx, cancel := context.WithCancel(parent)
 	defer cancel()
 
@@ -108,11 +106,11 @@ func (s *ResolverScheduler) Resolve(parent context.Context, req *Request) (*Resu
 		err    error
 	}
 
-	results := make(chan attemptResult, len(targets))
+	results := make(chan attemptResult, len(ordered))
 	sem := make(chan struct{}, s.conf.MaxParallel)
 	var wg sync.WaitGroup
 
-	for _, target := range targets {
+	for _, target := range ordered {
 		target := target
 		wg.Add(1)
 		go func() {
@@ -184,7 +182,27 @@ func (s *ResolverScheduler) Stats() map[string]ResolverTargetStats {
 	return out
 }
 
-func (s *ResolverScheduler) orderedTargets() []ResolverTarget {
+func validateResolverTargets(targets []ResolverTarget) ([]ResolverTarget, error) {
+	if len(targets) == 0 {
+		return nil, errors.New("goreecloud dns: resolver scheduler requires at least one target")
+	}
+
+	seen := make(map[string]struct{}, len(targets))
+	copyTargets := make([]ResolverTarget, len(targets))
+	for i, target := range targets {
+		if target.ID == "" {
+			return nil, errors.New("goreecloud dns: resolver target id must not be empty")
+		}
+		if _, ok := seen[target.ID]; ok {
+			return nil, fmt.Errorf("goreecloud dns: duplicate resolver target %q", target.ID)
+		}
+		seen[target.ID] = struct{}{}
+		copyTargets[i] = target
+	}
+	return copyTargets, nil
+}
+
+func (s *ResolverScheduler) orderedTargets(targets []ResolverTarget) []ResolverTarget {
 	s.mu.RLock()
 	stats := make(map[string]ResolverTargetStats, len(s.stats))
 	for id, value := range s.stats {
@@ -192,10 +210,10 @@ func (s *ResolverScheduler) orderedTargets() []ResolverTarget {
 	}
 	s.mu.RUnlock()
 
-	targets := append([]ResolverTarget(nil), s.targets...)
-	sort.SliceStable(targets, func(i, j int) bool {
-		a := stats[targets[i].ID]
-		b := stats[targets[j].ID]
+	ordered := append([]ResolverTarget(nil), targets...)
+	sort.SliceStable(ordered, func(i, j int) bool {
+		a := stats[ordered[i].ID]
+		b := stats[ordered[j].ID]
 		aKnown := a.Successes > 0 && a.LastLatency > 0
 		bKnown := b.Successes > 0 && b.LastLatency > 0
 		if aKnown != bKnown {
@@ -207,9 +225,9 @@ func (s *ResolverScheduler) orderedTargets() []ResolverTarget {
 		if a.Failures != b.Failures {
 			return a.Failures < b.Failures
 		}
-		return targets[i].ID < targets[j].ID
+		return ordered[i].ID < ordered[j].ID
 	})
-	return targets
+	return ordered
 }
 
 func (s *ResolverScheduler) recordAttempt(id string, latency time.Duration, err error) {
