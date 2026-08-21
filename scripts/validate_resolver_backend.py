@@ -237,12 +237,13 @@ for marker in (
     "TestDNSSECIterativeResolverFailsClosedOnNegativeWithoutDenialProof",
     "TestDNSSECIterativeResolverRequiresTrustInputs",
     "TestTerminalSignerKeysFiltersToAuthenticatedSignerZone",
+    "TestDNSSECIterativeResolverRejectsTerminalAnswerWithoutAuthenticatedSignerKey",
 ):
     if marker not in iterative_dnssec_tests:
         raise SystemExit(f"resolver contract validation failed; iterative dnssec test missing: {marker}")
 
 readme = README.read_text(encoding="utf-8")
-for marker in ("Native cache implementation", "cache_persistence.go", "cache_prefetch.go", "owner-only temporary file and atomic rename", "Beacon Resolver scheduler", "classic DNS transport", "iterative delegation walker", "in-bailiwick glue", "DNSSEC trust-chain execution", "DNSSECIterativeResolver", "NSEC/NSEC3"):
+for marker in ("Native cache implementation", "cache_persistence.go", "cache_prefetch.go", "owner-only temporary file and atomic rename", "Beacon Resolver scheduler", "classic DNS transport", "iterative delegation walker", "in-bailiwick glue", "DNSSEC trust-chain execution", "DNSSECIterativeResolver", "authenticated signer key", "NSEC/NSEC3"):
     if marker not in readme:
         raise SystemExit(f"resolver contract validation failed; resolver documentation missing marker: {marker}")
 
