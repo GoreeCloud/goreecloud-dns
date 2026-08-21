@@ -23,11 +23,14 @@ NATIVE_CORE = (
     ROOT / "internal" / "gcdns" / "prefetch_runner_test.go",
     ROOT / "internal" / "gcdns" / "resolver_scheduler.go",
     ROOT / "internal" / "gcdns" / "resolver_scheduler_test.go",
+    ROOT / "internal" / "gcdns" / "resolver_scheduler_rcode_test.go",
     ROOT / "internal" / "gcdns" / "resolver_transport.go",
     ROOT / "internal" / "gcdns" / "resolver_transport_test.go",
     ROOT / "internal" / "gcdns" / "root_hints.go",
     ROOT / "internal" / "gcdns" / "iterative_resolver.go",
     ROOT / "internal" / "gcdns" / "iterative_resolver_test.go",
+    ROOT / "internal" / "gcdns" / "dnssec_validator.go",
+    ROOT / "internal" / "gcdns" / "dnssec_validator_test.go",
 )
 
 for path in (README, CAPABILITIES, SUBSYSTEMS, CONFIG, *NATIVE_CORE):
@@ -101,181 +104,108 @@ if config.get("filtering", {}).get("rebinding_protection") is not True:
 
 native_contracts = (ROOT / "internal" / "gcdns" / "contracts.go").read_text(encoding="utf-8")
 for marker in (
-    "type Policy interface",
-    "type Authority interface",
-    "type Cache interface",
-    "type Resolver interface",
-    "CacheTTL time.Duration",
+    "type Policy interface", "type Authority interface", "type Cache interface", "type Resolver interface",
+    "CacheTTL time.Duration", "type DNSSECStatus string", "DNSSECIndeterminate", "DNSSECInsecure", "DNSSECSecure", "DNSSECBogus",
 ):
     if marker not in native_contracts:
         raise SystemExit(f"resolver contract validation failed; native contracts missing marker: {marker}")
 
 native_pipeline = (ROOT / "internal" / "gcdns" / "pipeline.go").read_text(encoding="utf-8")
 for marker in (
-    "p.Policy.Evaluate",
-    "p.Authority.ResolveAuthoritative",
-    "p.Cache.Get",
-    "p.Resolver.Resolve",
-    "p.Cache.Put",
-    '"cache-store"',
+    "p.Policy.Evaluate", "p.Authority.ResolveAuthoritative", "p.Cache.Get", "p.Resolver.Resolve", "p.Cache.Put", '"cache-store"',
+    "res.DNSSECStatus == DNSSECBogus", "refusing bogus dnssec result",
 ):
     if marker not in native_pipeline:
         raise SystemExit(f"resolver contract validation failed; native pipeline missing stage: {marker}")
 
 pipeline_tests = (ROOT / "internal" / "gcdns" / "pipeline_test.go").read_text(encoding="utf-8")
 for marker in (
-    "TestPipelinePolicyShortCircuit",
-    "TestPipelineAuthoritativeShortCircuit",
-    "TestPipelineCacheHit",
-    "TestPipelineResolverStoresCacheableResult",
+    "TestPipelinePolicyShortCircuit", "TestPipelineAuthoritativeShortCircuit", "TestPipelineCacheHit",
+    "TestPipelineResolverStoresCacheableResult", "TestPipelineRejectsBogusDNSSECResultBeforeCache",
 ):
     if marker not in pipeline_tests:
         raise SystemExit(f"resolver contract validation failed; native pipeline test missing: {marker}")
 
 native_cache = (ROOT / "internal" / "gcdns" / "cache.go").read_text(encoding="utf-8")
 for marker in (
-    "type MemoryCache struct",
-    "type MemoryCacheConfig struct",
-    "type CacheStats struct",
-    "ServeStale bool",
-    "NegativeEntries uint64",
-    "cache shard count must be a power of two",
-    "gate       sync.RWMutex",
-    "func ageResultTTL",
-    "func isNegativeResponse",
-    "func cloneResult",
+    "type MemoryCache struct", "type MemoryCacheConfig struct", "type CacheStats struct", "ServeStale bool",
+    "NegativeEntries uint64", "cache shard count must be a power of two", "gate       sync.RWMutex",
+    "func ageResultTTL", "func isNegativeResponse", "func cloneResult",
 ):
     if marker not in native_cache:
         raise SystemExit(f"resolver contract validation failed; native cache missing marker: {marker}")
 
 cache_tests = (ROOT / "internal" / "gcdns" / "cache_test.go").read_text(encoding="utf-8")
 for marker in (
-    "TestMemoryCachePutGetAndCopyIsolation",
-    "TestMemoryCacheAgesWireTTL",
-    "TestMemoryCacheExpires",
-    "TestMemoryCacheServeStale",
-    "TestMemoryCacheNegativeEntryAccounting",
-    "TestMemoryCachePartitionsClients",
-    "TestMemoryCacheEvictsOldestEntryWithinShard",
-    "TestMemoryCacheConcurrentAccess",
+    "TestMemoryCachePutGetAndCopyIsolation", "TestMemoryCacheAgesWireTTL", "TestMemoryCacheExpires",
+    "TestMemoryCacheServeStale", "TestMemoryCacheNegativeEntryAccounting", "TestMemoryCachePartitionsClients",
+    "TestMemoryCacheEvictsOldestEntryWithinShard", "TestMemoryCacheConcurrentAccess",
 ):
     if marker not in cache_tests:
         raise SystemExit(f"resolver contract validation failed; native cache test missing: {marker}")
 
 persistence = (ROOT / "internal" / "gcdns" / "cache_persistence.go").read_text(encoding="utf-8")
-for marker in (
-    "persistentCacheVersion = 1",
-    "func (c *MemoryCache) SavePersistent",
-    "func (c *MemoryCache) LoadPersistent",
-    "os.CreateTemp",
-    "tmp.Chmod(0o600)",
-    "os.Rename",
-):
+for marker in ("persistentCacheVersion = 1", "func (c *MemoryCache) SavePersistent", "func (c *MemoryCache) LoadPersistent", "os.CreateTemp", "tmp.Chmod(0o600)", "os.Rename"):
     if marker not in persistence:
         raise SystemExit(f"resolver contract validation failed; persistent cache missing marker: {marker}")
 
 persistence_tests = (ROOT / "internal" / "gcdns" / "cache_persistence_test.go").read_text(encoding="utf-8")
-for marker in (
-    "TestMemoryCachePersistentRoundTrip",
-    "TestMemoryCachePersistentSkipsExpired",
-    "TestMemoryCachePersistentRejectsInvalidState",
-):
+for marker in ("TestMemoryCachePersistentRoundTrip", "TestMemoryCachePersistentSkipsExpired", "TestMemoryCachePersistentRejectsInvalidState"):
     if marker not in persistence_tests:
         raise SystemExit(f"resolver contract validation failed; persistent cache test missing: {marker}")
 
 prefetch = (ROOT / "internal" / "gcdns" / "cache_prefetch.go").read_text(encoding="utf-8")
-for marker in (
-    "type PrefetchConfig struct",
-    "type PrefetchCandidate struct",
-    "type PrefetchCache struct",
-    "func NewPrefetchCache",
-    "func (p *PrefetchCache) Candidates",
-    "MinimumHits uint64",
-    "RefreshWithin time.Duration",
-):
+for marker in ("type PrefetchConfig struct", "type PrefetchCandidate struct", "type PrefetchCache struct", "func NewPrefetchCache", "func (p *PrefetchCache) Candidates", "MinimumHits uint64", "RefreshWithin time.Duration"):
     if marker not in prefetch:
         raise SystemExit(f"resolver contract validation failed; prefetch cache missing marker: {marker}")
 
 prefetch_tests = (ROOT / "internal" / "gcdns" / "cache_prefetch_test.go").read_text(encoding="utf-8")
-for marker in (
-    "TestPrefetchCacheSelectsPopularExpiringEntry",
-    "TestPrefetchCacheDoesNotSelectColdOrFreshEntry",
-    "TestPrefetchCacheFlushClearsPopularity",
-    "TestPrefetchCacheValidation",
-):
+for marker in ("TestPrefetchCacheSelectsPopularExpiringEntry", "TestPrefetchCacheDoesNotSelectColdOrFreshEntry", "TestPrefetchCacheFlushClearsPopularity", "TestPrefetchCacheValidation"):
     if marker not in prefetch_tests:
         raise SystemExit(f"resolver contract validation failed; prefetch cache test missing: {marker}")
 
 scheduler = (ROOT / "internal" / "gcdns" / "resolver_scheduler.go").read_text(encoding="utf-8")
-for marker in (
-    "type ResolverScheduler struct",
-    "func (s *ResolverScheduler) ResolveTargets",
-    "context.WithTimeout",
-    "MaxParallel",
-    "LastLatency",
-):
+for marker in ("type ResolverScheduler struct", "func (s *ResolverScheduler) ResolveTargets", "context.WithTimeout", "MaxParallel", "LastLatency", "resolverTargetResponseError"):
     if marker not in scheduler:
         raise SystemExit(f"resolver contract validation failed; scheduler missing marker: {marker}")
 
+scheduler_rcode_tests = (ROOT / "internal" / "gcdns" / "resolver_scheduler_rcode_test.go").read_text(encoding="utf-8")
+for marker in ("TestResolverSchedulerFailsOverRetryableResponseCodes", "TestResolverSchedulerAcceptsNXDOMAIN"):
+    if marker not in scheduler_rcode_tests:
+        raise SystemExit(f"resolver contract validation failed; scheduler response-code test missing: {marker}")
+
 transport = (ROOT / "internal" / "gcdns" / "resolver_transport.go").read_text(encoding="utf-8")
-for marker in (
-    "type ResolverTransport struct",
-    "AllowTCPFallback bool",
-    "ExchangeContext",
-    "response.Truncated",
-    "validateDNSResponse",
-    "transaction id mismatch",
-):
+for marker in ("type ResolverTransport struct", "AllowTCPFallback bool", "ExchangeContext", "response.Truncated", "validateDNSResponse", "transaction id mismatch"):
     if marker not in transport:
         raise SystemExit(f"resolver contract validation failed; classic DNS transport missing marker: {marker}")
 
 iterative = (ROOT / "internal" / "gcdns" / "iterative_resolver.go").read_text(encoding="utf-8")
-for marker in (
-    "type IterativeResolver struct",
-    "MaxDepth int",
-    "RecursionDesired = false",
-    "referralTargets",
-    "dns.IsSubDomain(zone, host)",
-    "delegation loop detected",
-    "responseCacheTTL",
-):
+for marker in ("type IterativeResolver struct", "MaxDepth int", "RecursionDesired = false", "referralTargets", "dns.IsSubDomain(zone, host)", "delegation loop detected", "responseCacheTTL"):
     if marker not in iterative:
         raise SystemExit(f"resolver contract validation failed; iterative resolver missing marker: {marker}")
 
 root_hints = (ROOT / "internal" / "gcdns" / "root_hints.go").read_text(encoding="utf-8")
-for marker in (
-    "func DefaultRootTargets",
-    "198.41.0.4:53",
-    "170.247.170.2:53",
-    "[2801:1b8:10::b]:53",
-    "202.12.27.33:53",
-):
+for marker in ("func DefaultRootTargets", "198.41.0.4:53", "170.247.170.2:53", "[2801:1b8:10::b]:53", "202.12.27.33:53"):
     if marker not in root_hints:
         raise SystemExit(f"resolver contract validation failed; root bootstrap missing marker: {marker}")
 
 iterative_tests = (ROOT / "internal" / "gcdns" / "iterative_resolver_test.go").read_text(encoding="utf-8")
-for marker in (
-    "TestIterativeResolverFollowsReferralAndReturnsAnswer",
-    "TestReferralTargetsAcceptsInBailiwickIPv4AndIPv6Glue",
-    "TestReferralTargetsRejectsOutOfBailiwickGlue",
-    "TestIterativeResolverDetectsDelegationLoop",
-    "TestResponseCacheTTLUsesNegativeSOAMinimum",
-    "TestDefaultRootTargetsIncludesCurrentBRootAddresses",
-):
+for marker in ("TestIterativeResolverFollowsReferralAndReturnsAnswer", "TestReferralTargetsAcceptsInBailiwickIPv4AndIPv6Glue", "TestReferralTargetsRejectsOutOfBailiwickGlue", "TestIterativeResolverDetectsDelegationLoop", "TestResponseCacheTTLUsesNegativeSOAMinimum", "TestDefaultRootTargetsIncludesCurrentBRootAddresses"):
     if marker not in iterative_tests:
         raise SystemExit(f"resolver contract validation failed; iterative resolver test missing: {marker}")
 
+dnssec = (ROOT / "internal" / "gcdns" / "dnssec_validator.go").read_text(encoding="utf-8")
+for marker in ("type DNSSECValidator struct", "func NewDNSSECValidator", "func (v *DNSSECValidator) ValidateRRSet", "sig.Verify", "func (v *DNSSECValidator) MatchDS", "key.ToDS", "DNSSECBogus", "DNSSECInsecure", "DNSSECSecure"):
+    if marker not in dnssec:
+        raise SystemExit(f"resolver contract validation failed; dnssec validator missing marker: {marker}")
+
+dnssec_tests = (ROOT / "internal" / "gcdns" / "dnssec_validator_test.go").read_text(encoding="utf-8")
+for marker in ("TestDNSSECValidatorMatchDS", "TestDNSSECValidatorUnsignedDelegationIsInsecure", "TestDNSSECValidatorRRSetWithoutMaterialIsIndeterminate", "TestDNSSECValidatorRejectsNonUniformRRSet"):
+    if marker not in dnssec_tests:
+        raise SystemExit(f"resolver contract validation failed; dnssec validator test missing: {marker}")
+
 readme = README.read_text(encoding="utf-8")
-for marker in (
-    "Native cache implementation",
-    "cache_persistence.go",
-    "cache_prefetch.go",
-    "owner-only temporary file and atomic rename",
-    "Beacon Resolver scheduler",
-    "classic DNS transport",
-    "iterative delegation walker",
-    "in-bailiwick glue",
-):
+for marker in ("Native cache implementation", "cache_persistence.go", "cache_prefetch.go", "owner-only temporary file and atomic rename", "Beacon Resolver scheduler", "classic DNS transport", "iterative delegation walker", "in-bailiwick glue", "DNSSEC validation foundation"):
     if marker not in readme:
         raise SystemExit(f"resolver contract validation failed; resolver documentation missing marker: {marker}")
 
