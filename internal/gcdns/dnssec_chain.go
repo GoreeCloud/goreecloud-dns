@@ -8,9 +8,7 @@ import (
 )
 
 // ValidateSignedDelegation authenticates a child delegation when the parent
-// supplied a signed DS RRset and the child supplied a signed DNSKEY RRset. It
-// intentionally does not treat missing DS data as proof of an insecure
-// delegation; authenticated denial (NSEC/NSEC3) must establish that state.
+// supplied a signed DS RRset and the child supplied a signed DNSKEY RRset.
 func (v *DNSSECValidator) ValidateSignedDelegation(parentKeys []*dns.DNSKEY, referral, childDNSKEY *dns.Msg, zone string) (DNSSECStatus, []*dns.DNSKEY, error) {
 	zone = dns.Fqdn(zone)
 	if len(parentKeys) == 0 {
@@ -52,6 +50,95 @@ func (v *DNSSECValidator) ValidateSignedDelegation(parentKeys []*dns.DNSKEY, ref
 	}
 
 	return DNSSECSecure, childKeys, nil
+}
+
+// ValidateInsecureDelegation authenticates that a parent has no DS RRset for a
+// delegated child. A successful proof changes the trust state to insecure; it
+// does not create child trust material. NSEC3 opt-out remains fail-closed.
+func (v *DNSSECValidator) ValidateInsecureDelegation(parentKeys []*dns.DNSKEY, referral *dns.Msg, zone string) (DNSSECStatus, error) {
+	zone = dns.CanonicalName(zone)
+	if len(parentKeys) == 0 {
+		return DNSSECIndeterminate, errors.New("goreecloud dns: insecure delegation proof requires authenticated parent DNSKEYs")
+	}
+	_, dsRecords, _ := delegationDSMaterial(referral, zone)
+	if len(dsRecords) != 0 {
+		return DNSSECBogus, fmt.Errorf("goreecloud dns: delegation for %s contains DS and cannot be classified insecure", zone)
+	}
+
+	material, err := collectDenialMaterial(referral)
+	if err != nil {
+		return DNSSECBogus, fmt.Errorf("goreecloud dns: insecure delegation denial material for %s: %w", zone, err)
+	}
+	if err = validateDenialMaterialWithValidator(v, material, parentKeys); err != nil {
+		return DNSSECBogus, fmt.Errorf("goreecloud dns: insecure delegation denial validation for %s: %w", zone, err)
+	}
+
+	if len(material.nsec) > 0 {
+		if err = proveNSECDSAbsence(material.nsec, zone); err != nil {
+			return DNSSECBogus, err
+		}
+		return DNSSECInsecure, nil
+	}
+	if err = proveNSEC3DSAbsence(material.nsec3, zone); err != nil {
+		return DNSSECBogus, err
+	}
+	return DNSSECInsecure, nil
+}
+
+func validateDenialMaterialWithValidator(v *DNSSECValidator, material *denialMaterial, keys []*dns.DNSKEY) error {
+	for key, rrset := range material.rrsets {
+		sigs := material.signatures[key]
+		if len(sigs) == 0 {
+			return fmt.Errorf("denial RRset %s/%s has no RRSIG", key.name, dns.TypeToString[key.rrtype])
+		}
+		zoneKeys := terminalSignerKeys(sigs, keys)
+		if len(zoneKeys) == 0 {
+			return fmt.Errorf("denial RRset %s/%s has no authenticated signer key", key.name, dns.TypeToString[key.rrtype])
+		}
+		status, err := v.ValidateRRSet(rrset, sigs, zoneKeys)
+		if err != nil || status != DNSSECSecure {
+			if err == nil {
+				err = fmt.Errorf("unexpected validation state %s", status)
+			}
+			return fmt.Errorf("denial RRset %s/%s failed validation: %w", key.name, dns.TypeToString[key.rrtype], err)
+		}
+	}
+	return nil
+}
+
+func proveNSECDSAbsence(records []*dns.NSEC, zone string) error {
+	for _, record := range records {
+		if record == nil || !sameDNSName(record.Hdr.Name, zone) {
+			continue
+		}
+		if !bitmapContains(record.TypeBitMap, dns.TypeNS) {
+			return fmt.Errorf("goreecloud dns: NSEC at %s does not prove a delegation", zone)
+		}
+		if bitmapContains(record.TypeBitMap, dns.TypeDS) {
+			return fmt.Errorf("goreecloud dns: NSEC at %s advertises DS", zone)
+		}
+		return nil
+	}
+	return fmt.Errorf("goreecloud dns: exact-name NSEC proof is required for DS absence at %s", zone)
+}
+
+func proveNSEC3DSAbsence(records []*dns.NSEC3, zone string) error {
+	if err := validateNSEC3Parameters(records); err != nil {
+		return err
+	}
+	for _, record := range records {
+		if record == nil || !record.Match(zone) {
+			continue
+		}
+		if !bitmapContains(record.TypeBitMap, dns.TypeNS) {
+			return fmt.Errorf("goreecloud dns: NSEC3 at %s does not prove a delegation", zone)
+		}
+		if bitmapContains(record.TypeBitMap, dns.TypeDS) {
+			return fmt.Errorf("goreecloud dns: NSEC3 at %s advertises DS", zone)
+		}
+		return nil
+	}
+	return fmt.Errorf("goreecloud dns: exact-name NSEC3 proof is required for DS absence at %s", zone)
 }
 
 func delegationDSMaterial(msg *dns.Msg, zone string) ([]dns.RR, []*dns.DS, []*dns.RRSIG) {
