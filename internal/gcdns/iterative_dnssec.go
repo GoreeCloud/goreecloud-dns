@@ -18,12 +18,12 @@ type dnssecChainValidator interface {
 
 // DNSSECIterativeResolver performs the same local authoritative delegation walk
 // as IterativeResolver while carrying an authenticated DNSSEC key chain from
-// the root trust anchor to the terminal positive answer.
+// the root trust anchor to terminal positive and negative answers.
 //
-// Negative answers remain fail-closed until authenticated denial through
-// NSEC/NSEC3 is implemented. This resolver is intentionally isolated from the
-// inherited production request path until the remaining DNSSEC and recursion
-// acceptance gates are complete.
+// Authenticated denial supports conservative NSEC and NSEC3 proofs. NSEC3
+// opt-out and ambiguous wildcard NODATA cases remain fail-closed. This resolver
+// is intentionally isolated from the inherited production request path until
+// the remaining DNSSEC and recursion acceptance gates are complete.
 type DNSSECIterativeResolver struct {
 	conf      IterativeResolverConfig
 	scheduler *ResolverScheduler
@@ -78,8 +78,8 @@ func NewDNSSECIterativeResolver(
 }
 
 // Resolve authenticates the root DNSKEY RRset, walks referrals, authenticates
-// each signed DS -> DNSKEY transition, and validates every terminal positive
-// answer RRset before returning a secure result.
+// each signed DS -> DNSKEY transition, and validates terminal positive RRsets
+// or authenticated denial proof material before returning a secure result.
 func (r *DNSSECIterativeResolver) Resolve(ctx context.Context, req *Request) (*Result, error) {
 	if req == nil || req.Message == nil {
 		return nil, errors.New("goreecloud dns: nil dnssec iterative resolver request")
@@ -116,7 +116,12 @@ func (r *DNSSECIterativeResolver) Resolve(ctx context.Context, req *Request) (*R
 		}
 
 		if isTerminalDNSResponse(res.Message) {
-			status, err := r.validateTerminalPositive(res.Message, parentKeys)
+			var status DNSSECStatus
+			if isNegativeDNSResponse(res.Message) {
+				status, err = r.validateAuthenticatedDenial(res.Message, query.Question[0], parentKeys)
+			} else {
+				status, err = r.validateTerminalPositive(res.Message, parentKeys)
+			}
 			if err != nil {
 				return nil, fmt.Errorf("goreecloud dns: terminal dnssec validation failed: %w", err)
 			}
@@ -190,12 +195,16 @@ func (r *DNSSECIterativeResolver) fetchDNSKEY(ctx context.Context, req *Request,
 	return res.Message, nil
 }
 
+func isNegativeDNSResponse(msg *dns.Msg) bool {
+	return msg != nil && (msg.Rcode == dns.RcodeNameError || (msg.Rcode == dns.RcodeSuccess && len(msg.Answer) == 0))
+}
+
 func (r *DNSSECIterativeResolver) validateTerminalPositive(msg *dns.Msg, keys []*dns.DNSKEY) (DNSSECStatus, error) {
 	if msg == nil {
 		return DNSSECBogus, errors.New("nil terminal response")
 	}
-	if msg.Rcode == dns.RcodeNameError || (msg.Rcode == dns.RcodeSuccess && len(msg.Answer) == 0) {
-		return DNSSECIndeterminate, errors.New("authenticated denial with NSEC/NSEC3 is required for negative answers")
+	if isNegativeDNSResponse(msg) {
+		return DNSSECIndeterminate, errors.New("negative response requires authenticated denial validation")
 	}
 	if msg.Rcode != dns.RcodeSuccess {
 		return DNSSECBogus, fmt.Errorf("terminal response returned %s", dns.RcodeToString[msg.Rcode])
