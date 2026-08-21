@@ -22,6 +22,8 @@ for marker in (
     "ValidateRootDNSKEY",
     "ValidateSignedDelegation",
     "validateTerminalPositive",
+    "terminalSignerKeys",
+    "no authenticated signer key",
     "authenticated denial with NSEC/NSEC3 is required",
     "out.DNSSECStatus = status",
     "ensureDNSSECOK(query)",
@@ -34,6 +36,7 @@ for marker in (
     "TestDNSSECIterativeResolverCarriesAuthenticatedKeysAcrossReferral",
     "TestDNSSECIterativeResolverFailsClosedOnNegativeWithoutDenialProof",
     "TestDNSSECIterativeResolverRequiresTrustInputs",
+    "TestTerminalSignerKeysFiltersToAuthenticatedSignerZone",
 ):
     if marker not in tests:
         raise SystemExit(f"dnssec iterative validation failed; test missing marker: {marker}")
