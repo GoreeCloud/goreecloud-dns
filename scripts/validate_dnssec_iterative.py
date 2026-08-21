@@ -8,6 +8,7 @@ FILES = {
     "root trust anchors": ROOT / "internal" / "gcdns" / "root_trust_anchors.go",
     "DNSSEC chain": ROOT / "internal" / "gcdns" / "dnssec_chain.go",
     "iterative resolver": ROOT / "internal" / "gcdns" / "iterative_resolver.go",
+    "integrated resolver validator": ROOT / "scripts" / "validate_resolver_backend.py",
 }
 
 for label, path in FILES.items():
@@ -62,5 +63,17 @@ for marker in (
 classic = FILES["iterative resolver"].read_text(encoding="utf-8")
 if "ensureDNSSECOK(query)" not in classic:
     raise SystemExit("dnssec iterative validation failed; classic iterative queries do not request DNSSEC material")
+
+integrated = FILES["integrated resolver validator"].read_text(encoding="utf-8")
+for marker in (
+    'ROOT / "internal" / "gcdns" / "iterative_dnssec.go"',
+    'ROOT / "internal" / "gcdns" / "iterative_dnssec_test.go"',
+    'ROOT / "internal" / "gcdns" / "root_trust_anchors.go"',
+    'ROOT / "internal" / "gcdns" / "dnssec_chain.go"',
+    '"type DNSSECIterativeResolver struct"',
+    '"authenticated denial with NSEC/NSEC3 is required"',
+):
+    if marker not in integrated:
+        raise SystemExit(f"dnssec iterative validation failed; integrated resolver validator missing marker: {marker}")
 
 print("GoreeCloud DNS Beacon iterative DNSSEC source contract: PASS")
