@@ -49,4 +49,6 @@ GoreeCloud DNS should not copy features merely to match a checklist. The objecti
 
 ## Current implementation boundary
 
-The current Beacon branch does not yet satisfy this complete requirement. Native cache, resolver scheduling, classic transport, iterative recursion, DNSSEC trust-chain carry, and positive terminal-answer validation foundations are under active development. Authoritative DNS, full filtering, encrypted listeners, DHCP, clustering, complete administration, NSEC/NSEC3 authenticated denial, signed alias handling, and other capabilities remain staged until implemented and validated.
+The current Beacon branch does not yet satisfy this complete requirement. Native cache, resolver scheduling, classic transport, iterative recursion, DNSSEC trust-chain carry, positive terminal-answer validation, conservative signed-NSEC proof for intentionally unsigned delegations, propagation of authenticated `DNSSECInsecure` state, and exact-owner signed-NSEC NODATA proof are now under active development in source.
+
+Complete NSEC NXDOMAIN closest-encloser and wildcard proof, NSEC3 authenticated denial, signed alias handling, out-of-bailiwick nameserver discovery, QNAME minimization, authoritative DNS, full filtering, encrypted listeners, DHCP, clustering, APIs, identity, observability, extensions, and Glaze UI administration remain staged until implemented and validated.
