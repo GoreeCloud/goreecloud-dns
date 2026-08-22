@@ -8,7 +8,7 @@ import (
 )
 
 // TrustedKeysForDS returns only DNSKEYs that are authenticated by an already
-// validated DS RRset.  It is intentionally stricter than MatchDS so callers do
+// validated DS RRset. It is intentionally stricter than MatchDS so callers do
 // not accidentally trust unrelated keys that merely arrived in the same
 // DNSKEY response.
 func (v *DNSSECValidator) TrustedKeysForDS(zone string, dsRecords []*dns.DS, keys []*dns.DNSKEY) ([]*dns.DNSKEY, DNSSECStatus, error) {
@@ -57,7 +57,7 @@ func (v *DNSSECValidator) TrustedKeysForDS(zone string, dsRecords []*dns.DS, key
 }
 
 // AuthenticateDNSKEYResponse authenticates a DNSKEY RRset against an already
-// trusted DS RRset.  The DNSKEY RRset must itself be signed by a DNSKEY that
+// trusted DS RRset. The DNSKEY RRset must itself be signed by a DNSKEY that
 // matches the parent DS; merely including a DS-matching key is not sufficient.
 func (v *DNSSECValidator) AuthenticateDNSKEYResponse(zone string, msg *dns.Msg, parentDS []*dns.DS) ([]*dns.DNSKEY, DNSSECStatus, error) {
 	keys, sigs := dnskeyMaterial(msg, zone)
@@ -83,12 +83,15 @@ func (v *DNSSECValidator) AuthenticateDNSKEYResponse(zone string, msg *dns.Msg, 
 }
 
 // AuthenticateDelegationDS validates the child's DS RRset using the currently
-// authenticated parent-zone DNSKEYs.  Absence of DS remains indeterminate until
-// NSEC/NSEC3 authenticated denial is implemented.
+// authenticated parent-zone DNSKEYs. If DS is absent, Beacon accepts an
+// insecure delegation only when a signed parent NSEC RRset proves NS is present
+// and DS is absent at the child delegation point. Missing or unsupported proof
+// remains indeterminate until NSEC3 support is implemented.
 func (v *DNSSECValidator) AuthenticateDelegationDS(childZone string, msg *dns.Msg, parentKeys []*dns.DNSKEY) ([]*dns.DS, DNSSECStatus, error) {
 	dsRecords, sigs := delegationDSMaterial(msg, childZone)
 	if len(dsRecords) == 0 {
-		return nil, DNSSECIndeterminate, nil
+		status, err := v.AuthenticateInsecureDelegationNSEC(childZone, msg, parentKeys)
+		return nil, status, err
 	}
 	if len(parentKeys) == 0 {
 		return nil, DNSSECBogus, errors.New("goreecloud dns: cannot authenticate delegation DS without parent DNSKEYs")
@@ -162,9 +165,15 @@ func sameHex(a, b string) bool {
 	}
 	for i := range a {
 		ca, cb := a[i], b[i]
-		if ca >= 'a' && ca <= 'f' { ca -= 'a' - 'A' }
-		if cb >= 'a' && cb <= 'f' { cb -= 'a' - 'A' }
-		if ca != cb { return false }
+		if ca >= 'a' && ca <= 'f' {
+			ca -= 'a' - 'A'
+		}
+		if cb >= 'a' && cb <= 'f' {
+			cb -= 'a' - 'A'
+		}
+		if ca != cb {
+			return false
+		}
 	}
 	return true
 }
