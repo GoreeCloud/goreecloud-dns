@@ -28,11 +28,11 @@ type IterativeResolverConfig struct {
 // IterativeResolver performs non-recursive delegation walking using Beacon's
 // native scheduler and transport boundaries.
 type IterativeResolver struct {
-	exchanger       DNSExchanger
-	rootServers     []string
-	maxDepth        int
-	attemptTimeout  time.Duration
-	maxConcurrent   int
+	exchanger      DNSExchanger
+	rootServers    []string
+	maxDepth       int
+	attemptTimeout time.Duration
+	maxConcurrent  int
 }
 
 func NewIterativeResolver(exchanger DNSExchanger, cfg IterativeResolverConfig) (*IterativeResolver, error) {
@@ -52,11 +52,11 @@ func NewIterativeResolver(exchanger DNSExchanger, cfg IterativeResolverConfig) (
 		return nil, errors.New("goreecloud dns: iterative resolver max concurrency must be positive")
 	}
 	return &IterativeResolver{
-		exchanger: exchanger,
-		rootServers: append([]string(nil), cfg.RootServers...),
-		maxDepth: cfg.MaxDepth,
+		exchanger:      exchanger,
+		rootServers:    append([]string(nil), cfg.RootServers...),
+		maxDepth:       cfg.MaxDepth,
 		attemptTimeout: cfg.AttemptTimeout,
-		maxConcurrent: cfg.MaxConcurrent,
+		maxConcurrent:  cfg.MaxConcurrent,
 	}, nil
 }
 
@@ -114,11 +114,26 @@ type exchangeResolver struct {
 func (r *exchangeResolver) Resolve(ctx context.Context, req *Request) (*Result, error) {
 	query := req.Message.Copy()
 	query.RecursionDesired = false
+	requestDNSSECMaterial(query)
 	msg, err := r.exchanger.Exchange(ctx, r.server, query)
 	if err != nil {
 		return nil, err
 	}
 	return &Result{Message: msg, Source: r.server, DNSSECStatus: DNSSECIndeterminate}, nil
+}
+
+func requestDNSSECMaterial(msg *dns.Msg) {
+	if msg == nil {
+		return
+	}
+	if opt := msg.IsEdns0(); opt != nil {
+		if opt.UDPSize() < 1232 {
+			opt.SetUDPSize(1232)
+		}
+		opt.SetDo()
+		return
+	}
+	msg.SetEdns0(1232, true)
 }
 
 func terminalDNSResponse(msg *dns.Msg) bool {
