@@ -44,7 +44,7 @@ Iterative queries explicitly request DNSSEC material with EDNS and the DO bit.
 
 ## Beacon NSEC Authenticated Denial
 
-`internal/gcdns/dnssec_nsec.go` adds the first conservative authenticated-denial layer.
+`internal/gcdns/dnssec_nsec.go` provides the current conservative authenticated-denial layer.
 
 Implemented behavior includes:
 
@@ -53,13 +53,18 @@ Implemented behavior includes:
 - preservation of `DNSSECInsecure` below a proven unsigned delegation;
 - skipping child DNSKEY retrieval after an insecure delegation has been authenticated;
 - signed exact-owner NSEC NODATA validation when the bitmap omits the requested type and CNAME;
-- fail-closed behavior for unsigned, invalid, or unproven denial material.
+- DNSSEC canonical-name interval processing, including NSEC wrap-around intervals;
+- conservative empty-answer NXDOMAIN validation requiring an authenticated exact closest encloser, a covering NSEC for the next-closer name, and a covering NSEC for the corresponding wildcard;
+- authenticated-zone boundary checks for NXDOMAIN proof material;
+- fail-closed behavior for unsigned, invalid, malformed, or unproven denial material.
 
-NXDOMAIN is not yet promoted to secure because correct validation requires closest-encloser and wildcard nonexistence proof. NSEC3 authenticated denial also remains staged work.
+The NXDOMAIN proof is deliberately stricter than the minimum layouts DNSSEC permits. If an authority provides a valid compact proof that does not contain the explicit closest-encloser NSEC Beacon currently requires, the result remains indeterminate rather than being trusted optimistically.
+
+NSEC3 authenticated denial, wildcard-expanded positive-answer proof, and broader compact NSEC proof support remain staged work.
 
 ## Security boundary
 
-The native foundation currently enforces source-level invariants for DNSSEC validation, DNS rebinding protection, explicit recursion and administration ACLs, no accidental open recursion, bogus-result rejection before cache insertion, bounded cache/scheduler/transport behavior, delegation depth and loop protection, in-bailiwick glue acceptance, root trust anchors, DS/DNSKEY authentication, terminal positive RRset validation, conservative NSEC insecure-delegation proof, and exact-owner NSEC NODATA proof.
+The native foundation currently enforces source-level invariants for DNSSEC validation, DNS rebinding protection, explicit recursion and administration ACLs, no accidental open recursion, bogus-result rejection before cache insertion, bounded cache/scheduler/transport behavior, delegation depth and loop protection, in-bailiwick glue acceptance, root trust anchors, DS/DNSKEY authentication, terminal positive RRset validation, conservative NSEC insecure-delegation proof, exact-owner NSEC NODATA proof, and conservative NSEC NXDOMAIN closest-encloser/next-closer/wildcard proof.
 
 These are development controls, not production acceptance evidence.
 
@@ -69,8 +74,8 @@ No production traffic is routed through `internal/gcdns` yet. Existing AdGuard H
 
 ## Next implementation sequence
 
-1. Complete NSEC NXDOMAIN closest-encloser and wildcard denial validation.
-2. Implement NSEC3 authenticated denial for NXDOMAIN, NODATA, and insecure delegations.
+1. Implement NSEC3 authenticated denial for NXDOMAIN, NODATA, and insecure delegations.
+2. Extend NSEC wildcard handling to wildcard-expanded positive answers and supported compact denial layouts.
 3. Complete signed CNAME/DNAME chain handling and out-of-bailiwick nameserver discovery.
 4. Implement QNAME minimization, forward/conditional/stub routing, and split-horizon routing.
 5. Add persistent cache, prefetch/auto-prefetch, encrypted DNS, authoritative DNS, filtering, DHCP, clustering, APIs, identity, and Glaze UI administration.
