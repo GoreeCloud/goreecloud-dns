@@ -104,6 +104,53 @@ func TestValidatingIterativeResolverCarriesSecureDelegationTrust(t *testing.T) {
 	require.Equal(t, 1, dsAuthCalls)
 }
 
+func TestValidatingIterativeResolverCarriesProvenInsecureDelegation(t *testing.T) {
+	root := "192.0.2.53:53"
+	child := "192.0.2.80:53"
+	rootKey := testDNSKEY(".", 1)
+	var childDNSKEYQueries int
+	exchanger := exchangeFunc(func(_ context.Context, server string, query *dns.Msg) (*dns.Msg, error) {
+		reply := new(dns.Msg)
+		reply.SetReply(query)
+		q := query.Question[0]
+		switch {
+		case server == root && q.Qtype == dns.TypeDNSKEY:
+			reply.Authoritative = true
+			reply.Answer = []dns.RR{rootKey}
+			return reply, nil
+		case server == root && q.Qtype == dns.TypeA:
+			reply.Ns = []dns.RR{&dns.NS{Hdr: dns.RR_Header{Name: "example.test.", Rrtype: dns.TypeNS, Class: dns.ClassINET}, Ns: "ns1.example.test."}}
+			reply.Extra = []dns.RR{&dns.A{Hdr: dns.RR_Header{Name: "ns1.example.test.", Rrtype: dns.TypeA, Class: dns.ClassINET}, A: []byte{192, 0, 2, 80}}}
+			return reply, nil
+		case server == child && q.Qtype == dns.TypeDNSKEY:
+			childDNSKEYQueries++
+			return nil, errors.New("insecure child DNSKEY must not be fetched")
+		case server == child && q.Qtype == dns.TypeA:
+			reply.Authoritative = true
+			reply.Answer = []dns.RR{&dns.A{Hdr: dns.RR_Header{Name: "www.example.test.", Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: 60}, A: []byte{192, 0, 2, 10}}}
+			return reply, nil
+		default:
+			return nil, errors.New("unexpected insecure-delegation query")
+		}
+	})
+	chain := chainAuthenticatorFunc{
+		dnskey: func(string, *dns.Msg, []*dns.DS) ([]*dns.DNSKEY, DNSSECStatus, error) {
+			return []*dns.DNSKEY{rootKey}, DNSSECSecure, nil
+		},
+		ds: func(string, *dns.Msg, []*dns.DNSKEY) ([]*dns.DS, DNSSECStatus, error) {
+			return nil, DNSSECInsecure, nil
+		},
+	}
+	resolver, err := NewValidatingIterativeResolver(exchanger, IterativeResolverConfig{RootServers: []string{root}, MaxDepth: 8, AttemptTimeout: time.Second, MaxConcurrent: 1}, chain)
+	require.NoError(t, err)
+	req := testRequest()
+	req.Message.SetQuestion("www.example.test.", dns.TypeA)
+	res, err := resolver.Resolve(context.Background(), req)
+	require.NoError(t, err)
+	require.Equal(t, DNSSECInsecure, res.DNSSECStatus)
+	require.Equal(t, 0, childDNSKEYQueries)
+}
+
 func TestValidatingIterativeResolverFailsClosedOnUnprovenDelegation(t *testing.T) {
 	root := "192.0.2.53:53"
 	child := "192.0.2.80:53"
@@ -140,7 +187,7 @@ func TestValidatingIterativeResolverFailsClosedOnUnprovenDelegation(t *testing.T
 	req := testRequest()
 	req.Message.SetQuestion("www.example.test.", dns.TypeA)
 	_, err = resolver.Resolve(context.Background(), req)
-	require.ErrorContains(t, err, "cannot be classified secure without authenticated denial support")
+	require.ErrorContains(t, err, "lacks authenticated DS or denial proof")
 }
 
 func TestValidatingIterativeResolverRequiresAuthenticator(t *testing.T) {
