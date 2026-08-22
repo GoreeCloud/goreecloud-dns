@@ -3,7 +3,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 required = {
-    "internal/gcdns/contracts.go": ("type DNSSECStatus string", "DNSSECBogus", "type Policy interface", "type Authority interface", "type Cache interface", "type Resolver interface"),
+    "internal/gcdns/contracts.go": ("type DNSSECStatus string", "DNSSECIndeterminate", "DNSSECInsecure", "DNSSECSecure", "DNSSECBogus", "type Policy interface", "type Authority interface", "type Cache interface", "type Resolver interface"),
     "internal/gcdns/pipeline.go": ("p.Policy.Evaluate", "p.Authority.ResolveAuthoritative", "p.Cache.Get", "p.Resolver.Resolve", "p.Cache.Put", "refusing bogus dnssec result"),
     "internal/gcdns/config.go": ("DNSSECValidation", "RebindingProtection", "PublicRecursion", "RecursionACLs", "AdminACLs"),
     "internal/gcdns/cache.go": ("type MemoryCacheConfig struct", "type MemoryCache struct", "cache shard count must be a positive power of two", "ServeStale bool", "NegativeEntries uint64", "func ageResultTTL", "func isNegativeResponse", "func cloneResult", "func (c *MemoryCache) Stats"),
@@ -13,8 +13,11 @@ required = {
     "internal/gcdns/transport.go": ("type ClassicTransportConfig struct", "type ClassicTransport struct", "UDPSize: cfg.MaxResponseSize", "if !udpReply.Truncated", "t.tcpFallbacks.Add(1)", "validateDNSReply", "DNS response ID mismatch", "DNS response question mismatch", "func (t *ClassicTransport) Stats"),
     "internal/gcdns/transport_test.go": ("TestValidateDNSReply", "TestClassicTransportUDP", "TestClassicTransportTCPFallback", "TestClassicTransportValidation"),
     "internal/gcdns/root_hints.go": ("func DefaultRootServers", "170.247.170.2:53", "[2801:1b8:10::b]:53", "202.12.27.33:53"),
-    "internal/gcdns/iterative.go": ("type DNSExchanger interface", "type IterativeResolver struct", "RecursionDesired = false", "referralTargets", "dns.IsSubDomain(zone, name)", "delegation loop detected", "responseCacheTTL", "var _ Resolver = (*IterativeResolver)(nil)"),
+    "internal/gcdns/iterative.go": ("type DNSExchanger interface", "type IterativeResolver struct", "RecursionDesired = false", "requestDNSSECMaterial", "referralTargets", "dns.IsSubDomain(zone, name)", "delegation loop detected", "responseCacheTTL", "var _ Resolver = (*IterativeResolver)(nil)"),
     "internal/gcdns/iterative_test.go": ("TestIterativeResolverFollowsReferral", "TestReferralTargetsAcceptInBailiwickGlue", "TestReferralTargetsRejectOutOfBailiwickGlue", "TestIterativeResolverDetectsDelegationLoop", "TestResponseCacheTTLNegativeSOA", "TestDefaultRootServersContainCurrentBRoot", "TestIterativeResolverValidation"),
+    "internal/gcdns/dnssec.go": ("func RootTrustAnchors", "20326", "38696", "type DNSSECValidator struct", "func (v *DNSSECValidator) MatchDS", "key.ToDS", "func (v *DNSSECValidator) ValidateRRSet", "sig.Verify", "DNSSECSecure", "DNSSECBogus"),
+    "internal/gcdns/dnssec_test.go": ("TestRootTrustAnchors", "TestDNSSECValidatorMatchesRootKSK2017", "TestDNSSECValidatorRejectsDSMismatch", "TestDNSSECValidatorNoDSIsIndeterminate", "TestDNSSECValidatorRRSetWithoutMaterialIsIndeterminate", "TestDNSSECValidatorRejectsNonUniformRRSet"),
+    "internal/gcdns/dnssec_query_test.go": ("TestRequestDNSSECMaterialAddsEDNSDO", "TestRequestDNSSECMaterialPreservesLargerUDPSize"),
     "internal/gcdns/pipeline_test.go": ("TestPipelineCacheHitSkipsResolver", "TestPipelineStoresCacheableResolverResult", "TestPipelineRejectsBogusDNSSECBeforeCache", "TestPipelinePolicyShortCircuits"),
     "internal/gcdns/config_test.go": ("TestSecurityConfigValid", "TestSecurityConfigRequiresDNSSEC", "TestSecurityConfigRejectsUnrestrictedRecursionByDefault", "TestSecurityConfigRejectsUnrestrictedAdministration"),
     "docs/beacon.md": ("GoreeCloud Beacon", "internal/gcdns", "Existing AdGuard Home and Unbound runtime behavior remains unchanged"),
@@ -29,4 +32,4 @@ for rel, markers in required.items():
         if marker not in text:
             raise SystemExit(f"Beacon foundation validation failed: {rel} missing {marker!r}")
 
-print("GoreeCloud Beacon cache, scheduler, classic transport, and iterative resolver source contract: PASS")
+print("GoreeCloud Beacon cache, scheduler, transport, iterative resolver, and DNSSEC foundation source contract: PASS")
