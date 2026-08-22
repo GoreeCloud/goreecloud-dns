@@ -14,9 +14,9 @@ The native pipeline is:
 
 The contracts are designed so first-party caching, recursive resolution, forwarding, authoritative DNS, DNSSEC validation, filtering, observability, encrypted DNS, DHCP, clustering, and administration can be introduced incrementally without recreating a permanent AdGuard Home/Unbound split.
 
-## Competitive target
+## Competitive direction
 
-GoreeCloud DNS is intended to become a capability superset of Technitium DNS Server, Pi-hole, and AdGuard Home across useful DNS features, while exceeding them where practical in privacy-by-default behavior, security boundaries, operator control, recovery, GoreeCloud platform integration, and first-party ownership. `docs/competitive-superset-requirement.md` records this as a target and acceptance requirement rather than a current completion claim.
+GoreeCloud DNS targets a stable capability superset of Technitium DNS Server, Pi-hole, and AdGuard Home in useful DNS features while aiming to exceed those references in privacy-by-default behavior, security boundaries, operator control, resilience, observability, recovery, GoreeCloud integration, and first-party ownership. This is a product requirement, not a claim that every target capability is already implemented.
 
 ## Beacon Cache
 
@@ -28,23 +28,40 @@ GoreeCloud DNS is intended to become a capability superset of Technitium DNS Ser
 
 ## Beacon Classic DNS Transport
 
-`internal/gcdns/transport.go` provides native UDP DNS exchange with TCP retry after valid truncation, per-exchange deadlines, caller cancellation, defensive response validation, and privacy-safe transport counters.
+`internal/gcdns/transport.go` provides native classic DNS wire transport. It performs UDP exchanges with an explicit response-size ceiling, retries valid truncated UDP responses over TCP, propagates caller cancellation, applies per-exchange deadlines, and rejects malformed or mismatched responses before they reach resolver logic.
 
 ## Beacon Iterative Resolver
 
-`internal/gcdns/iterative.go` walks delegations from verified root/bootstrap endpoints, clears recursion-desired on authoritative queries, uses the scheduler for per-delegation failover, follows referrals, accepts only in-bailiwick glue in the current foundation, derives cache lifetimes, and stops on configured depth or repeated delegation state.
+`internal/gcdns/iterative.go` provides the native delegation walker. It starts from an approved root/bootstrap endpoint set, clears the recursion-desired bit on authoritative queries, uses the Beacon scheduler for per-delegation failover, sends queries through the DNSExchanger/ClassicTransport boundary, follows NS referrals, derives cache lifetimes from terminal responses, and stops on configured delegation depth or repeated delegation state.
 
-## Beacon DNSSEC
+Referral processing remains conservative: only advertised in-bailiwick glue is accepted. Out-of-bailiwick nameserver address discovery remains a later resolver milestone.
 
-Beacon carries current root DS trust anchors, authenticates DS-to-DNSKEY transitions, validates DNSKEY RRsets and RRSIGs, and carries authenticated keys through secure iterative delegations. Positive terminal DNS responses are now grouped into RRsets and each RRset must validate with authenticated DNSKEY/RRSIG material before the result may receive `secure` status.
+## Beacon DNSSEC Foundation
 
-Negative responses and unsigned delegations remain `indeterminate` until authenticated NSEC/NSEC3 denial exists. Complete cross-zone CNAME/DNAME validation, wildcard proofs, algorithm policy, and trust-anchor rollover automation remain staged work.
+Beacon carries the current root-zone DS trust-anchor set for KSK-2017 and KSK-2024. The validator supports DS-to-DNSKEY authentication, DNSKEY RRset authentication, RRSIG validity-window and cryptographic verification, secure parent-to-child trust carry, and terminal positive-RRset validation.
+
+Iterative queries explicitly request DNSSEC material with EDNS and the DO bit.
+
+## Beacon NSEC Authenticated Denial
+
+`internal/gcdns/dnssec_nsec.go` adds the first conservative authenticated-denial layer.
+
+Implemented behavior includes:
+
+- signed exact-owner NSEC proof for an intentionally unsigned child delegation;
+- requirement that the delegation proof advertises NS, omits DS, and does not represent an SOA-bearing zone apex;
+- preservation of `DNSSECInsecure` below a proven unsigned delegation;
+- skipping child DNSKEY retrieval after an insecure delegation has been authenticated;
+- signed exact-owner NSEC NODATA validation when the bitmap omits the requested type and CNAME;
+- fail-closed behavior for unsigned, invalid, or unproven denial material.
+
+NXDOMAIN is not yet promoted to secure because correct validation requires closest-encloser and wildcard nonexistence proof. NSEC3 authenticated denial also remains staged work.
 
 ## Security boundary
 
-The native foundation currently enforces source-level invariants for DNSSEC validation, DNS rebinding protection, explicit recursion ACLs, prevention of accidental open recursion, restricted administration, rejection of bogus DNSSEC results before caching, bounded cache and resolver concurrency, defensive transport validation, delegation loop/depth limits, in-bailiwick glue handling, secure DNSSEC trust carry, and fail-closed positive terminal-answer validation.
+The native foundation currently enforces source-level invariants for DNSSEC validation, DNS rebinding protection, explicit recursion and administration ACLs, no accidental open recursion, bogus-result rejection before cache insertion, bounded cache/scheduler/transport behavior, delegation depth and loop protection, in-bailiwick glue acceptance, root trust anchors, DS/DNSKEY authentication, terminal positive RRset validation, conservative NSEC insecure-delegation proof, and exact-owner NSEC NODATA proof.
 
-These checks are development controls, not production acceptance evidence.
+These are development controls, not production acceptance evidence.
 
 ## Production boundary
 
@@ -52,13 +69,10 @@ No production traffic is routed through `internal/gcdns` yet. Existing AdGuard H
 
 ## Next implementation sequence
 
-1. **Implemented foundation:** Native sharded DNS cache.
-2. **Implemented foundation:** Resolver target scheduler.
-3. **Implemented foundation:** Classic UDP/TCP DNS transport.
-4. **Implemented foundation:** Iterative recursion and secure delegation walking.
-5. **Implemented foundation:** DNSSEC root trust, DS/DNSKEY authentication, RRSIG primitives, trust carry, and positive terminal-answer validation.
-6. NSEC/NSEC3 authenticated denial, wildcard proofs, and complete signed alias-chain validation.
-7. Out-of-bailiwick nameserver discovery, QNAME minimization, forward/conditional/stub routing, and split-horizon routing.
-8. Persistent cache, prefetch/auto-prefetch, encrypted DNS, authoritative DNS, DNSSEC signing, catalog zones, secure zone transfers, filtering, DHCP, clustering, APIs, identity, administration, observability, and extensions.
-9. Competitive-superset parity validation against current Technitium DNS Server, Pi-hole, and AdGuard Home stable capabilities.
-10. Controlled production integration and replacement acceptance.
+1. Complete NSEC NXDOMAIN closest-encloser and wildcard denial validation.
+2. Implement NSEC3 authenticated denial for NXDOMAIN, NODATA, and insecure delegations.
+3. Complete signed CNAME/DNAME chain handling and out-of-bailiwick nameserver discovery.
+4. Implement QNAME minimization, forward/conditional/stub routing, and split-horizon routing.
+5. Add persistent cache, prefetch/auto-prefetch, encrypted DNS, authoritative DNS, filtering, DHCP, clustering, APIs, identity, and Glaze UI administration.
+6. Validate the competitive-superset requirement with feature, security, privacy, control, resilience, and operational acceptance matrices.
+7. Perform controlled migration and production replacement only after GoreeCloud release and production-readiness gates pass.
