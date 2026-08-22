@@ -1,10 +1,10 @@
 # Beacon Iterative DNSSEC Validation
 
-GoreeCloud DNS now has a staged validating iterative resolver in `internal/gcdns/iterative_dnssec.go`.
+GoreeCloud DNS has a staged validating iterative resolver in `internal/gcdns/iterative_dnssec.go`.
 
 ## Current trust flow
 
-The validating path performs these steps before a delegation is trusted:
+The validating path performs these steps before a secure positive answer may be returned:
 
 1. Query the root zone for DNSKEY material with DNSSEC signaling enabled.
 2. Authenticate the root DNSKEY RRset against the carried GoreeCloud Beacon root DS trust anchors.
@@ -13,22 +13,23 @@ The validating path performs these steps before a delegation is trusted:
 5. Query the child authority for its DNSKEY RRset.
 6. Authenticate that DNSKEY RRset against the authenticated child DS RRset.
 7. Carry only the resulting authenticated child DNSKEY set into the next delegation step.
+8. For a positive terminal response, group the answer into RRsets and validate each RRset against matching RRSIG material using the authenticated DNSKEY set for the answering zone.
 
-If a delegation cannot establish secure trust, the validating path stops instead of querying the child authority.
+If a delegation cannot establish secure trust, the validating path stops instead of querying the child authority. If a positive terminal RRset cannot establish secure DNSSEC validation, the answer fails closed instead of being labeled secure.
 
 ## Deliberate boundary
 
-The validating iterative resolver does **not** yet classify terminal answers as `secure`. A secure delegation chain proves the authority relationship, but the final answer RRset still requires its own RRSIG validation. Terminal results therefore remain `indeterminate` until answer-RRset validation is integrated.
+Negative and empty-answer responses are not yet classified secure or insecure. Absence of DS, NXDOMAIN, NODATA, wildcard denial, and related proofs require authenticated NSEC/NSEC3 processing before the resolver can distinguish a legitimate unsigned or nonexistent result from an unproven result.
 
-Unsigned delegations also remain unsupported in this path because absence of DS cannot safely establish an insecure delegation until NSEC/NSEC3 authenticated denial is implemented. An unproven delegation therefore fails closed.
+Positive CNAME/DNAME handling currently validates RRsets present in the terminal response, but complete signed alias-chain resolution across additional authority transitions remains a separate milestone.
 
 ## Production status
 
-This code remains isolated from production DNS traffic. Existing production AdGuard Home and Unbound behavior is unchanged. Production cutover requires the remaining DNSSEC work, broader resolver parity, executable testing, migration and rollback procedures, and GoreeCloud production-readiness acceptance.
+This code remains isolated from production DNS traffic. Existing production AdGuard Home and Unbound behavior is unchanged. Production cutover requires remaining DNSSEC work, broader resolver parity, executable testing, migration and rollback procedures, and GoreeCloud production-readiness acceptance.
 
 ## Next DNSSEC stages
 
-- Validate terminal positive-answer RRsets and CNAME/DNAME chains.
+- Complete signed CNAME/DNAME chain validation across zone transitions.
 - Implement NSEC authenticated denial.
 - Implement NSEC3 authenticated denial.
 - Validate wildcard proofs and closest-encloser logic.
