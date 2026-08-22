@@ -26,6 +26,28 @@ required = {
         "RecursionACLs",
         "AdminACLs",
     ),
+    "internal/gcdns/cache.go": (
+        "type MemoryCacheConfig struct",
+        "type MemoryCache struct",
+        "cache shard count must be a positive power of two",
+        "ServeStale bool",
+        "NegativeEntries uint64",
+        "func ageResultTTL",
+        "func isNegativeResponse",
+        "func cloneResult",
+        "func (c *MemoryCache) Stats",
+    ),
+    "internal/gcdns/cache_test.go": (
+        "TestMemoryCachePutGetAndCopyIsolation",
+        "TestMemoryCacheAgesWireTTL",
+        "TestMemoryCacheExpires",
+        "TestMemoryCacheServeStale",
+        "TestMemoryCacheNegativeEntryAccounting",
+        "TestMemoryCachePartitionsClients",
+        "TestMemoryCacheEvictsWithinBound",
+        "TestMemoryCacheConcurrentAccess",
+        "TestMemoryCacheValidation",
+    ),
     "internal/gcdns/pipeline_test.go": (
         "TestPipelineCacheHitSkipsResolver",
         "TestPipelineStoresCacheableResolverResult",
@@ -54,4 +76,4 @@ for rel, markers in required.items():
         if marker not in text:
             raise SystemExit(f"Beacon foundation validation failed: {rel} missing {marker!r}")
 
-print("GoreeCloud Beacon native foundation source contract: PASS")
+print("GoreeCloud Beacon native foundation and cache source contract: PASS")
