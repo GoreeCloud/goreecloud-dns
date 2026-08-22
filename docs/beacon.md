@@ -36,9 +36,19 @@ Response validation requires the DNS response bit, matching transaction ID, matc
 
 Referral processing is deliberately conservative. A glue address is accepted only when it corresponds to an NS name advertised by the referral and that NS name is inside the delegated zone. Out-of-bailiwick Additional-section addresses are ignored. If a referral has no usable in-bailiwick glue, the current foundation fails closed because recursive discovery of out-of-bailiwick NS addresses has not been implemented yet.
 
-Terminal positive answers and authoritative negative responses return to the native pipeline with derived cache TTLs. Negative SOA lifetimes use the lower of SOA TTL and SOA MINIMUM. CNAME/DNAME chasing, out-of-bailiwick NS address discovery, QNAME minimization, lame-delegation handling, EDNS policy, richer retry policy, and DNSSEC trust validation remain future resolver stages.
+Terminal positive answers and authoritative negative responses return to the native pipeline with derived cache TTLs. Negative SOA lifetimes use the lower of SOA TTL and SOA MINIMUM. CNAME/DNAME chasing, out-of-bailiwick NS address discovery, QNAME minimization, lame-delegation handling, EDNS policy, richer retry policy, and complete DNSSEC trust-chain validation remain future resolver stages.
 
-Deterministic source tests cover referral walking, in-bailiwick IPv4/IPv6 glue, out-of-bailiwick rejection, delegation-loop detection, negative SOA cache lifetime derivation, current B-root bootstrap addresses, and configuration validation. These tests are development evidence only until executed by CI or an approved validation environment.
+## Beacon DNSSEC Foundation
+
+`internal/gcdns/dnssec.go` introduces the first native DNSSEC trust primitives. Beacon now carries the current root-zone DS trust-anchor set for KSK-2017 (key tag 20326) and KSK-2024 (key tag 38696), matching the IANA-published rollover set reviewed on 2026-08-22. The October 11, 2026 root KSK signing rollover is therefore represented in source without removing the still-active 2017 anchor prematurely.
+
+The DNSSEC validator can authenticate DNSKEY material against a parent-validated DS RRset using supported SHA-1, SHA-256, or SHA-384 DS digests, and it can validate a uniform RRset against matching DNSKEY/RRSIG material with signature inception/expiration checks and cryptographic verification through `miekg/dns`.
+
+Beacon does not classify a delegation as insecure merely because DS is absent. Missing DS remains `indeterminate` until authenticated denial through NSEC/NSEC3 is implemented. A supported DS/DNSKEY mismatch is `bogus`, and the existing pipeline already refuses `bogus` resolver results before cache insertion.
+
+Iterative queries now explicitly request DNSSEC material by setting EDNS and the DO bit with a minimum 1232-byte UDP size while preserving a larger caller-supplied EDNS size. This makes DS, DNSKEY, and RRSIG data available to later trust-chain integration instead of assuming that authoritative servers will return it unrequested.
+
+Deterministic source tests cover the published root trust-anchor set, KSK-2017-to-DS matching, DS mismatch rejection, missing-DS indeterminate state, RRset validation boundaries, and iterative DNSSEC query signaling. Full root DNSKEY authentication, parent-to-child trust-chain carry, NSEC/NSEC3 authenticated denial, wildcard proof validation, trust-anchor rollover automation, and end-to-end iterative integration remain staged work.
 
 ## Security boundary
 
@@ -54,7 +64,8 @@ The native foundation currently enforces source-level invariants for:
 - bounded resolver scheduler concurrency and explicit per-attempt deadlines;
 - classic DNS response identity/question validation and bounded UDP response sizing;
 - iterative delegation depth limits and delegation-loop rejection;
-- in-bailiwick-only glue acceptance in the initial referral implementation.
+- in-bailiwick-only glue acceptance in the initial referral implementation;
+- explicit DNSSEC trust states, root trust anchors, DS/DNSKEY checks, RRSIG verification primitives, and DO-bit signaling.
 
 These checks are development controls, not production acceptance evidence.
 
@@ -68,7 +79,8 @@ No production traffic is routed through `internal/gcdns` yet. Existing AdGuard H
 2. **Implemented foundation:** Resolver target scheduler with cancellation, timeout, failover, health/latency-aware selection, bounded concurrency, statistics, and deterministic tests.
 3. **Implemented foundation:** Classic DNS UDP/TCP transport with truncation fallback, response validation, deadlines/cancellation, bounded UDP sizing, statistics, and deterministic tests.
 4. **Implemented foundation:** Iterative referral walking with verified root bootstrap targets, scheduler/transport integration, in-bailiwick glue, loop/depth protection, cache-TTL derivation, and deterministic tests.
-5. DNSSEC trust-anchor, DS/DNSKEY, RRSIG, and authenticated-denial validation.
-6. Out-of-bailiwick NS discovery, CNAME/DNAME chasing, QNAME minimization, forward/conditional/stub routing, and split-horizon routing.
-7. Persistent cache, prefetch/auto-prefetch, encrypted DNS, authoritative DNS, filtering, DHCP, clustering, APIs, and administration.
-8. Controlled production integration and replacement acceptance.
+5. **Implemented foundation:** DNSSEC root trust anchors, DS/DNSKEY matching, RRset/RRSIG verification primitives, explicit trust states, DO-bit signaling, and deterministic tests.
+6. DNSSEC trust-chain carry across referrals plus NSEC/NSEC3 authenticated denial and wildcard proof validation.
+7. Out-of-bailiwick NS discovery, CNAME/DNAME chasing, QNAME minimization, forward/conditional/stub routing, and split-horizon routing.
+8. Persistent cache, prefetch/auto-prefetch, encrypted DNS, authoritative DNS, filtering, DHCP, clustering, APIs, and administration.
+9. Controlled production integration and replacement acceptance.
