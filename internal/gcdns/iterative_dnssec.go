@@ -18,8 +18,9 @@ type DNSSECTerminalAuthenticator interface {
 }
 
 // ValidatingIterativeResolver carries authenticated DNSSEC state from the root
-// through each secure delegation and validates positive terminal RRsets when
-// the configured authenticator implements DNSSECTerminalAuthenticator.
+// through each secure delegation. Once a signed parent denial proves a child is
+// intentionally unsigned, the resolver carries DNSSECInsecure for that branch;
+// trust is not silently re-established below an insecure delegation.
 type ValidatingIterativeResolver struct {
 	iterative *IterativeResolver
 	chain     DNSSECChainAuthenticator
@@ -31,36 +32,55 @@ func NewValidatingIterativeResolver(exchanger DNSExchanger, cfg IterativeResolve
 		return nil, errors.New("goreecloud dns: validating iterative resolver requires a DNSSEC chain authenticator")
 	}
 	iterative, err := NewIterativeResolver(exchanger, cfg)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 	terminal, _ := chain.(DNSSECTerminalAuthenticator)
 	return &ValidatingIterativeResolver{iterative: iterative, chain: chain, terminal: terminal}, nil
 }
 
 func (r *ValidatingIterativeResolver) Resolve(ctx context.Context, req *Request) (*Result, error) {
-	if req == nil || req.Message == nil { return nil, errors.New("goreecloud dns: validating iterative resolver request is nil") }
-	if len(req.Message.Question) != 1 { return nil, errors.New("goreecloud dns: validating iterative resolver requires exactly one question") }
+	if req == nil || req.Message == nil {
+		return nil, errors.New("goreecloud dns: validating iterative resolver request is nil")
+	}
+	if len(req.Message.Question) != 1 {
+		return nil, errors.New("goreecloud dns: validating iterative resolver requires exactly one question")
+	}
 
 	rootDNSKEY, err := r.resolveDNSKEY(ctx, ".", r.iterative.rootServers)
-	if err != nil { return nil, fmt.Errorf("goreecloud dns: root DNSKEY acquisition failed: %w", err) }
+	if err != nil {
+		return nil, fmt.Errorf("goreecloud dns: root DNSKEY acquisition failed: %w", err)
+	}
 	parentKeys, status, err := r.chain.AuthenticateDNSKEYResponse(".", rootDNSKEY, RootTrustAnchors())
 	if err != nil || status != DNSSECSecure {
-		if err == nil { err = errors.New("root DNSKEY RRset did not establish secure trust") }
+		if err == nil {
+			err = errors.New("root DNSKEY RRset did not establish secure trust")
+		}
 		return nil, fmt.Errorf("goreecloud dns: root DNSSEC authentication failed: %w", err)
 	}
 
 	servers := append([]string(nil), r.iterative.rootServers...)
 	seenDelegations := map[string]struct{}{}
+	chainSecure := true
 	for depth := 0; depth < r.iterative.maxDepth; depth++ {
 		res, err := r.iterative.resolveAgainst(ctx, req, servers)
-		if err != nil { return nil, err }
+		if err != nil {
+			return nil, err
+		}
 		if terminalDNSResponse(res.Message) {
 			res.CacheTTL = responseCacheTTL(res.Message)
+			if !chainSecure {
+				res.DNSSECStatus = DNSSECInsecure
+				return res, nil
+			}
 			if r.terminal == nil {
 				res.DNSSECStatus = DNSSECIndeterminate
 				return res, nil
 			}
 			status, err := r.terminal.AuthenticateTerminalAnswer(res.Message, parentKeys)
-			if err != nil { return nil, fmt.Errorf("goreecloud dns: terminal DNSSEC authentication failed: %w", err) }
+			if err != nil {
+				return nil, fmt.Errorf("goreecloud dns: terminal DNSSEC authentication failed: %w", err)
+			}
 			res.DNSSECStatus = status
 			if len(res.Message.Answer) > 0 && status != DNSSECSecure {
 				return nil, errors.New("goreecloud dns: positive terminal answer did not establish secure DNSSEC validation")
@@ -69,21 +89,50 @@ func (r *ValidatingIterativeResolver) Resolve(ctx context.Context, req *Request)
 		}
 
 		zone, nextServers, err := referralTargets(res.Message, req.Message.Question[0].Name)
-		if err != nil { return nil, err }
+		if err != nil {
+			return nil, err
+		}
 		key := delegationKey(zone, nextServers)
-		if _, exists := seenDelegations[key]; exists { return nil, fmt.Errorf("goreecloud dns: delegation loop detected at %s", zone) }
+		if _, exists := seenDelegations[key]; exists {
+			return nil, fmt.Errorf("goreecloud dns: delegation loop detected at %s", zone)
+		}
 		seenDelegations[key] = struct{}{}
 
+		if !chainSecure {
+			servers = nextServers
+			continue
+		}
+
 		childDS, status, err := r.chain.AuthenticateDelegationDS(zone, res.Message, parentKeys)
-		if err != nil || status != DNSSECSecure {
-			if err == nil { err = fmt.Errorf("delegation for %s cannot be classified secure without authenticated denial support", dns.Fqdn(zone)) }
+		if err != nil {
 			return nil, fmt.Errorf("goreecloud dns: DNSSEC delegation authentication failed: %w", err)
 		}
+		switch status {
+		case DNSSECInsecure:
+			// The parent proved that this child is intentionally unsigned. DNSSEC
+			// cannot become secure again below this point without another configured
+			// trust anchor, so continue resolution while preserving insecure state.
+			chainSecure = false
+			parentKeys = nil
+			servers = nextServers
+			continue
+		case DNSSECSecure:
+			// Continue below and authenticate the child's DNSKEY RRset.
+		case DNSSECIndeterminate:
+			return nil, fmt.Errorf("goreecloud dns: DNSSEC delegation authentication failed: delegation for %s lacks authenticated DS or denial proof", dns.Fqdn(zone))
+		default:
+			return nil, fmt.Errorf("goreecloud dns: DNSSEC delegation authentication failed: delegation for %s is %s", dns.Fqdn(zone), status)
+		}
+
 		childDNSKEY, err := r.resolveDNSKEY(ctx, zone, nextServers)
-		if err != nil { return nil, fmt.Errorf("goreecloud dns: DNSKEY acquisition for %s failed: %w", dns.Fqdn(zone), err) }
+		if err != nil {
+			return nil, fmt.Errorf("goreecloud dns: DNSKEY acquisition for %s failed: %w", dns.Fqdn(zone), err)
+		}
 		childKeys, status, err := r.chain.AuthenticateDNSKEYResponse(zone, childDNSKEY, childDS)
 		if err != nil || status != DNSSECSecure {
-			if err == nil { err = fmt.Errorf("DNSKEY RRset for %s did not establish secure trust", dns.Fqdn(zone)) }
+			if err == nil {
+				err = fmt.Errorf("DNSKEY RRset for %s did not establish secure trust", dns.Fqdn(zone))
+			}
 			return nil, fmt.Errorf("goreecloud dns: child DNSSEC authentication failed: %w", err)
 		}
 		parentKeys = childKeys
@@ -97,8 +146,12 @@ func (r *ValidatingIterativeResolver) resolveDNSKEY(ctx context.Context, zone st
 	msg.SetQuestion(dns.Fqdn(zone), dns.TypeDNSKEY)
 	req := &Request{Message: msg, Transport: TransportDNS}
 	res, err := r.iterative.resolveAgainst(ctx, req, servers)
-	if err != nil { return nil, err }
-	if res == nil || res.Message == nil { return nil, errors.New("goreecloud dns: DNSKEY query returned no DNS message") }
+	if err != nil {
+		return nil, err
+	}
+	if res == nil || res.Message == nil {
+		return nil, errors.New("goreecloud dns: DNSKEY query returned no DNS message")
+	}
 	return res.Message, nil
 }
 
