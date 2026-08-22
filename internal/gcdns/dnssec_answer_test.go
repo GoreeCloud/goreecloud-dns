@@ -17,13 +17,25 @@ func TestAuthenticateTerminalAnswerNegativeRemainsIndeterminate(t *testing.T) {
 	require.Equal(t, DNSSECIndeterminate, status)
 }
 
+func TestAuthenticateTerminalAnswerEmptyNoErrorWithoutProofIsIndeterminate(t *testing.T) {
+	v := NewDNSSECValidator(time.Now)
+	msg := new(dns.Msg)
+	msg.SetQuestion("example.test.", dns.TypeAAAA)
+	msg.Rcode = dns.RcodeSuccess
+	status, err := v.AuthenticateTerminalAnswer(msg, []*dns.DNSKEY{rootKSK2017()})
+	require.NoError(t, err)
+	require.Equal(t, DNSSECIndeterminate, status)
+}
+
 func TestAuthenticateTerminalAnswerRequiresKeys(t *testing.T) {
 	v := NewDNSSECValidator(time.Now)
 	msg := new(dns.Msg)
 	msg.Answer = []dns.RR{&dns.A{Hdr: dns.RR_Header{Name: "example.test.", Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: 60}}}
+	key := &dns.DNSKEY{Hdr: dns.RR_Header{Name: "example.test.", Rrtype: dns.TypeDNSKEY, Class: dns.ClassINET}, Flags: 257, Protocol: 3, Algorithm: dns.RSASHA256}
 	status, err := v.AuthenticateTerminalAnswer(msg, nil)
 	require.Error(t, err)
 	require.Equal(t, DNSSECBogus, status)
+	_ = key
 }
 
 func TestAuthenticateTerminalAnswerUnsignedPositiveIsBogus(t *testing.T) {
