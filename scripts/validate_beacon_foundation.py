@@ -12,6 +12,9 @@ required = {
     "internal/gcdns/scheduler_test.go": ("TestTargetSchedulerFailsOver", "TestTargetSchedulerHonorsAttemptTimeout", "TestTargetSchedulerPrefersSuccessfulTarget", "TestTargetSchedulerPropagatesCallerCancellation", "TestTargetSchedulerValidatesConfiguration"),
     "internal/gcdns/transport.go": ("type ClassicTransportConfig struct", "type ClassicTransport struct", "UDPSize: cfg.MaxResponseSize", "if !udpReply.Truncated", "t.tcpFallbacks.Add(1)", "validateDNSReply", "DNS response ID mismatch", "DNS response question mismatch", "func (t *ClassicTransport) Stats"),
     "internal/gcdns/transport_test.go": ("TestValidateDNSReply", "TestClassicTransportUDP", "TestClassicTransportTCPFallback", "TestClassicTransportValidation"),
+    "internal/gcdns/root_hints.go": ("func DefaultRootServers", "170.247.170.2:53", "[2801:1b8:10::b]:53", "202.12.27.33:53"),
+    "internal/gcdns/iterative.go": ("type DNSExchanger interface", "type IterativeResolver struct", "RecursionDesired = false", "referralTargets", "dns.IsSubDomain(zone, name)", "delegation loop detected", "responseCacheTTL", "var _ Resolver = (*IterativeResolver)(nil)"),
+    "internal/gcdns/iterative_test.go": ("TestIterativeResolverFollowsReferral", "TestReferralTargetsAcceptInBailiwickGlue", "TestReferralTargetsRejectOutOfBailiwickGlue", "TestIterativeResolverDetectsDelegationLoop", "TestResponseCacheTTLNegativeSOA", "TestDefaultRootServersContainCurrentBRoot", "TestIterativeResolverValidation"),
     "internal/gcdns/pipeline_test.go": ("TestPipelineCacheHitSkipsResolver", "TestPipelineStoresCacheableResolverResult", "TestPipelineRejectsBogusDNSSECBeforeCache", "TestPipelinePolicyShortCircuits"),
     "internal/gcdns/config_test.go": ("TestSecurityConfigValid", "TestSecurityConfigRequiresDNSSEC", "TestSecurityConfigRejectsUnrestrictedRecursionByDefault", "TestSecurityConfigRejectsUnrestrictedAdministration"),
     "docs/beacon.md": ("GoreeCloud Beacon", "internal/gcdns", "Existing AdGuard Home and Unbound runtime behavior remains unchanged"),
@@ -19,9 +22,11 @@ required = {
 
 for rel, markers in required.items():
     path = ROOT / rel
-    if not path.is_file(): raise SystemExit(f"Beacon foundation validation failed: missing {rel}")
+    if not path.is_file():
+        raise SystemExit(f"Beacon foundation validation failed: missing {rel}")
     text = path.read_text(encoding="utf-8")
     for marker in markers:
-        if marker not in text: raise SystemExit(f"Beacon foundation validation failed: {rel} missing {marker!r}")
+        if marker not in text:
+            raise SystemExit(f"Beacon foundation validation failed: {rel} missing {marker!r}")
 
-print("GoreeCloud Beacon native foundation, cache, scheduler, and classic DNS transport source contract: PASS")
+print("GoreeCloud Beacon cache, scheduler, classic transport, and iterative resolver source contract: PASS")
