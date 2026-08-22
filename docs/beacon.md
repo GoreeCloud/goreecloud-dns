@@ -16,19 +16,19 @@ The contracts are designed so first-party caching, recursive resolution, forward
 
 ## Beacon Cache
 
-`internal/gcdns/cache.go` provides a sharded, concurrency-safe in-memory DNS cache with bounded per-shard capacity, TTL expiration and wire-TTL aging, negative-response accounting, optional bounded serve-stale behavior, defensive DNS message copies, client-aware cache partitioning, serialized whole-cache flushes, and privacy-safe runtime statistics.
-
-The cache intentionally accepts only caller-supplied positive cache lifetimes. Resolver and authoritative layers remain responsible for deriving standards-compliant positive and negative TTLs before insertion. Serve-stale returns zero-TTL DNS records so downstream clients are not encouraged to extend stale data further.
+`internal/gcdns/cache.go` provides a sharded, concurrency-safe bounded in-memory DNS cache with TTL expiration and wire-TTL aging, negative-response accounting, optional bounded serve-stale behavior, defensive DNS message copies, client-aware cache partitioning, serialized whole-cache flushes, and privacy-safe runtime statistics.
 
 ## Beacon Resolver Scheduler
 
-`internal/gcdns/scheduler.go` is the next GoreeCloud-owned resolver subsystem. It implements named resolver targets, bounded scheduler concurrency, per-attempt context deadlines, caller cancellation, deterministic failover, health-aware target ordering, latency-aware ordering, and privacy-safe target statistics.
+`internal/gcdns/scheduler.go` implements named resolver targets, bounded scheduler concurrency, per-attempt context deadlines, caller cancellation, deterministic failover, health-aware target ordering, latency-aware ordering, and privacy-safe target statistics. A failed target does not terminate resolution while another configured target remains available.
 
-A target that fails does not terminate resolution while another configured target remains available. Successful targets gain preference based on observed success rate and average latency. Scheduler statistics retain target names and operational health counters but never query names, client identifiers, or DNS payloads.
+## Beacon Classic DNS Transport
 
-The scheduler implements the native `Resolver` interface, so it can be inserted behind the Beacon pipeline without changing the pipeline contract. It remains isolated from production request handling.
+`internal/gcdns/transport.go` adds the first native wire transport for classic DNS. It performs UDP exchanges with an explicit EDNS-compatible response-size ceiling, retries valid truncated UDP responses over TCP, propagates caller cancellation, applies per-exchange deadlines, and rejects malformed or mismatched responses before they reach resolver logic.
 
-Deterministic source tests cover cache behavior plus resolver failover, timeout enforcement, health preference, caller cancellation, and scheduler configuration validation. These tests are development evidence only until executed by CI or an approved validation environment.
+Response validation requires the DNS response bit, matching transaction ID, matching opcode, matching question count, and canonical-name/type/class equivalence for every echoed question. A TCP response that remains truncated is rejected. Transport statistics expose only operational counters for exchanges, UDP successes, TCP fallbacks, TCP successes, failures, and timeouts; they do not retain query names, client identifiers, or DNS payloads.
+
+Deterministic source tests cover response validation, successful UDP exchange, UDP-to-TCP truncation fallback, and configuration/input validation. These tests are development evidence only until executed by CI or an approved validation environment.
 
 ## Security boundary
 
@@ -41,7 +41,8 @@ The native foundation currently enforces source-level invariants for:
 - no unrestricted administrative ACL;
 - DNSSEC `bogus` results rejected before cache insertion;
 - bounded, sharded cache configuration with explicit stale-serving limits;
-- bounded resolver scheduler concurrency and explicit per-attempt deadlines.
+- bounded resolver scheduler concurrency and explicit per-attempt deadlines;
+- classic DNS response identity/question validation and bounded UDP response sizing.
 
 These checks are development controls, not production acceptance evidence.
 
@@ -53,7 +54,7 @@ No production traffic is routed through `internal/gcdns` yet. Existing AdGuard H
 
 1. **Implemented foundation:** Native sharded DNS cache with TTL aging, negative caching, serve-stale, statistics, bounded capacity, and deterministic tests.
 2. **Implemented foundation:** Resolver target scheduler with cancellation, timeout, failover, health/latency-aware selection, bounded concurrency, statistics, and deterministic tests.
-3. UDP/TCP transport with truncation fallback and defensive response validation.
+3. **Implemented foundation:** Classic DNS UDP/TCP transport with truncation fallback, response validation, deadlines/cancellation, bounded UDP sizing, statistics, and deterministic tests.
 4. Iterative recursion and delegation walking.
 5. DNSSEC trust-anchor, DS/DNSKEY, RRSIG, and authenticated-denial validation.
 6. Forward, conditional, stub, and split-horizon routing.
