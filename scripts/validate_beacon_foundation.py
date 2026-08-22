@@ -18,13 +18,16 @@ required = {
     "internal/gcdns/dnssec.go": ("func RootTrustAnchors", "20326", "38696", "type DNSSECValidator struct", "func (v *DNSSECValidator) MatchDS", "key.ToDS", "func (v *DNSSECValidator) ValidateRRSet", "sig.Verify", "DNSSECSecure", "DNSSECBogus"),
     "internal/gcdns/dnssec_chain.go": ("func (v *DNSSECValidator) TrustedKeysForDS", "func (v *DNSSECValidator) AuthenticateDNSKEYResponse", "func (v *DNSSECValidator) AuthenticateDelegationDS", "DNSKEY RRset", "missing RRSIG", "DNSSECIndeterminate"),
     "internal/gcdns/dnssec_chain_test.go": ("TestTrustedKeysForDSReturnsOnlyAuthenticatedKeys", "TestTrustedKeysForDSRejectsMismatch", "TestAuthenticateDNSKEYResponseRequiresSignedRRSet", "TestAuthenticateDelegationDSRequiresParentSignature", "TestAuthenticateDelegationDSMissingDSRemainsIndeterminate", "TestDNSKEYMaterialFiltersZoneAndType"),
-    "internal/gcdns/iterative_dnssec.go": ("type DNSSECChainAuthenticator interface", "type ValidatingIterativeResolver struct", "AuthenticateDNSKEYResponse", "AuthenticateDelegationDS", "root DNSSEC authentication failed", "cannot be classified secure without authenticated denial support", "DNSSECStatus = DNSSECIndeterminate", "var _ Resolver = (*ValidatingIterativeResolver)(nil)"),
+    "internal/gcdns/dnssec_answer.go": ("func (v *DNSSECValidator) AuthenticateTerminalAnswer", "len(msg.Answer) == 0", "terminal DNSSEC validation requires authenticated DNSKEYs", "v.ValidateRRSet", "return DNSSECSecure, nil"),
+    "internal/gcdns/dnssec_answer_test.go": ("TestAuthenticateTerminalAnswerNegativeRemainsIndeterminate", "TestAuthenticateTerminalAnswerRequiresKeys", "TestAuthenticateTerminalAnswerUnsignedPositiveIsBogus", "TestAuthenticateTerminalAnswerNilResponseIsBogus"),
+    "internal/gcdns/iterative_dnssec.go": ("type DNSSECChainAuthenticator interface", "type DNSSECTerminalAuthenticator interface", "type ValidatingIterativeResolver struct", "AuthenticateDNSKEYResponse", "AuthenticateDelegationDS", "AuthenticateTerminalAnswer", "terminal DNSSEC authentication failed", "positive terminal answer did not establish secure DNSSEC validation", "var _ Resolver = (*ValidatingIterativeResolver)(nil)"),
     "internal/gcdns/iterative_dnssec_test.go": ("TestValidatingIterativeResolverCarriesSecureDelegationTrust", "TestValidatingIterativeResolverFailsClosedOnUnprovenDelegation", "TestValidatingIterativeResolverRequiresAuthenticator", "child server must not be queried after an unproven delegation"),
     "internal/gcdns/dnssec_test.go": ("TestRootTrustAnchors", "TestDNSSECValidatorMatchesRootKSK2017", "TestDNSSECValidatorRejectsDSMismatch", "TestDNSSECValidatorNoDSIsIndeterminate", "TestDNSSECValidatorRRSetWithoutMaterialIsIndeterminate", "TestDNSSECValidatorRejectsNonUniformRRSet"),
     "internal/gcdns/dnssec_query_test.go": ("TestRequestDNSSECMaterialAddsEDNSDO", "TestRequestDNSSECMaterialPreservesLargerUDPSize"),
     "internal/gcdns/pipeline_test.go": ("TestPipelineCacheHitSkipsResolver", "TestPipelineStoresCacheableResolverResult", "TestPipelineRejectsBogusDNSSECBeforeCache", "TestPipelinePolicyShortCircuits"),
     "internal/gcdns/config_test.go": ("TestSecurityConfigValid", "TestSecurityConfigRequiresDNSSEC", "TestSecurityConfigRejectsUnrestrictedRecursionByDefault", "TestSecurityConfigRejectsUnrestrictedAdministration"),
     "docs/beacon.md": ("GoreeCloud Beacon", "internal/gcdns", "Existing AdGuard Home and Unbound runtime behavior remains unchanged"),
+    "docs/competitive-superset-requirement.md": ("Technitium DNS Server, Pi-hole, and AdGuard Home", "Security", "Privacy", "Control", "Reliability and performance", "Current implementation boundary"),
 }
 
 for rel, markers in required.items():
@@ -36,4 +39,4 @@ for rel, markers in required.items():
         if marker not in text:
             raise SystemExit(f"Beacon foundation validation failed: {rel} missing {marker!r}")
 
-print("GoreeCloud Beacon cache, scheduler, transport, iterative resolver, DNSSEC primitives, trust-chain helpers, and iterative trust carry source contract: PASS")
+print("GoreeCloud Beacon cache, scheduler, transport, iterative resolver, DNSSEC trust carry, terminal validation, and competitive-superset source contract: PASS")
