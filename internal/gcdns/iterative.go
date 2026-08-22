@@ -1,0 +1,236 @@
+package gcdns
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"net"
+	"sort"
+	"strings"
+	"time"
+
+	"github.com/miekg/dns"
+)
+
+// DNSExchanger is the transport boundary used by the iterative resolver.
+type DNSExchanger interface {
+	Exchange(ctx context.Context, server string, msg *dns.Msg) (*dns.Msg, error)
+}
+
+// IterativeResolverConfig controls bounded native delegation walking.
+type IterativeResolverConfig struct {
+	RootServers    []string
+	MaxDepth       int
+	AttemptTimeout time.Duration
+	MaxConcurrent  int
+}
+
+// IterativeResolver performs non-recursive delegation walking using Beacon's
+// native scheduler and transport boundaries.
+type IterativeResolver struct {
+	exchanger       DNSExchanger
+	rootServers     []string
+	maxDepth        int
+	attemptTimeout  time.Duration
+	maxConcurrent   int
+}
+
+func NewIterativeResolver(exchanger DNSExchanger, cfg IterativeResolverConfig) (*IterativeResolver, error) {
+	if exchanger == nil {
+		return nil, errors.New("goreecloud dns: iterative resolver requires a DNS exchanger")
+	}
+	if len(cfg.RootServers) == 0 {
+		cfg.RootServers = DefaultRootServers()
+	}
+	if cfg.MaxDepth <= 0 {
+		return nil, errors.New("goreecloud dns: iterative resolver max depth must be positive")
+	}
+	if cfg.AttemptTimeout <= 0 {
+		return nil, errors.New("goreecloud dns: iterative resolver attempt timeout must be positive")
+	}
+	if cfg.MaxConcurrent <= 0 {
+		return nil, errors.New("goreecloud dns: iterative resolver max concurrency must be positive")
+	}
+	return &IterativeResolver{
+		exchanger: exchanger,
+		rootServers: append([]string(nil), cfg.RootServers...),
+		maxDepth: cfg.MaxDepth,
+		attemptTimeout: cfg.AttemptTimeout,
+		maxConcurrent: cfg.MaxConcurrent,
+	}, nil
+}
+
+func (r *IterativeResolver) Resolve(ctx context.Context, req *Request) (*Result, error) {
+	if req == nil || req.Message == nil {
+		return nil, errors.New("goreecloud dns: iterative resolver request is nil")
+	}
+	if len(req.Message.Question) != 1 {
+		return nil, errors.New("goreecloud dns: iterative resolver requires exactly one question")
+	}
+
+	servers := append([]string(nil), r.rootServers...)
+	seenDelegations := map[string]struct{}{}
+	for depth := 0; depth < r.maxDepth; depth++ {
+		res, err := r.resolveAgainst(ctx, req, servers)
+		if err != nil {
+			return nil, err
+		}
+		if terminalDNSResponse(res.Message) {
+			res.CacheTTL = responseCacheTTL(res.Message)
+			return res, nil
+		}
+
+		zone, nextServers, err := referralTargets(res.Message, req.Message.Question[0].Name)
+		if err != nil {
+			return nil, err
+		}
+		key := delegationKey(zone, nextServers)
+		if _, exists := seenDelegations[key]; exists {
+			return nil, fmt.Errorf("goreecloud dns: delegation loop detected at %s", zone)
+		}
+		seenDelegations[key] = struct{}{}
+		servers = nextServers
+	}
+	return nil, errors.New("goreecloud dns: iterative resolver delegation depth exceeded")
+}
+
+func (r *IterativeResolver) resolveAgainst(ctx context.Context, req *Request, servers []string) (*Result, error) {
+	targets := make([]ResolverTarget, 0, len(servers))
+	for _, server := range servers {
+		targets = append(targets, ResolverTarget{Name: server, Resolver: &exchangeResolver{server: server, exchanger: r.exchanger}})
+	}
+	scheduler, err := NewTargetScheduler(targets, SchedulerConfig{AttemptTimeout: r.attemptTimeout, MaxConcurrent: r.maxConcurrent})
+	if err != nil {
+		return nil, err
+	}
+	return scheduler.Resolve(ctx, req)
+}
+
+type exchangeResolver struct {
+	server    string
+	exchanger DNSExchanger
+}
+
+func (r *exchangeResolver) Resolve(ctx context.Context, req *Request) (*Result, error) {
+	query := req.Message.Copy()
+	query.RecursionDesired = false
+	msg, err := r.exchanger.Exchange(ctx, r.server, query)
+	if err != nil {
+		return nil, err
+	}
+	return &Result{Message: msg, Source: r.server, DNSSECStatus: DNSSECIndeterminate}, nil
+}
+
+func terminalDNSResponse(msg *dns.Msg) bool {
+	if msg == nil {
+		return false
+	}
+	if msg.Rcode != dns.RcodeSuccess {
+		return true
+	}
+	if len(msg.Answer) > 0 {
+		return true
+	}
+	if msg.Authoritative {
+		return true
+	}
+	for _, rr := range msg.Ns {
+		if _, ok := rr.(*dns.SOA); ok {
+			return true
+		}
+	}
+	return false
+}
+
+func referralTargets(msg *dns.Msg, qname string) (string, []string, error) {
+	if msg == nil {
+		return "", nil, errors.New("goreecloud dns: nil referral response")
+	}
+	var zone string
+	nsHosts := map[string]struct{}{}
+	for _, rr := range msg.Ns {
+		ns, ok := rr.(*dns.NS)
+		if !ok {
+			continue
+		}
+		owner := dns.Fqdn(ns.Hdr.Name)
+		if !dns.IsSubDomain(owner, dns.Fqdn(qname)) {
+			continue
+		}
+		if zone == "" {
+			zone = owner
+		} else if !equalName(zone, owner) {
+			return "", nil, errors.New("goreecloud dns: mixed referral zones are not accepted")
+		}
+		nsHosts[strings.ToLower(dns.Fqdn(ns.Ns))] = struct{}{}
+	}
+	if zone == "" || len(nsHosts) == 0 {
+		return "", nil, errors.New("goreecloud dns: response does not contain a usable referral")
+	}
+
+	serverSet := map[string]struct{}{}
+	for _, rr := range msg.Extra {
+		name := strings.ToLower(dns.Fqdn(rr.Header().Name))
+		if _, advertised := nsHosts[name]; !advertised {
+			continue
+		}
+		if !dns.IsSubDomain(zone, name) {
+			continue
+		}
+		switch v := rr.(type) {
+		case *dns.A:
+			serverSet[net.JoinHostPort(v.A.String(), "53")] = struct{}{}
+		case *dns.AAAA:
+			serverSet[net.JoinHostPort(v.AAAA.String(), "53")] = struct{}{}
+		}
+	}
+	if len(serverSet) == 0 {
+		return "", nil, fmt.Errorf("goreecloud dns: referral for %s has no usable in-bailiwick glue", zone)
+	}
+	servers := make([]string, 0, len(serverSet))
+	for server := range serverSet {
+		servers = append(servers, server)
+	}
+	sort.Strings(servers)
+	return zone, servers, nil
+}
+
+func delegationKey(zone string, servers []string) string {
+	copyServers := append([]string(nil), servers...)
+	sort.Strings(copyServers)
+	return strings.ToLower(dns.Fqdn(zone)) + "|" + strings.Join(copyServers, ",")
+}
+
+func responseCacheTTL(msg *dns.Msg) time.Duration {
+	if msg == nil {
+		return 0
+	}
+	var ttl uint32
+	set := false
+	consider := func(v uint32) {
+		if !set || v < ttl {
+			ttl = v
+			set = true
+		}
+	}
+	for _, rr := range msg.Answer {
+		consider(rr.Header().Ttl)
+	}
+	if len(msg.Answer) == 0 {
+		for _, rr := range msg.Ns {
+			if soa, ok := rr.(*dns.SOA); ok {
+				negative := soa.Hdr.Ttl
+				if soa.Minttl < negative {
+					negative = soa.Minttl
+				}
+				consider(negative)
+			}
+		}
+	}
+	if !set {
+		return 0
+	}
+	return time.Duration(ttl) * time.Second
+}
+
+var _ Resolver = (*IterativeResolver)(nil)
