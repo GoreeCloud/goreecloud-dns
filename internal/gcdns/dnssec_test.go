@@ -8,6 +8,16 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func rootKSK2017() *dns.DNSKEY {
+	return &dns.DNSKEY{
+		Hdr:       dns.RR_Header{Name: ".", Rrtype: dns.TypeDNSKEY, Class: dns.ClassINET, Ttl: 172800},
+		Flags:     257,
+		Protocol:  3,
+		Algorithm: dns.RSASHA256,
+		PublicKey: "AwEAAaz/tAm8yTn4Mfeh5eyI96WSVexTBAvkMgJzkKTOiW1vkIbzxeF3+/4RgWOq7HrxRixHlFlExOLAJr5emLvN7SWXgnLh4+B5xQlNVz8Og8kvArMtNROxVQuCaSnIDdD5LKyWbRd2n9WGe2R8PzgCmr3EgVLrjyBxWezF0jLHwVN8efS3rCj/EWgvIWgb9tarpVUDK/b58Da+sqqls3eNbuv7pr+eoZG+SrDK6nWeL3c6H5Apxz7LjVc1uTIdsIXxuOLYA4/ilBmSVIzuDWfdRUfhHdY6+cn8HFRm+2hM8AnXGXws9555KrUB5qihylGa8subX2Nn6UwNR1AkUTV74bU=",
+	}
+}
+
 func TestRootTrustAnchors(t *testing.T) {
 	anchors := RootTrustAnchors()
 	require.Len(t, anchors, 2)
@@ -18,15 +28,8 @@ func TestRootTrustAnchors(t *testing.T) {
 }
 
 func TestDNSSECValidatorMatchesRootKSK2017(t *testing.T) {
-	key := &dns.DNSKEY{
-		Hdr:       dns.RR_Header{Name: ".", Rrtype: dns.TypeDNSKEY, Class: dns.ClassINET, Ttl: 172800},
-		Flags:     257,
-		Protocol:  3,
-		Algorithm: dns.RSASHA256,
-		PublicKey: "AwEAAaz/tAm8yTn4Mfeh5eyI96WSVexTBAvkMgJzkKTOiW1vkIbzxeF3+/4RgWOq7HrxRixHlFlExOLAJr5emLvN7SWXgnLh4+B5xQlNVz8Og8kvArMtNROxVQuCaSnIDdD5LKyWbRd2n9WGe2R8PzgCmr3EgVLrjyBxWezF0jLHwVN8efS3rCj/EWgvIWgb9tarpVUDK/b58Da+sqqls3eNbuv7pr+eoZG+SrDK6nWeL3c6H5Apxz7LjVc1uTIdsIXxuOLYA4/ilBmSVIzuDWfdRUfhHdY6+cn8HFRm+2hM8AnXGXws9555KrUB5qihylGa8subX2Nn6UwNR1AkUTV74bU=",
-	}
 	validator := NewDNSSECValidator(nil)
-	status, err := validator.MatchDS(".", RootTrustAnchors(), []*dns.DNSKEY{key})
+	status, err := validator.MatchDS(".", RootTrustAnchors(), []*dns.DNSKEY{rootKSK2017()})
 	require.NoError(t, err)
 	require.Equal(t, DNSSECSecure, status)
 }
@@ -35,9 +38,8 @@ func TestDNSSECValidatorRejectsDSMismatch(t *testing.T) {
 	anchors := RootTrustAnchors()
 	bad := *anchors[0]
 	bad.Digest = "00" + bad.Digest[2:]
-	key := &dns.DNSKEY{Hdr: dns.RR_Header{Name: ".", Rrtype: dns.TypeDNSKEY, Class: dns.ClassINET}, Flags: 257, Protocol: 3, Algorithm: dns.RSASHA256, PublicKey: "AwEAAQ=="}
 	validator := NewDNSSECValidator(nil)
-	status, err := validator.MatchDS(".", []*dns.DS{&bad}, []*dns.DNSKEY{key})
+	status, err := validator.MatchDS(".", []*dns.DS{&bad}, []*dns.DNSKEY{rootKSK2017()})
 	require.Error(t, err)
 	require.Equal(t, DNSSECBogus, status)
 }
