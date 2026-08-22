@@ -18,6 +18,8 @@ required = {
     "internal/gcdns/dnssec.go": ("func RootTrustAnchors", "20326", "38696", "type DNSSECValidator struct", "func (v *DNSSECValidator) MatchDS", "key.ToDS", "func (v *DNSSECValidator) ValidateRRSet", "sig.Verify", "DNSSECSecure", "DNSSECBogus"),
     "internal/gcdns/dnssec_chain.go": ("func (v *DNSSECValidator) TrustedKeysForDS", "func (v *DNSSECValidator) AuthenticateDNSKEYResponse", "func (v *DNSSECValidator) AuthenticateDelegationDS", "DNSKEY RRset", "missing RRSIG", "DNSSECIndeterminate"),
     "internal/gcdns/dnssec_chain_test.go": ("TestTrustedKeysForDSReturnsOnlyAuthenticatedKeys", "TestTrustedKeysForDSRejectsMismatch", "TestAuthenticateDNSKEYResponseRequiresSignedRRSet", "TestAuthenticateDelegationDSRequiresParentSignature", "TestAuthenticateDelegationDSMissingDSRemainsIndeterminate", "TestDNSKEYMaterialFiltersZoneAndType"),
+    "internal/gcdns/iterative_dnssec.go": ("type DNSSECChainAuthenticator interface", "type ValidatingIterativeResolver struct", "AuthenticateDNSKEYResponse", "AuthenticateDelegationDS", "root DNSSEC authentication failed", "cannot be classified secure without authenticated denial support", "DNSSECStatus = DNSSECIndeterminate", "var _ Resolver = (*ValidatingIterativeResolver)(nil)"),
+    "internal/gcdns/iterative_dnssec_test.go": ("TestValidatingIterativeResolverCarriesSecureDelegationTrust", "TestValidatingIterativeResolverFailsClosedOnUnprovenDelegation", "TestValidatingIterativeResolverRequiresAuthenticator", "child server must not be queried after an unproven delegation"),
     "internal/gcdns/dnssec_test.go": ("TestRootTrustAnchors", "TestDNSSECValidatorMatchesRootKSK2017", "TestDNSSECValidatorRejectsDSMismatch", "TestDNSSECValidatorNoDSIsIndeterminate", "TestDNSSECValidatorRRSetWithoutMaterialIsIndeterminate", "TestDNSSECValidatorRejectsNonUniformRRSet"),
     "internal/gcdns/dnssec_query_test.go": ("TestRequestDNSSECMaterialAddsEDNSDO", "TestRequestDNSSECMaterialPreservesLargerUDPSize"),
     "internal/gcdns/pipeline_test.go": ("TestPipelineCacheHitSkipsResolver", "TestPipelineStoresCacheableResolverResult", "TestPipelineRejectsBogusDNSSECBeforeCache", "TestPipelinePolicyShortCircuits"),
@@ -34,4 +36,4 @@ for rel, markers in required.items():
         if marker not in text:
             raise SystemExit(f"Beacon foundation validation failed: {rel} missing {marker!r}")
 
-print("GoreeCloud Beacon cache, scheduler, transport, iterative resolver, DNSSEC primitives, and trust-chain source contract: PASS")
+print("GoreeCloud Beacon cache, scheduler, transport, iterative resolver, DNSSEC primitives, trust-chain helpers, and iterative trust carry source contract: PASS")
