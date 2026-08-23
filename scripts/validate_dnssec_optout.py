@@ -11,7 +11,7 @@ required = {
         "nextCloserName",
         "coveringNSEC3",
         "lacks required opt-out flag on next-closer coverage",
-        "NSEC3 opt-out is not valid for this authenticated-denial path",
+        "NSEC3 opt-out denial is not yet supported for this authenticated-denial path",
         "return DNSSECInsecure, nil",
     ),
     "internal/gcdns/dnssec_nsec3_test.go": (
@@ -29,6 +29,7 @@ required = {
     "internal/gcdns/dnssec_chain_test.go": (
         "TestAuthenticateDelegationDSAcceptsNSEC3OptOutInsecureProof",
         "TestAuthenticateDelegationDSNSEC3OptOutMissingReferralRemainsIndeterminate",
+        "TestAuthenticateDelegationDSNSEC3OptOutFailsClosed",
     ),
     "docs/iterative-dnssec-validation.md": (
         "Scoped NSEC3 Opt-Out",
