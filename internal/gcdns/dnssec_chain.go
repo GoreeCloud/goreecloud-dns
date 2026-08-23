@@ -84,9 +84,9 @@ func (v *DNSSECValidator) AuthenticateDNSKEYResponse(zone string, msg *dns.Msg, 
 
 // AuthenticateDelegationDS validates the child's DS RRset using the currently
 // authenticated parent-zone DNSKEYs. If DS is absent, Beacon accepts an
-// insecure delegation only when signed parent NSEC or non-opt-out NSEC3 proof
-// establishes that the child is a delegation and DS is absent. Unproven or
-// unsupported denial remains indeterminate.
+// insecure delegation only when signed parent NSEC, exact matching NSEC3, or a
+// narrowly scoped RFC 5155 Opt-Out closest-provable-encloser proof authenticates
+// the transition. Unsupported or incomplete denial remains indeterminate.
 func (v *DNSSECValidator) AuthenticateDelegationDS(childZone string, msg *dns.Msg, parentKeys []*dns.DNSKEY) ([]*dns.DS, DNSSECStatus, error) {
 	dsRecords, sigs := delegationDSMaterial(msg, childZone)
 	if len(dsRecords) == 0 {
