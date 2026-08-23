@@ -9,9 +9,9 @@ import (
 
 // AuthenticateTerminalAnswer validates every positive answer RRset present in
 // msg using DNSKEYs already authenticated for the answering zone. Empty NOERROR
-// answers may be authenticated as exact-owner NSEC NODATA. Empty NXDOMAIN
-// answers may be authenticated with a conservative closest-encloser,
-// next-closer, and wildcard NSEC proof set. NSEC3 remains a separate stage.
+// answers may be authenticated as exact-owner NSEC or NSEC3 NODATA. Empty
+// NXDOMAIN answers may be authenticated with conservative NSEC or NSEC3
+// closest-encloser, next-closer, and wildcard denial proofs.
 func (v *DNSSECValidator) AuthenticateTerminalAnswer(msg *dns.Msg, keys []*dns.DNSKEY) (DNSSECStatus, error) {
 	if msg == nil {
 		return DNSSECBogus, errors.New("goreecloud dns: terminal DNSSEC response is nil")
@@ -21,9 +21,17 @@ func (v *DNSSECValidator) AuthenticateTerminalAnswer(msg *dns.Msg, keys []*dns.D
 			q := msg.Question[0]
 			switch msg.Rcode {
 			case dns.RcodeSuccess:
-				return v.AuthenticateNSECNODATA(msg, q.Name, q.Qtype, keys)
+				status, err := v.AuthenticateNSECNODATA(msg, q.Name, q.Qtype, keys)
+				if err != nil || status != DNSSECIndeterminate {
+					return status, err
+				}
+				return v.AuthenticateNSEC3NODATA(msg, q.Name, q.Qtype, keys)
 			case dns.RcodeNameError:
-				return v.AuthenticateNSECNXDOMAIN(msg, q.Name, keys)
+				status, err := v.AuthenticateNSECNXDOMAIN(msg, q.Name, keys)
+				if err != nil || status != DNSSECIndeterminate {
+					return status, err
+				}
+				return v.AuthenticateNSEC3NXDOMAIN(msg, q.Name, keys)
 			}
 		}
 		return DNSSECIndeterminate, nil
