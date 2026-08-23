@@ -13,9 +13,9 @@ import (
 // RRset whose validated RRSIG Labels value proves wildcard expansion also
 // requires authenticated NSEC or NSEC3 proof that no exact or closer match
 // existed. Empty NOERROR answers may be authenticated as exact-owner or
-// wildcard NODATA through NSEC/NSEC3. Empty NXDOMAIN answers may be
-// authenticated with conservative NSEC or NSEC3 closest-encloser, next-closer,
-// and wildcard denial proofs.
+// wildcard NODATA through NSEC/NSEC3. Empty NXDOMAIN answers use the broader
+// RFC 4035 NSEC proof path first, then NSEC3 closest-encloser, next-closer, and
+// wildcard denial proof.
 func (v *DNSSECValidator) AuthenticateTerminalAnswer(msg *dns.Msg, keys []*dns.DNSKEY) (DNSSECStatus, error) {
 	if msg == nil {
 		return DNSSECBogus, errors.New("goreecloud dns: terminal DNSSEC response is nil")
@@ -35,7 +35,7 @@ func (v *DNSSECValidator) AuthenticateTerminalAnswer(msg *dns.Msg, keys []*dns.D
 				}
 				return v.AuthenticateWildcardNODATA(msg, q.Name, q.Qtype, keys)
 			case dns.RcodeNameError:
-				status, err := v.AuthenticateNSECNXDOMAIN(msg, q.Name, keys)
+				status, err := v.AuthenticateNSECNXDOMAINCompact(msg, q.Name, keys)
 				if err != nil || status != DNSSECIndeterminate {
 					return status, err
 				}
