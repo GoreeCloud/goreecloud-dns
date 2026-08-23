@@ -3,6 +3,7 @@ package gcdns
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/miekg/dns"
 )
@@ -79,13 +80,18 @@ func (v *DNSSECValidator) authenticateTerminalPositiveRRSet(msg *dns.Msg, rrset 
 	owner := dns.Fqdn(rrset[0].Header().Name)
 	rrtype := rrset[0].Header().Rrtype
 	ownerLabels := len(dns.SplitDomainName(owner))
+	literalWildcardOwner := strings.HasPrefix(owner, "*.")
 	var lastErr error
 
-	// Prefer an ordinary signature when one validates. If the owner-name label
-	// count equals RRSIG Labels, no wildcard synthesis occurred and no denial
-	// proof is required for that signature.
+	// Prefer an ordinary signature when one validates. A literal wildcard owner
+	// is an exact owner-name response even though DNSSEC encodes its RRSIG Labels
+	// count without the leading asterisk label.
 	for _, sig := range signatures {
-		if sig == nil || sig.TypeCovered != rrtype || !sameDNSName(sig.Hdr.Name, owner) || int(sig.Labels) != ownerLabels {
+		if sig == nil || sig.TypeCovered != rrtype || !sameDNSName(sig.Hdr.Name, owner) {
+			continue
+		}
+		direct := int(sig.Labels) == ownerLabels || (literalWildcardOwner && ownerLabels > 0 && int(sig.Labels) == ownerLabels-1)
+		if !direct {
 			continue
 		}
 		status, err := v.ValidateRRSet(rrset, []*dns.RRSIG{sig}, keys)
@@ -97,11 +103,12 @@ func (v *DNSSECValidator) authenticateTerminalPositiveRRSet(msg *dns.Msg, rrset 
 		}
 	}
 
-	// A smaller RRSIG Labels value means the RRset was synthesized from a
-	// wildcard. A valid cryptographic signature is necessary but insufficient;
-	// authenticate the no-closer-match proof before accepting the RRset.
+	// A smaller RRSIG Labels value on a non-wildcard owner means the RRset was
+	// synthesized from a wildcard. A valid cryptographic signature is necessary
+	// but insufficient; authenticate the no-closer-match proof before accepting
+	// the RRset.
 	for _, sig := range signatures {
-		if sig == nil || sig.TypeCovered != rrtype || !sameDNSName(sig.Hdr.Name, owner) || int(sig.Labels) >= ownerLabels {
+		if sig == nil || sig.TypeCovered != rrtype || !sameDNSName(sig.Hdr.Name, owner) || literalWildcardOwner || int(sig.Labels) >= ownerLabels {
 			continue
 		}
 		status, err := v.ValidateRRSet(rrset, []*dns.RRSIG{sig}, keys)
