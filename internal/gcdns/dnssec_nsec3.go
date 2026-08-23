@@ -244,7 +244,7 @@ func validateNSEC3SetMode(records []*dns.NSEC3, zone string, allowOptOut bool) e
 			return fmt.Errorf("goreecloud dns: unsupported NSEC3 flags %d", record.Flags)
 		}
 		if !allowOptOut && record.Flags&nsec3OptOutFlag != 0 {
-			return errors.New("goreecloud dns: NSEC3 opt-out is not valid for this authenticated-denial path")
+			return errors.New("goreecloud dns: NSEC3 opt-out denial is not yet supported for this authenticated-denial path")
 		}
 		if record.Hash != first.Hash || record.Iterations != first.Iterations || !strings.EqualFold(record.Salt, first.Salt) {
 			return errors.New("goreecloud dns: inconsistent NSEC3 denial parameters")
