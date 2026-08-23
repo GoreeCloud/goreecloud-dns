@@ -74,19 +74,39 @@ func TestAuthenticateDelegationDSAcceptsNSEC3InsecureProof(t *testing.T) {
 	require.Empty(t, records)
 }
 
-func TestAuthenticateDelegationDSNSEC3OptOutFailsClosed(t *testing.T) {
+func TestAuthenticateDelegationDSAcceptsNSEC3OptOutInsecureProof(t *testing.T) {
 	zone := "example.test."
 	child := "unsigned.example.test."
-	key, _ := nsec3TestKey(t, zone)
-	record := nsec3TestRecord(child, zone, []uint16{dns.TypeNS, dns.TypeRRSIG, dns.TypeNSEC3})
-	record.Flags = 1
+	key, signer := nsec3TestKey(t, zone)
+	proof := nsec3TestRecord(zone, zone, []uint16{dns.TypeSOA, dns.TypeNS, dns.TypeRRSIG, dns.TypeNSEC3})
+	proof.Flags = nsec3OptOutFlag
 	msg := new(dns.Msg)
-	msg.Ns = []dns.RR{record}
+	msg.Ns = []dns.RR{
+		nsec3TestDelegationNS(child),
+		proof,
+		signNSEC3TestRecord(t, proof, key, signer),
+	}
 
 	validator := NewDNSSECValidator(func() time.Time { return nsec3TestNow })
 	records, status, err := validator.AuthenticateDelegationDS(child, msg, []*dns.DNSKEY{key})
-	require.ErrorContains(t, err, "opt-out")
-	require.Equal(t, DNSSECBogus, status)
+	require.NoError(t, err)
+	require.Equal(t, DNSSECInsecure, status)
+	require.Empty(t, records)
+}
+
+func TestAuthenticateDelegationDSNSEC3OptOutMissingReferralRemainsIndeterminate(t *testing.T) {
+	zone := "example.test."
+	child := "unsigned.example.test."
+	key, signer := nsec3TestKey(t, zone)
+	proof := nsec3TestRecord(zone, zone, []uint16{dns.TypeSOA, dns.TypeNS, dns.TypeRRSIG, dns.TypeNSEC3})
+	proof.Flags = nsec3OptOutFlag
+	msg := new(dns.Msg)
+	msg.Ns = []dns.RR{proof, signNSEC3TestRecord(t, proof, key, signer)}
+
+	validator := NewDNSSECValidator(func() time.Time { return nsec3TestNow })
+	records, status, err := validator.AuthenticateDelegationDS(child, msg, []*dns.DNSKEY{key})
+	require.NoError(t, err)
+	require.Equal(t, DNSSECIndeterminate, status)
 	require.Empty(t, records)
 }
 
