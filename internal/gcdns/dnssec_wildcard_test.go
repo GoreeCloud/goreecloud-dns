@@ -90,6 +90,22 @@ func TestAuthenticateTerminalAnswerSignedDirectPositive(t *testing.T) {
 	require.Equal(t, DNSSECSecure, status)
 }
 
+func TestAuthenticateTerminalAnswerLiteralWildcardOwner(t *testing.T) {
+	zone := "example.test."
+	qname := "*.example.test."
+	key, signer := nsec3TestKey(t, zone)
+	answer, sig := directTestAnswer(t, qname, key, signer)
+	msg := new(dns.Msg)
+	msg.SetQuestion(qname, dns.TypeA)
+	msg.Rcode = dns.RcodeSuccess
+	msg.Answer = []dns.RR{answer, sig}
+
+	validator := NewDNSSECValidator(func() time.Time { return nsec3TestNow })
+	status, err := validator.AuthenticateTerminalAnswer(msg, []*dns.DNSKEY{key})
+	require.NoError(t, err)
+	require.Equal(t, DNSSECSecure, status)
+}
+
 func TestAuthenticateTerminalAnswerWildcardNSEC(t *testing.T) {
 	zone := "example.test."
 	qname := "host.example.test."
