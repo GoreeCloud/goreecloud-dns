@@ -2,6 +2,7 @@ package gcdns
 
 import (
 	"testing"
+	"time"
 
 	"github.com/miekg/dns"
 	"github.com/stretchr/testify/require"
@@ -55,6 +56,37 @@ func TestAuthenticateDelegationDSMissingDSRemainsIndeterminate(t *testing.T) {
 	records, status, err := validator.AuthenticateDelegationDS("unsigned.test.", new(dns.Msg), []*dns.DNSKEY{rootKSK2017()})
 	require.NoError(t, err)
 	require.Equal(t, DNSSECIndeterminate, status)
+	require.Empty(t, records)
+}
+
+func TestAuthenticateDelegationDSAcceptsNSEC3InsecureProof(t *testing.T) {
+	zone := "example.test."
+	child := "unsigned.example.test."
+	key, signer := nsec3TestKey(t, zone)
+	record := nsec3TestRecord(child, zone, []uint16{dns.TypeNS, dns.TypeRRSIG, dns.TypeNSEC3})
+	msg := new(dns.Msg)
+	msg.Ns = []dns.RR{record, signNSEC3TestRecord(t, record, key, signer)}
+
+	validator := NewDNSSECValidator(func() time.Time { return nsec3TestNow })
+	records, status, err := validator.AuthenticateDelegationDS(child, msg, []*dns.DNSKEY{key})
+	require.NoError(t, err)
+	require.Equal(t, DNSSECInsecure, status)
+	require.Empty(t, records)
+}
+
+func TestAuthenticateDelegationDSNSEC3OptOutFailsClosed(t *testing.T) {
+	zone := "example.test."
+	child := "unsigned.example.test."
+	key, _ := nsec3TestKey(t, zone)
+	record := nsec3TestRecord(child, zone, []uint16{dns.TypeNS, dns.TypeRRSIG, dns.TypeNSEC3})
+	record.Flags = 1
+	msg := new(dns.Msg)
+	msg.Ns = []dns.RR{record}
+
+	validator := NewDNSSECValidator(func() time.Time { return nsec3TestNow })
+	records, status, err := validator.AuthenticateDelegationDS(child, msg, []*dns.DNSKEY{key})
+	require.ErrorContains(t, err, "opt-out")
+	require.Equal(t, DNSSECBogus, status)
 	require.Empty(t, records)
 }
 
