@@ -27,6 +27,38 @@ func TestAuthenticateTerminalAnswerEmptyNoErrorWithoutProofIsIndeterminate(t *te
 	require.Equal(t, DNSSECIndeterminate, status)
 }
 
+func TestAuthenticateTerminalAnswerNSEC3NODATA(t *testing.T) {
+	zone := "example.test."
+	qname := "host.example.test."
+	key, signer := nsec3TestKey(t, zone)
+	record := nsec3TestRecord(qname, zone, []uint16{dns.TypeA, dns.TypeRRSIG, dns.TypeNSEC3})
+	msg := new(dns.Msg)
+	msg.SetQuestion(qname, dns.TypeAAAA)
+	msg.Rcode = dns.RcodeSuccess
+	msg.Ns = []dns.RR{record, signNSEC3TestRecord(t, record, key, signer)}
+
+	v := NewDNSSECValidator(func() time.Time { return nsec3TestNow })
+	status, err := v.AuthenticateTerminalAnswer(msg, []*dns.DNSKEY{key})
+	require.NoError(t, err)
+	require.Equal(t, DNSSECSecure, status)
+}
+
+func TestAuthenticateTerminalAnswerNSEC3NXDOMAIN(t *testing.T) {
+	zone := "example.test."
+	qname := "missing.example.test."
+	key, signer := nsec3TestKey(t, zone)
+	record := nsec3TestRecord(zone, zone, []uint16{dns.TypeSOA, dns.TypeNS, dns.TypeRRSIG, dns.TypeNSEC3})
+	msg := new(dns.Msg)
+	msg.SetQuestion(qname, dns.TypeA)
+	msg.Rcode = dns.RcodeNameError
+	msg.Ns = []dns.RR{record, signNSEC3TestRecord(t, record, key, signer)}
+
+	v := NewDNSSECValidator(func() time.Time { return nsec3TestNow })
+	status, err := v.AuthenticateTerminalAnswer(msg, []*dns.DNSKEY{key})
+	require.NoError(t, err)
+	require.Equal(t, DNSSECSecure, status)
+}
+
 func TestAuthenticateTerminalAnswerRequiresKeys(t *testing.T) {
 	v := NewDNSSECValidator(time.Now)
 	msg := new(dns.Msg)
