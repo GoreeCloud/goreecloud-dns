@@ -110,6 +110,22 @@ func TestAuthenticateDelegationDSNSEC3OptOutMissingReferralRemainsIndeterminate(
 	require.Empty(t, records)
 }
 
+func TestAuthenticateDelegationDSNSEC3OptOutFailsClosed(t *testing.T) {
+	zone := "example.test."
+	child := "unsigned.example.test."
+	key, _ := nsec3TestKey(t, zone)
+	proof := nsec3TestRecord(zone, zone, []uint16{dns.TypeSOA, dns.TypeNS, dns.TypeRRSIG, dns.TypeNSEC3})
+	proof.Flags = nsec3OptOutFlag
+	msg := new(dns.Msg)
+	msg.Ns = []dns.RR{nsec3TestDelegationNS(child), proof}
+
+	validator := NewDNSSECValidator(func() time.Time { return nsec3TestNow })
+	records, status, err := validator.AuthenticateDelegationDS(child, msg, []*dns.DNSKEY{key})
+	require.Error(t, err)
+	require.Equal(t, DNSSECBogus, status)
+	require.Empty(t, records)
+}
+
 func TestDNSKEYMaterialFiltersZoneAndType(t *testing.T) {
 	key := rootKSK2017()
 	other := *key
