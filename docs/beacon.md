@@ -44,7 +44,7 @@ Iterative queries explicitly request DNSSEC material with EDNS and the DO bit.
 
 ## Beacon NSEC Authenticated Denial
 
-`internal/gcdns/dnssec_nsec.go` provides the current conservative authenticated-denial layer.
+`internal/gcdns/dnssec_nsec.go` provides the conservative unhashed authenticated-denial layer.
 
 Implemented behavior includes:
 
@@ -58,13 +58,30 @@ Implemented behavior includes:
 - authenticated-zone boundary checks for NXDOMAIN proof material;
 - fail-closed behavior for unsigned, invalid, malformed, or unproven denial material.
 
-The NXDOMAIN proof is deliberately stricter than the minimum layouts DNSSEC permits. If an authority provides a valid compact proof that does not contain the explicit closest-encloser NSEC Beacon currently requires, the result remains indeterminate rather than being trusted optimistically.
+The NSEC NXDOMAIN proof is deliberately stricter than the minimum layouts DNSSEC permits. If an authority provides a valid compact proof that does not contain the explicit closest-encloser NSEC Beacon currently requires, the result remains indeterminate rather than being trusted optimistically.
 
-NSEC3 authenticated denial, wildcard-expanded positive-answer proof, and broader compact NSEC proof support remain staged work.
+## Beacon NSEC3 Authenticated Denial
+
+`internal/gcdns/dnssec_nsec3.go` adds the hashed authenticated-denial path used by DNSSEC zones that publish NSEC3.
+
+Implemented behavior includes:
+
+- signed exact-name NSEC3 NODATA validation when the bitmap omits the requested type and CNAME;
+- NSEC3 NXDOMAIN validation using an authenticated closest encloser, next-closer hash coverage, and wildcard hash coverage;
+- exact-name NSEC3 proof for intentionally unsigned delegated children when NS is present, DS is absent, and the proof is not SOA-bearing apex data;
+- consistent NSEC3 hash algorithm, iteration, salt, hash-length, and authenticated-zone ownership checks across the proof set;
+- cryptographic RRSIG validation of every NSEC3 RRset relied on by a proof;
+- rejection when an NXDOMAIN proof contains the queried owner hash;
+- fail-closed rejection of inconsistent parameters, out-of-zone proof owners, unsupported hash algorithms, malformed signatures, and contradictory DS bitmap state;
+- explicit fail-closed handling for NSEC3 opt-out, which is not yet accepted as proof of unsigned delegations.
+
+The terminal validator now tries NSEC first and only falls through to NSEC3 when the NSEC path is genuinely indeterminate. Delegation authentication follows the same fail-closed ordering. Bogus NSEC evidence is never bypassed by falling through to NSEC3.
+
+Wildcard-expanded positive-answer proof, broader compact NSEC proof support, NSEC3 opt-out semantics, and additional wildcard denial edge cases remain staged work.
 
 ## Security boundary
 
-The native foundation currently enforces source-level invariants for DNSSEC validation, DNS rebinding protection, explicit recursion and administration ACLs, no accidental open recursion, bogus-result rejection before cache insertion, bounded cache/scheduler/transport behavior, delegation depth and loop protection, in-bailiwick glue acceptance, root trust anchors, DS/DNSKEY authentication, terminal positive RRset validation, conservative NSEC insecure-delegation proof, exact-owner NSEC NODATA proof, and conservative NSEC NXDOMAIN closest-encloser/next-closer/wildcard proof.
+The native foundation currently enforces source-level invariants for DNSSEC validation, DNS rebinding protection, explicit recursion and administration ACLs, no accidental open recursion, bogus-result rejection before cache insertion, bounded cache/scheduler/transport behavior, delegation depth and loop protection, in-bailiwick glue acceptance, root trust anchors, DS/DNSKEY authentication, terminal positive RRset validation, conservative NSEC/NSEC3 insecure-delegation proof, exact-owner NSEC/NSEC3 NODATA proof, and NSEC/NSEC3 NXDOMAIN closest-encloser/next-closer/wildcard proof.
 
 These are development controls, not production acceptance evidence.
 
@@ -74,10 +91,9 @@ No production traffic is routed through `internal/gcdns` yet. Existing AdGuard H
 
 ## Next implementation sequence
 
-1. Implement NSEC3 authenticated denial for NXDOMAIN, NODATA, and insecure delegations.
-2. Extend NSEC wildcard handling to wildcard-expanded positive answers and supported compact denial layouts.
-3. Complete signed CNAME/DNAME chain handling and out-of-bailiwick nameserver discovery.
-4. Implement QNAME minimization, forward/conditional/stub routing, and split-horizon routing.
-5. Add persistent cache, prefetch/auto-prefetch, encrypted DNS, authoritative DNS, filtering, DHCP, clustering, APIs, identity, and Glaze UI administration.
-6. Validate the competitive-superset requirement with feature, security, privacy, control, resilience, and operational acceptance matrices.
-7. Perform controlled migration and production replacement only after GoreeCloud release and production-readiness gates pass.
+1. Extend authenticated denial with NSEC3 opt-out semantics where safe, wildcard-expanded positive-answer proof validation, wildcard NODATA edge cases, and supported compact NSEC proof layouts.
+2. Complete signed CNAME/DNAME chain handling and out-of-bailiwick nameserver discovery.
+3. Implement QNAME minimization, forward/conditional/stub routing, and split-horizon routing.
+4. Add persistent cache, prefetch/auto-prefetch, encrypted DNS, authoritative DNS, filtering, DHCP, clustering, APIs, identity, and Glaze UI administration.
+5. Validate the competitive-superset requirement with feature, security, privacy, control, resilience, and operational acceptance matrices.
+6. Perform controlled migration and production replacement only after GoreeCloud release and production-readiness gates pass.
