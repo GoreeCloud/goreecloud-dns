@@ -6,8 +6,9 @@
 # See https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#permissions.
 'permissions': {}
 'env':
-  'GO_VERSION': '1.26.3'
+  'GO_VERSION': '1.26.6'
 'on':
+  'workflow_dispatch':
   'push':
     'tags':
       - 'v*'
@@ -15,6 +16,25 @@
       - '*'
   'pull_request':
 'jobs':
+  'beacon-native-core':
+    'runs-on': 'ubuntu-latest'
+    'permissions':
+      'contents': 'read'
+    'steps':
+      - 'uses': 'actions/checkout@v6'
+        'with':
+          'persist-credentials': false
+      - 'name': 'Set up Go'
+        'uses': 'actions/setup-go@v7'
+        'with':
+          'go-version': '${{ env.GO_VERSION }}'
+          'cache': true
+          'cache-dependency-path': 'go.sum'
+      - 'name': 'Validate Beacon source contract'
+        'run': 'python3 scripts/validate_beacon_foundation.py'
+      - 'name': 'Test native GoreeCloud DNS core'
+        'run': 'go test ./internal/gcdns'
+
   'go-lint':
     'runs-on': 'ubuntu-latest'
     'permissions':
@@ -51,6 +71,7 @@
         'run': 'npm --prefix="./client" run lint'
   'notify':
     'needs':
+      - 'beacon-native-core'
       - 'go-lint'
       - 'eslint'
     # Secrets are not passed to workflows that are triggered by a pull request
