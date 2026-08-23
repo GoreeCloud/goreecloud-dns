@@ -55,6 +55,14 @@ func signNSEC3TestRecord(t *testing.T, record *dns.NSEC3, key *dns.DNSKEY, signe
 	return sig
 }
 
+func nsec3TestDelegationNS(child string) *dns.NS {
+	child = dns.Fqdn(child)
+	return &dns.NS{
+		Hdr: dns.RR_Header{Name: child, Rrtype: dns.TypeNS, Class: dns.ClassINET, Ttl: 300},
+		Ns:  "ns1." + child,
+	}
+}
+
 func TestAuthenticateNSEC3NODATA(t *testing.T) {
 	zone := "example.test."
 	qname := "host.example.test."
@@ -131,6 +139,73 @@ func TestAuthenticateInsecureDelegationNSEC3(t *testing.T) {
 	require.Equal(t, DNSSECInsecure, status)
 }
 
+func TestAuthenticateInsecureDelegationNSEC3ExactOptOut(t *testing.T) {
+	zone := "example.test."
+	child := "unsigned.example.test."
+	key, signer := nsec3TestKey(t, zone)
+	record := nsec3TestRecord(child, zone, []uint16{dns.TypeNS, dns.TypeRRSIG, dns.TypeNSEC3})
+	record.Flags = nsec3OptOutFlag
+	msg := new(dns.Msg)
+	msg.Ns = []dns.RR{record, signNSEC3TestRecord(t, record, key, signer)}
+
+	validator := NewDNSSECValidator(func() time.Time { return nsec3TestNow })
+	status, err := validator.AuthenticateInsecureDelegationNSEC3(child, msg, []*dns.DNSKEY{key})
+	require.NoError(t, err)
+	require.Equal(t, DNSSECInsecure, status)
+}
+
+func TestAuthenticateInsecureDelegationNSEC3OptOutCoverage(t *testing.T) {
+	zone := "example.test."
+	child := "unsigned.example.test."
+	key, signer := nsec3TestKey(t, zone)
+	proof := nsec3TestRecord(zone, zone, []uint16{dns.TypeSOA, dns.TypeNS, dns.TypeRRSIG, dns.TypeNSEC3})
+	proof.Flags = nsec3OptOutFlag
+	msg := new(dns.Msg)
+	msg.Ns = []dns.RR{
+		nsec3TestDelegationNS(child),
+		proof,
+		signNSEC3TestRecord(t, proof, key, signer),
+	}
+
+	validator := NewDNSSECValidator(func() time.Time { return nsec3TestNow })
+	status, err := validator.AuthenticateInsecureDelegationNSEC3(child, msg, []*dns.DNSKEY{key})
+	require.NoError(t, err)
+	require.Equal(t, DNSSECInsecure, status)
+}
+
+func TestAuthenticateInsecureDelegationNSEC3OptOutRequiresReferralNS(t *testing.T) {
+	zone := "example.test."
+	child := "unsigned.example.test."
+	key, signer := nsec3TestKey(t, zone)
+	proof := nsec3TestRecord(zone, zone, []uint16{dns.TypeSOA, dns.TypeNS, dns.TypeRRSIG, dns.TypeNSEC3})
+	proof.Flags = nsec3OptOutFlag
+	msg := new(dns.Msg)
+	msg.Ns = []dns.RR{proof, signNSEC3TestRecord(t, proof, key, signer)}
+
+	validator := NewDNSSECValidator(func() time.Time { return nsec3TestNow })
+	status, err := validator.AuthenticateInsecureDelegationNSEC3(child, msg, []*dns.DNSKEY{key})
+	require.NoError(t, err)
+	require.Equal(t, DNSSECIndeterminate, status)
+}
+
+func TestAuthenticateInsecureDelegationNSEC3OptOutRequiresFlag(t *testing.T) {
+	zone := "example.test."
+	child := "unsigned.example.test."
+	key, signer := nsec3TestKey(t, zone)
+	proof := nsec3TestRecord(zone, zone, []uint16{dns.TypeSOA, dns.TypeNS, dns.TypeRRSIG, dns.TypeNSEC3})
+	msg := new(dns.Msg)
+	msg.Ns = []dns.RR{
+		nsec3TestDelegationNS(child),
+		proof,
+		signNSEC3TestRecord(t, proof, key, signer),
+	}
+
+	validator := NewDNSSECValidator(func() time.Time { return nsec3TestNow })
+	status, err := validator.AuthenticateInsecureDelegationNSEC3(child, msg, []*dns.DNSKEY{key})
+	require.ErrorContains(t, err, "opt-out flag")
+	require.Equal(t, DNSSECBogus, status)
+}
+
 func TestAuthenticateInsecureDelegationNSEC3RejectsDSBitmap(t *testing.T) {
 	zone := "example.test."
 	child := "signed.example.test."
@@ -150,7 +225,7 @@ func TestAuthenticateNSEC3OptOutFailsClosed(t *testing.T) {
 	qname := "host.example.test."
 	key, _ := nsec3TestKey(t, zone)
 	record := nsec3TestRecord(qname, zone, nil)
-	record.Flags = 1
+	record.Flags = nsec3OptOutFlag
 	msg := new(dns.Msg)
 	msg.Rcode = dns.RcodeSuccess
 	msg.Ns = []dns.RR{record}
@@ -159,6 +234,13 @@ func TestAuthenticateNSEC3OptOutFailsClosed(t *testing.T) {
 	status, err := validator.AuthenticateNSEC3NODATA(msg, qname, dns.TypeAAAA, []*dns.DNSKEY{key})
 	require.ErrorContains(t, err, "opt-out")
 	require.Equal(t, DNSSECBogus, status)
+}
+
+func TestValidateNSEC3SetRejectsUnknownFlags(t *testing.T) {
+	zone := "example.test."
+	record := nsec3TestRecord("host.example.test.", zone, nil)
+	record.Flags = 2
+	require.ErrorContains(t, validateNSEC3DelegationSet([]*dns.NSEC3{record}, zone), "unsupported NSEC3 flags")
 }
 
 func TestValidateNSEC3SetRejectsInconsistentParameters(t *testing.T) {
