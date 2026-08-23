@@ -32,6 +32,8 @@
           'cache-dependency-path': 'go.sum'
       - 'name': 'Validate Beacon source contract'
         'run': 'python3 scripts/validate_beacon_foundation.py'
+      - 'name': 'Validate Beacon DNSSEC wildcard contract'
+        'run': 'python3 scripts/validate_dnssec_wildcard.py'
       - 'name': 'Test native GoreeCloud DNS core'
         'run': 'go test ./internal/gcdns'
 
