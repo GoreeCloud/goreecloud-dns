@@ -8,9 +8,14 @@ import (
 	"github.com/miekg/dns"
 )
 
+const nsec3OptOutFlag uint8 = 1
+
 // AuthenticateInsecureDelegationNSEC3 proves that a secure parent intentionally
-// delegates childZone without a DS record using an exact-name NSEC3 proof.
-// NSEC3 opt-out is intentionally unsupported in this milestone and fails closed.
+// delegates childZone without a DS record. Beacon accepts either an exact-name
+// signed NSEC3 delegation proof or the RFC 5155 Opt-Out form: a closest
+// provable-encloser proof plus a signed Opt-Out NSEC3 RR covering the
+// delegation's next-closer name. Opt-Out is accepted only for this delegation
+// transition and remains fail-closed for general NXDOMAIN/NODATA validation.
 func (v *DNSSECValidator) AuthenticateInsecureDelegationNSEC3(childZone string, msg *dns.Msg, parentKeys []*dns.DNSKEY) (DNSSECStatus, error) {
 	if msg == nil {
 		return DNSSECIndeterminate, nil
@@ -23,15 +28,21 @@ func (v *DNSSECValidator) AuthenticateInsecureDelegationNSEC3(childZone string, 
 	if sameDNSName(childZone, zone) || !dns.IsSubDomain(zone, childZone) {
 		return DNSSECBogus, fmt.Errorf("goreecloud dns: NSEC3 delegation %s is outside authenticated parent zone %s", childZone, zone)
 	}
+	if ds, _ := delegationDSMaterial(msg, childZone); len(ds) != 0 {
+		return DNSSECBogus, fmt.Errorf("goreecloud dns: cannot authenticate NSEC3 DS absence for %s because the response contains DS", childZone)
+	}
 
 	records, sigs := nsec3Material(msg)
 	if len(records) == 0 {
 		return DNSSECIndeterminate, nil
 	}
-	if err := validateNSEC3Set(records, zone); err != nil {
+	if err := validateNSEC3DelegationSet(records, zone); err != nil {
 		return DNSSECBogus, err
 	}
 
+	// An exact matching NSEC3 RR asserts the delegation's existence even when
+	// its own Opt-Out flag is set. Its signed bitmap must identify NS and omit
+	// DS and SOA before Beacon crosses into an insecure subtree.
 	for _, record := range records {
 		if record == nil || !record.Match(childZone) {
 			continue
@@ -48,7 +59,41 @@ func (v *DNSSECValidator) AuthenticateInsecureDelegationNSEC3(childZone string, 
 		return DNSSECInsecure, nil
 	}
 
-	return DNSSECIndeterminate, nil
+	// Without an exact NSEC3 owner, Opt-Out cannot itself assert that a
+	// delegation exists. Require the referral's NS RRset at childZone, then
+	// authenticate the closest provable encloser and an Opt-Out span covering
+	// the delegation's next-closer name as required by RFC 5155 section 8.9.
+	if !hasDelegationNS(msg, childZone) {
+		return DNSSECIndeterminate, nil
+	}
+	closestName, closestProof := closestEncloserNSEC3(childZone, zone, records)
+	if closestProof == nil {
+		return DNSSECIndeterminate, nil
+	}
+	nextCloser, ok := nextCloserName(childZone, closestName)
+	if !ok {
+		return DNSSECIndeterminate, nil
+	}
+	nextProof := coveringNSEC3(nextCloser, records)
+	if nextProof == nil {
+		return DNSSECIndeterminate, nil
+	}
+	if nextProof.Flags&nsec3OptOutFlag == 0 {
+		return DNSSECBogus, fmt.Errorf("goreecloud dns: NSEC3 delegation proof for %s lacks required opt-out flag on next-closer coverage", childZone)
+	}
+
+	validated := map[string]struct{}{}
+	for _, proof := range []*dns.NSEC3{closestProof, nextProof} {
+		owner := dns.CanonicalName(proof.Hdr.Name)
+		if _, done := validated[owner]; done {
+			continue
+		}
+		if err := v.validateNSEC3Proof(proof, sigs, parentKeys); err != nil {
+			return DNSSECBogus, fmt.Errorf("goreecloud dns: NSEC3 opt-out delegation proof for %s failed validation: %w", childZone, err)
+		}
+		validated[owner] = struct{}{}
+	}
+	return DNSSECInsecure, nil
 }
 
 // AuthenticateNSEC3NODATA proves that qname exists but has neither qtype nor a
@@ -175,6 +220,14 @@ func nsec3Material(msg *dns.Msg) ([]*dns.NSEC3, map[string][]*dns.RRSIG) {
 }
 
 func validateNSEC3Set(records []*dns.NSEC3, zone string) error {
+	return validateNSEC3SetMode(records, zone, false)
+}
+
+func validateNSEC3DelegationSet(records []*dns.NSEC3, zone string) error {
+	return validateNSEC3SetMode(records, zone, true)
+}
+
+func validateNSEC3SetMode(records []*dns.NSEC3, zone string, allowOptOut bool) error {
 	if len(records) == 0 || records[0] == nil {
 		return errors.New("goreecloud dns: NSEC3 denial set is empty")
 	}
@@ -183,15 +236,15 @@ func validateNSEC3Set(records []*dns.NSEC3, zone string) error {
 	if first.Hash != dns.SHA1 {
 		return fmt.Errorf("goreecloud dns: unsupported NSEC3 hash algorithm %d", first.Hash)
 	}
-	if first.Flags != 0 {
-		return errors.New("goreecloud dns: NSEC3 opt-out denial is not yet supported")
-	}
 	for _, record := range records {
 		if record == nil {
 			return errors.New("goreecloud dns: nil NSEC3 record")
 		}
-		if record.Flags != 0 {
-			return errors.New("goreecloud dns: NSEC3 opt-out denial is not yet supported")
+		if record.Flags &^ nsec3OptOutFlag != 0 {
+			return fmt.Errorf("goreecloud dns: unsupported NSEC3 flags %d", record.Flags)
+		}
+		if !allowOptOut && record.Flags&nsec3OptOutFlag != 0 {
+			return errors.New("goreecloud dns: NSEC3 opt-out is not valid for this authenticated-denial path")
 		}
 		if record.Hash != first.Hash || record.Iterations != first.Iterations || !strings.EqualFold(record.Salt, first.Salt) {
 			return errors.New("goreecloud dns: inconsistent NSEC3 denial parameters")
@@ -295,6 +348,20 @@ func nsec3HasType(record *dns.NSEC3, rrtype uint16) bool {
 	}
 	for _, item := range record.TypeBitMap {
 		if item == rrtype {
+			return true
+		}
+	}
+	return false
+}
+
+func hasDelegationNS(msg *dns.Msg, childZone string) bool {
+	if msg == nil {
+		return false
+	}
+	childZone = dns.Fqdn(childZone)
+	for _, rr := range msg.Ns {
+		ns, ok := rr.(*dns.NS)
+		if ok && ns != nil && sameDNSName(ns.Hdr.Name, childZone) {
 			return true
 		}
 	}
