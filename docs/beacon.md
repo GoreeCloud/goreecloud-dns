@@ -38,7 +38,7 @@ Referral processing remains conservative: only advertised in-bailiwick glue is a
 
 ## Beacon DNSSEC Foundation
 
-Beacon carries the current root-zone DS trust-anchor set for KSK-2017 and KSK-2024. The validator supports DS-to-DNSKEY authentication, DNSKEY RRset authentication, RRSIG validity-window and cryptographic verification, secure parent-to-child trust carry, terminal positive-RRset validation, wildcard-positive validation, wildcard NODATA validation, and authenticated NSEC/NSEC3 denial.
+Beacon carries the current root-zone DS trust-anchor set for KSK-2017 and KSK-2024. The validator supports DS-to-DNSKEY authentication, DNSKEY RRset authentication, RRSIG validity-window and cryptographic verification, secure parent-to-child trust carry, terminal positive-RRset validation, wildcard-positive validation, wildcard NODATA validation, authenticated NSEC/NSEC3 denial, and narrowly scoped NSEC3 Opt-Out insecure-delegation validation.
 
 Iterative queries explicitly request DNSSEC material with EDNS and the DO bit.
 
@@ -69,11 +69,14 @@ Implemented behavior includes:
 - signed exact-name NSEC3 NODATA validation when the bitmap omits the requested type and CNAME;
 - NSEC3 NXDOMAIN validation using an authenticated closest encloser, next-closer hash coverage, and wildcard hash coverage;
 - exact-name NSEC3 proof for intentionally unsigned delegated children when NS is present, DS is absent, and the proof is not SOA-bearing apex data;
+- scoped RFC 5155 Opt-Out validation for an insecure delegation omitted from the NSEC3 chain: the referral must contain an actual NS RRset at the child, the closest provable encloser must authenticate, an NSEC3 RR must cover the child's next-closer name, and that covering record must have Opt-Out set;
+- exact matching delegation NSEC3 records may carry Opt-Out because their authenticated owner hash and bitmap still establish the delegation itself;
 - consistent NSEC3 hash algorithm, iteration, salt, hash-length, and authenticated-zone ownership checks across the proof set;
 - cryptographic RRSIG validation of every NSEC3 RRset relied on by a proof;
 - rejection when an NXDOMAIN proof contains the queried owner hash;
-- fail-closed rejection of inconsistent parameters, out-of-zone proof owners, unsupported hash algorithms, malformed signatures, and contradictory DS bitmap state;
-- explicit fail-closed handling for NSEC3 opt-out, which is not yet accepted as proof of unsigned delegations.
+- fail-closed rejection of inconsistent parameters, out-of-zone proof owners, unsupported hash algorithms or flags, malformed signatures, contradictory DS state, missing referral evidence, and missing Opt-Out coverage where the omitted-delegation proof requires it.
+
+Opt-Out support is deliberately restricted to authenticating DS absence at an actual delegation boundary. Generic terminal NODATA, NXDOMAIN, wildcard-positive, and wildcard-NODATA validation continue to reject Opt-Out proof sets because Opt-Out coverage does not generally authenticate whether every covered insecure delegation exists or does not exist.
 
 The terminal validator tries NSEC first and only falls through to NSEC3 when the NSEC path is genuinely indeterminate. Delegation authentication follows the same fail-closed ordering. Bogus NSEC evidence is never bypassed by falling through to NSEC3.
 
@@ -83,17 +86,15 @@ The terminal validator tries NSEC first and only falls through to NSEC3 when the
 
 A normal positive RRSIG whose Labels count equals the owner-name label count is accepted without a wildcard denial proof. A literal wildcard owner such as `*.example.test.` remains an exact-owner response even though DNSSEC excludes the leading wildcard label from its RRSIG Labels count.
 
-For an expanded non-wildcard owner with a smaller validated RRSIG Labels count, Beacon derives the generating wildcard's immediate ancestor and next-closer name. NSEC validation requires a signed NSEC interval covering that next-closer name. NSEC3 validation requires a signed NSEC3 RR covering the next-closer hash. An authenticated exact/matching denial record for the next-closer instead proves a closer name exists and makes the wildcard expansion bogus.
+For an expanded non-wildcard owner with a smaller validated RRSIG Labels count, Beacon derives the generating wildcard's immediate ancestor and next-closer name. NSEC validation requires a signed NSEC interval covering that next-closer name. NSEC3 validation requires a signed non-Opt-Out NSEC3 RR covering the next-closer hash. An authenticated exact/matching denial record for the next-closer instead proves a closer name exists and makes the wildcard expansion bogus.
 
-For empty wildcard NODATA responses, NSEC validation additionally requires the applicable signed wildcard-owner NSEC bitmap to omit both QTYPE and CNAME. NSEC3 validation requires a closest-encloser proof, next-closer hash coverage, and a signed NSEC3 RR matching the wildcard owner whose bitmap omits QTYPE and CNAME.
+For empty wildcard NODATA responses, NSEC validation additionally requires the applicable signed wildcard-owner NSEC bitmap to omit both QTYPE and CNAME. NSEC3 validation requires a closest-encloser proof, non-Opt-Out next-closer hash coverage, and a signed NSEC3 RR matching the wildcard owner whose bitmap omits QTYPE and CNAME.
 
 A valid wildcard RRset signature or wildcard type bitmap without the required no-closer-match proof is not enough to return `DNSSECSecure`.
 
-Broader compact NSEC proof support and safe NSEC3 opt-out semantics remain staged work.
-
 ## Security boundary
 
-The native foundation currently enforces source-level invariants for DNSSEC validation, DNS rebinding protection, explicit recursion and administration ACLs, no accidental open recursion, bogus-result rejection before cache insertion, bounded cache/scheduler/transport behavior, delegation depth and loop protection, in-bailiwick glue acceptance, root trust anchors, DS/DNSKEY authentication, terminal positive RRset validation, wildcard-positive no-closer-match validation, wildcard NODATA validation, conservative NSEC/NSEC3 insecure-delegation proof, exact-owner NSEC/NSEC3 NODATA proof, and NSEC/NSEC3 NXDOMAIN closest-encloser/next-closer/wildcard proof.
+The native foundation currently enforces source-level invariants for DNSSEC validation, DNS rebinding protection, explicit recursion and administration ACLs, no accidental open recursion, bogus-result rejection before cache insertion, bounded cache/scheduler/transport behavior, delegation depth and loop protection, in-bailiwick glue acceptance, root trust anchors, DS/DNSKEY authentication, terminal positive RRset validation, wildcard-positive no-closer-match validation, wildcard NODATA validation, NSEC/NSEC3 insecure-delegation proof including scoped Opt-Out DS-absence transitions, exact-owner NSEC/NSEC3 NODATA proof, and NSEC/NSEC3 NXDOMAIN closest-encloser/next-closer/wildcard proof.
 
 These are development controls, not production acceptance evidence.
 
@@ -103,7 +104,7 @@ No production traffic is routed through `internal/gcdns` yet. Existing AdGuard H
 
 ## Next implementation sequence
 
-1. Extend authenticated denial with safe NSEC3 opt-out semantics and supported compact NSEC proof layouts.
+1. Evaluate remaining standards-backed NSEC3 Opt-Out edge cases separately and broaden supported compact NSEC proof layouts without weakening fail-closed denial semantics.
 2. Complete signed CNAME/DNAME chain handling and out-of-bailiwick nameserver discovery.
 3. Implement QNAME minimization, forward/conditional/stub routing, and split-horizon routing.
 4. Add persistent cache, prefetch/auto-prefetch, encrypted DNS, authoritative DNS, filtering, DHCP, clustering, APIs, identity, and Glaze UI administration.
