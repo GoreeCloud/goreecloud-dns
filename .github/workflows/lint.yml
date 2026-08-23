@@ -34,6 +34,8 @@
         'run': 'python3 scripts/validate_beacon_foundation.py'
       - 'name': 'Validate Beacon DNSSEC wildcard contract'
         'run': 'python3 scripts/validate_dnssec_wildcard.py'
+      - 'name': 'Validate Beacon NSEC3 Opt-Out contract'
+        'run': 'python3 scripts/validate_dnssec_optout.py'
       - 'name': 'Test native GoreeCloud DNS core'
         'run': 'go test ./internal/gcdns'
 
