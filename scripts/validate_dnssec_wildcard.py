@@ -6,15 +6,21 @@ required = {
     "internal/gcdns/dnssec_answer.go": (
         "authenticateTerminalPositiveRRSet",
         "AuthenticateWildcardExpansion",
+        "AuthenticateWildcardNODATA",
+        "literalWildcardOwner",
         "int(sig.Labels) == ownerLabels",
         "int(sig.Labels) >= ownerLabels",
         "wildcard expansion for",
     ),
     "internal/gcdns/dnssec_wildcard.go": (
         "func (v *DNSSECValidator) AuthenticateWildcardExpansion",
+        "func (v *DNSSECValidator) AuthenticateWildcardNODATA",
         "func (v *DNSSECValidator) AuthenticateNSECWildcardAnswer",
+        "func (v *DNSSECValidator) AuthenticateNSECWildcardNODATA",
         "func (v *DNSSECValidator) AuthenticateNSEC3WildcardAnswer",
+        "func (v *DNSSECValidator) AuthenticateNSEC3WildcardNODATA",
         "wildcardClosestEncloser",
+        "closestWildcardNSEC",
         "nextCloserName",
         "coveringNSEC",
         "coveringNSEC3",
@@ -22,14 +28,20 @@ required = {
     ),
     "internal/gcdns/dnssec_wildcard_test.go": (
         "TestAuthenticateTerminalAnswerSignedDirectPositive",
+        "TestAuthenticateTerminalAnswerLiteralWildcardOwner",
         "TestAuthenticateTerminalAnswerWildcardNSEC",
         "TestAuthenticateTerminalAnswerWildcardNSEC3",
         "TestAuthenticateTerminalAnswerWildcardMissingProofFailsClosed",
         "TestAuthenticateTerminalAnswerWildcardRejectsExistingCloserName",
+        "TestAuthenticateTerminalAnswerWildcardNODATANSEC",
+        "TestAuthenticateTerminalAnswerWildcardNODATANSECRejectsExistingType",
+        "TestAuthenticateTerminalAnswerWildcardNODATANSEC3",
+        "TestAuthenticateTerminalAnswerWildcardNODATANSEC3RejectsExistingType",
         "TestWildcardClosestEncloser",
     ),
     "docs/iterative-dnssec-validation.md": (
         "wildcard-expanded positive answers",
+        "wildcard NODATA",
         "RRSIG Labels",
         "next-closer",
         "NSEC3",
@@ -45,4 +57,4 @@ for rel, markers in required.items():
         if marker not in text:
             raise SystemExit(f"Beacon wildcard validation failed: {rel} missing {marker!r}")
 
-print("GoreeCloud Beacon DNSSEC wildcard positive-answer source contract: PASS")
+print("GoreeCloud Beacon DNSSEC wildcard positive-answer and NODATA source contract: PASS")
