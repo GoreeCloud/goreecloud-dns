@@ -30,13 +30,8 @@ func wildcardTestAnswer(t *testing.T, qname, wildcard string, key *dns.DNSKEY, s
 	return expanded, sig
 }
 
-func wildcardTestNSEC(t *testing.T, owner, next string, key *dns.DNSKEY, signer crypto.Signer) (*dns.NSEC, *dns.RRSIG) {
+func signNSECTestRecord(t *testing.T, record *dns.NSEC, key *dns.DNSKEY, signer crypto.Signer) *dns.RRSIG {
 	t.Helper()
-	record := &dns.NSEC{
-		Hdr:        dns.RR_Header{Name: dns.Fqdn(owner), Rrtype: dns.TypeNSEC, Class: dns.ClassINET, Ttl: 300},
-		NextDomain: dns.Fqdn(next),
-		TypeBitMap: []uint16{dns.TypeA, dns.TypeRRSIG, dns.TypeNSEC},
-	}
 	sig := &dns.RRSIG{
 		Algorithm:  key.Algorithm,
 		Inception:  uint32(nsec3TestNow.Add(-time.Hour).Unix()),
@@ -45,7 +40,17 @@ func wildcardTestNSEC(t *testing.T, owner, next string, key *dns.DNSKEY, signer 
 		SignerName: key.Hdr.Name,
 	}
 	require.NoError(t, sig.Sign(signer, []dns.RR{record}))
-	return record, sig
+	return sig
+}
+
+func wildcardTestNSEC(t *testing.T, owner, next string, key *dns.DNSKEY, signer crypto.Signer) (*dns.NSEC, *dns.RRSIG) {
+	t.Helper()
+	record := &dns.NSEC{
+		Hdr:        dns.RR_Header{Name: dns.Fqdn(owner), Rrtype: dns.TypeNSEC, Class: dns.ClassINET, Ttl: 300},
+		NextDomain: dns.Fqdn(next),
+		TypeBitMap: []uint16{dns.TypeA, dns.TypeRRSIG, dns.TypeNSEC},
+	}
+	return record, signNSECTestRecord(t, record, key, signer)
 }
 
 func directTestAnswer(t *testing.T, qname string, key *dns.DNSKEY, signer crypto.Signer) (*dns.A, *dns.RRSIG) {
@@ -173,5 +178,81 @@ func TestAuthenticateTerminalAnswerWildcardRejectsExistingCloserName(t *testing.
 	validator := NewDNSSECValidator(func() time.Time { return nsec3TestNow })
 	status, err := validator.AuthenticateTerminalAnswer(msg, []*dns.DNSKEY{key})
 	require.ErrorContains(t, err, "closer name")
+	require.Equal(t, DNSSECBogus, status)
+}
+
+func TestAuthenticateTerminalAnswerWildcardNODATANSEC(t *testing.T) {
+	zone := "example.test."
+	qname := "host.example.test."
+	key, signer := nsec3TestKey(t, zone)
+	proof, proofSig := wildcardTestNSEC(t, "*.example.test.", "zzz.example.test.", key, signer)
+	msg := new(dns.Msg)
+	msg.SetQuestion(qname, dns.TypeAAAA)
+	msg.Rcode = dns.RcodeSuccess
+	msg.Ns = []dns.RR{proof, proofSig}
+
+	validator := NewDNSSECValidator(func() time.Time { return nsec3TestNow })
+	status, err := validator.AuthenticateTerminalAnswer(msg, []*dns.DNSKEY{key})
+	require.NoError(t, err)
+	require.Equal(t, DNSSECSecure, status)
+}
+
+func TestAuthenticateTerminalAnswerWildcardNODATANSECRejectsExistingType(t *testing.T) {
+	zone := "example.test."
+	qname := "host.example.test."
+	key, signer := nsec3TestKey(t, zone)
+	proof := &dns.NSEC{
+		Hdr:        dns.RR_Header{Name: "*.example.test.", Rrtype: dns.TypeNSEC, Class: dns.ClassINET, Ttl: 300},
+		NextDomain: "zzz.example.test.",
+		TypeBitMap: []uint16{dns.TypeAAAA, dns.TypeRRSIG, dns.TypeNSEC},
+	}
+	msg := new(dns.Msg)
+	msg.SetQuestion(qname, dns.TypeAAAA)
+	msg.Rcode = dns.RcodeSuccess
+	msg.Ns = []dns.RR{proof, signNSECTestRecord(t, proof, key, signer)}
+
+	validator := NewDNSSECValidator(func() time.Time { return nsec3TestNow })
+	status, err := validator.AuthenticateTerminalAnswer(msg, []*dns.DNSKEY{key})
+	require.ErrorContains(t, err, "bitmap")
+	require.Equal(t, DNSSECBogus, status)
+}
+
+func TestAuthenticateTerminalAnswerWildcardNODATANSEC3(t *testing.T) {
+	zone := "example.test."
+	qname := "host.example.test."
+	key, signer := nsec3TestKey(t, zone)
+	closest := nsec3TestRecord(zone, zone, []uint16{dns.TypeSOA, dns.TypeNS, dns.TypeRRSIG, dns.TypeNSEC3})
+	wildcard := nsec3TestRecord("*.example.test.", zone, []uint16{dns.TypeA, dns.TypeRRSIG, dns.TypeNSEC3})
+	msg := new(dns.Msg)
+	msg.SetQuestion(qname, dns.TypeAAAA)
+	msg.Rcode = dns.RcodeSuccess
+	msg.Ns = []dns.RR{
+		closest, signNSEC3TestRecord(t, closest, key, signer),
+		wildcard, signNSEC3TestRecord(t, wildcard, key, signer),
+	}
+
+	validator := NewDNSSECValidator(func() time.Time { return nsec3TestNow })
+	status, err := validator.AuthenticateTerminalAnswer(msg, []*dns.DNSKEY{key})
+	require.NoError(t, err)
+	require.Equal(t, DNSSECSecure, status)
+}
+
+func TestAuthenticateTerminalAnswerWildcardNODATANSEC3RejectsExistingType(t *testing.T) {
+	zone := "example.test."
+	qname := "host.example.test."
+	key, signer := nsec3TestKey(t, zone)
+	closest := nsec3TestRecord(zone, zone, []uint16{dns.TypeSOA, dns.TypeNS, dns.TypeRRSIG, dns.TypeNSEC3})
+	wildcard := nsec3TestRecord("*.example.test.", zone, []uint16{dns.TypeAAAA, dns.TypeRRSIG, dns.TypeNSEC3})
+	msg := new(dns.Msg)
+	msg.SetQuestion(qname, dns.TypeAAAA)
+	msg.Rcode = dns.RcodeSuccess
+	msg.Ns = []dns.RR{
+		closest, signNSEC3TestRecord(t, closest, key, signer),
+		wildcard, signNSEC3TestRecord(t, wildcard, key, signer),
+	}
+
+	validator := NewDNSSECValidator(func() time.Time { return nsec3TestNow })
+	status, err := validator.AuthenticateTerminalAnswer(msg, []*dns.DNSKEY{key})
+	require.ErrorContains(t, err, "bitmap")
 	require.Equal(t, DNSSECBogus, status)
 }
