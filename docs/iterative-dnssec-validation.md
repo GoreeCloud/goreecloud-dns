@@ -160,7 +160,15 @@ Empty NOERROR responses can also result from a wildcard matching QNAME while the
 
 For NSEC, Beacon selects the closest wildcard-owner NSEC applicable to QNAME, authenticates its RRset, requires its bitmap to omit both QTYPE and CNAME, derives the next-closer name from the wildcard's immediate ancestor, and then requires the same signed no-closer-match NSEC proof used by wildcard-positive validation.
 
-For NSEC3, Beacon requires an authenticated closest-encloser proof, authenticated non-Opt-Out NSEC3 coverage of the next-closer name, and an authenticated NSEC3 RR matching the corresponding wildcard owner. The wildcard NSEC3 bitmap must omit both QTYPE and CNAME.
+For NSEC3, Beacon requires an authenticated closest-encloser proof, authenticated non-Opt-Out NSEC3 coverage of the next-closer name, and an authenticated NSEC3 RR matching the corresponding wildcard owner. The wildcard NSEC3 bitmap must omit QTYPE and CNAME.
+
+## Routed forward/stub DNSSEC boundary
+
+`internal/gcdns/routing.go` can select direct recursion, a recursive forwarding target, or a non-recursive stub target after the normal policy/authority/cache stages. Direct recursion may continue through `ValidatingIterativeResolver`, but the first forwarding and stub transports do not impersonate local DNSSEC validation.
+
+Forwarded and stub responses explicitly clear any received `AD` bit and return `DNSSECIndeterminate`. Beacon therefore does not treat an upstream recursive resolver's AD assertion or an authoritative stub response as proof equivalent to its own DS/DNSKEY/terminal validation chain. Routed CNAME/DNAME chains combine DNSSEC state conservatively, so an indeterminate forwarded or stub hop cannot be promoted to `DNSSECSecure` merely because a later hop is secure.
+
+Local validation of forwarded data, authenticated-upstream policy, private trust anchors for stub namespaces, and DNSSEC-validating stub subdelegation walking remain staged work. Until those paths exist, the routing milestone is a resolver-selection foundation rather than a DNSSEC-secure forwarding implementation.
 
 ## Corrected development history
 
@@ -168,7 +176,7 @@ An intermediate branch-only experiment attempted to broaden NSEC NXDOMAIN handli
 
 ## Deliberate boundary
 
-DNSSEC algorithm/key-size policy, authenticated trust-anchor persistence/rollover, RFC 8020 NXDOMAIN-cut integration, parent-side DS minimisation, parallel/persistent nameserver infrastructure discovery, and end-to-end runtime acceptance remain staged work. Alias-target resolution and external NS hostname resolution currently use fresh validating walks rather than reusing cross-zone authority state; this is deliberate correctness-first behavior and can be optimized only after equivalent trust boundaries are proven.
+DNSSEC algorithm/key-size policy, authenticated trust-anchor persistence/rollover, RFC 8020 NXDOMAIN-cut integration, parent-side DS minimisation, local validation for forwarded and stub resolver data, authenticated upstream policy, private stub trust anchors, stub subdelegation walking, parallel/persistent nameserver infrastructure discovery, and end-to-end runtime acceptance remain staged work. Alias-target resolution and external NS hostname resolution currently use fresh validating walks rather than reusing cross-zone authority state; this is deliberate correctness-first behavior and can be optimized only after equivalent trust boundaries are proven.
 
 ## Production status
 
@@ -178,4 +186,5 @@ This code remains isolated from production DNS traffic. Existing production AdGu
 
 - Add algorithm and digest policy with explicit unsupported-algorithm behavior.
 - Add trust-anchor lifecycle and rollover automation.
-- Add end-to-end runtime acceptance against controlled signed, unsigned, bogus, wildcard, CNAME, DNAME, out-of-bailiwick-NS, QNAME-minimisation, NSEC, NSEC3, Opt-Out, NXNAME, CO, and denial-of-existence test zones.
+- Add local DNSSEC validation for forwarded/stub data and explicit private-zone trust-anchor policy.
+- Add end-to-end runtime acceptance against controlled signed, unsigned, bogus, wildcard, CNAME, DNAME, out-of-bailiwick-NS, QNAME-minimisation, routed-forward, stub, split-horizon, NSEC, NSEC3, Opt-Out, NXNAME, CO, and denial-of-existence test zones.
