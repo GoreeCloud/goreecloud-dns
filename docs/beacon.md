@@ -22,6 +22,8 @@ GoreeCloud DNS targets a stable capability superset of Technitium DNS Server, Pi
 
 `internal/gcdns/cache.go` provides a sharded, concurrency-safe bounded in-memory DNS cache with TTL expiration and wire-TTL aging, negative-response accounting, optional bounded serve-stale behavior, defensive DNS message copies, client-aware cache partitioning, serialized whole-cache flushes, and privacy-safe runtime statistics.
 
+The conservative cache partition now includes both `ClientID` and `ClientIP`. This prevents a stable device identity from reusing a split-horizon entry after changing network address or subnet before a future route-aware shared-cache lifecycle is explicitly designed.
+
 Beacon Cache also preserves RFC 9824 Compact Denial semantic metadata (`CompactDenial` and `CompactDenialCO`) through defensive result cloning. It does not permanently rewrite a cached Compact Denial response into one downstream client's preferred RCODE form.
 
 ## Beacon Resolver Scheduler
@@ -41,6 +43,18 @@ The resolver follows bounded CNAME/DNAME alias chains when a terminal response e
 Referral processing includes bounded out-of-bailiwick authoritative nameserver discovery. Beacon accepts direct A/AAAA glue only for NS names inside the delegated child, ignores sibling or unrelated Additional-section addresses, and resolves those external NS hostnames through normal recursion instead. Missing mandatory in-domain glue fails closed. External NS address work is request-scoped, cycle-checked, and capped at 32 distinct NS hostname discoveries per top-level resolution.
 
 Beacon also performs RFC 9156 QNAME minimisation for ordinary Internet data queries. It sends a fixed A minimisation QTYPE, reveals one additional QNAME label at a time while locating zone cuts, and shares a request-scoped maximum of 10 minimisation probes across the top-level resolution. Compatibility failures, DNAME, unsupported response forms, or budget exhaustion fall back to the original full question. Parent-side/meta/transfer queries remain on the traditional path in this first stage, and Beacon does not yet use RFC 8020 NXDOMAIN cuts.
+
+## Beacon Resolver Routing
+
+`internal/gcdns/routing.go` implements the first native forward, conditional, stub, and split-horizon resolver-routing stage while preserving the pipeline order `Policy -> Authoritative DNS -> Cache -> Resolver`.
+
+Routing uses longest DNS-suffix matching. A narrower route therefore overrides a broader route, and an explicit `recursive` route can restore direct recursion below a root or parent forwarding rule. Forward and stub routes use the existing scheduler for bounded target failover; forward targets receive RD=1, while stub targets receive RD=0 and must return terminal authoritative NOERROR or NXDOMAIN responses.
+
+Split-horizon routing can scope a route to exact `ClientID` values, client IP prefixes, or both. For the same DNS suffix, exact client identity outranks network-prefix matches, longer prefixes outrank shorter prefixes, and an unscoped route is the fallback. More-specific DNS namespace matching is evaluated before client-scope specificity.
+
+Routed aliases are re-evaluated under the target name's own route instead of inheriting the previous namespace route. Named route re-entry is cycle-checked. Ambiguous equal-specificity routes fail closed, and target endpoint syntax is validated before construction.
+
+Forwarded and stub responses clear `AD` and remain `DNSSECIndeterminate`. The current routing layer does not treat an upstream AD assertion or an authoritative stub response as local DNSSEC proof. Local validating-forwarder behavior, private stub trust anchors, stub subdelegation walking, listener-versus-forward-target self-loop validation, and explicit GoreeCloud Network/VLAN/group selectors remain staged boundaries. The detailed source boundary is in `docs/resolver-routing.md`.
 
 ## Beacon DNSSEC Foundation
 
@@ -167,7 +181,7 @@ A short-lived branch-only experiment used the phrase "compact NSEC NXDOMAIN" for
 
 ## Security boundary
 
-The native foundation currently enforces source-level invariants for DNSSEC validation, DNS rebinding protection, explicit recursion and administration ACLs, no accidental open recursion, bogus-result rejection before cache insertion, bounded cache/scheduler/transport behavior, delegation depth and loop protection, alias-loop protection, request-scoped out-of-bailiwick nameserver discovery, mandatory in-domain glue handling, RFC 9156 QNAME minimisation with a request-scoped 10-probe bound and DNSSEC-authenticated secure minimisation responses, root trust anchors, DS/DNSKEY authentication, terminal positive RRset validation, CNAME/DNAME alias chains including signed DNAME coverage of a synthesized CNAME, wildcard-positive no-closer-match validation, wildcard NODATA validation, NSEC/NSEC3 insecure-delegation proof including scoped Opt-Out DS-absence transitions, exact-owner NSEC/NSEC3 NODATA proof, conventional NSEC/NSEC3 NXDOMAIN proof with DNAME conflict checks, RFC 9824 NXNAME compact-denial recognition, validating-resolver CO signaling, and per-client cache-aware Compact Denial response restoration.
+The native foundation currently enforces source-level invariants for DNSSEC validation, DNS rebinding protection, explicit recursion and administration ACLs, no accidental open recursion, bogus-result rejection before cache insertion, bounded cache/scheduler/transport behavior, delegation depth and loop protection, alias-loop protection, request-scoped out-of-bailiwick nameserver discovery, mandatory in-domain glue handling, RFC 9156 QNAME minimisation with a request-scoped 10-probe bound and DNSSEC-authenticated secure minimisation responses, longest-suffix resolver routing, client/subnet split-horizon selection, route-loop and ambiguity rejection, client-identity-plus-address cache partitioning, forward/stub target failover, explicit RD behavior, forward/stub AD clearing with `DNSSECIndeterminate`, root trust anchors, DS/DNSKEY authentication, terminal positive RRset validation, CNAME/DNAME alias chains including signed DNAME coverage of a synthesized CNAME, wildcard-positive no-closer-match validation, wildcard NODATA validation, NSEC/NSEC3 insecure-delegation proof including scoped Opt-Out DS-absence transitions, exact-owner NSEC/NSEC3 NODATA proof, conventional NSEC/NSEC3 NXDOMAIN proof with DNAME conflict checks, RFC 9824 NXNAME compact-denial recognition, validating-resolver CO signaling, and per-client cache-aware Compact Denial response restoration.
 
 These are development controls, not production acceptance evidence.
 
@@ -177,7 +191,7 @@ No production traffic is routed through `internal/gcdns` yet. Existing AdGuard H
 
 ## Next implementation sequence
 
-1. Implement forward/conditional/stub routing and split-horizon routing.
+1. Add listener/self-target routing validation, stub subdelegation handling, and local DNSSEC validation policy for forwarded/stub data.
 2. Add persistent cache, prefetch/auto-prefetch, encrypted DNS, authoritative DNS, filtering, DHCP, clustering, APIs, identity, and Glaze UI administration.
 3. Validate the competitive-superset requirement with feature, security, privacy, control, resilience, and operational acceptance matrices.
 4. Perform controlled migration and production replacement only after GoreeCloud release and production-readiness gates pass.
