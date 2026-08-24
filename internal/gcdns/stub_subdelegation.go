@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/miekg/dns"
@@ -27,7 +28,10 @@ func NewDelegatingStubResolver(exchanger DNSExchanger, zone string, servers []st
 	if exchanger == nil {
 		return nil, errors.New("goreecloud dns: delegating stub resolver requires a DNS exchanger")
 	}
-	zone = dns.Fqdn(zone)
+	if strings.TrimSpace(zone) == "" {
+		return nil, errors.New("goreecloud dns: delegating stub resolver zone must not be blank")
+	}
+	zone = dns.Fqdn(strings.TrimSpace(zone))
 	if _, ok := dns.IsDomainName(zone); !ok {
 		return nil, fmt.Errorf("goreecloud dns: delegating stub resolver has invalid zone %q", zone)
 	}
