@@ -141,6 +141,8 @@ func nativeResolverTargetEndpoints(resolver Resolver) ([]string, error) {
 	switch value := resolver.(type) {
 	case *ForwardingResolver:
 		return schedulerTargetNames(value.scheduler), nil
+	case *ValidatingForwardingResolver:
+		return nativeResolverTargetEndpoints(value.forwarder)
 	case *StubResolver:
 		return schedulerTargetNames(value.scheduler), nil
 	case *DelegatingStubResolver:
