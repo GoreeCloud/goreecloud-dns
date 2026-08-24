@@ -46,6 +46,9 @@ func (r *ValidatingIterativeResolver) Resolve(ctx context.Context, req *Request)
 	if len(req.Message.Question) != 1 {
 		return nil, errors.New("goreecloud dns: validating iterative resolver requires exactly one question")
 	}
+	if result, handled := compactDenialQueryResponse(req); handled {
+		return result, nil
+	}
 
 	rootDNSKEY, err := r.resolveDNSKEY(ctx, ".", r.iterative.rootServers)
 	if err != nil {
