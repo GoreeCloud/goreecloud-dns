@@ -51,7 +51,8 @@ required = {
         "restores the original client's CD value",
         "Private child-delegation trust carry",
         "ValidatingDelegatingStubResolver",
-        "Ordinary forwarded Internet data remains `DNSSECIndeterminate`",
+        "Raw `ForwardingResolver` remains `DNSSECIndeterminate`",
+        "ValidatingForwardingResolver",
         "Production boundary",
     ),
     "docs/resolver-routing.md": (
