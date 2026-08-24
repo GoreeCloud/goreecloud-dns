@@ -186,8 +186,12 @@ func mergeAliasResult(original *Request, priorAnswers []dns.RR, priorTTL time.Du
 	out := cloneResult(final)
 	out.Message.Question = append([]dns.Question(nil), original.Message.Question...)
 	out.Message.Answer = append(append([]dns.RR(nil), priorAnswers...), out.Message.Answer...)
-	if priorTTL > 0 && (out.CacheTTL == 0 || priorTTL < out.CacheTTL) {
-		out.CacheTTL = priorTTL
+	if len(priorAnswers) != 0 {
+		if priorTTL == 0 {
+			out.CacheTTL = 0
+		} else if out.CacheTTL == 0 || priorTTL < out.CacheTTL {
+			out.CacheTTL = priorTTL
+		}
 	}
 	return out, nil
 }
@@ -196,11 +200,11 @@ func combineAliasDNSSEC(left, right DNSSECStatus) DNSSECStatus {
 	if left == DNSSECBogus || right == DNSSECBogus {
 		return DNSSECBogus
 	}
-	if left == DNSSECInsecure || right == DNSSECInsecure {
-		return DNSSECInsecure
-	}
 	if left == DNSSECIndeterminate || right == DNSSECIndeterminate {
 		return DNSSECIndeterminate
+	}
+	if left == DNSSECInsecure || right == DNSSECInsecure {
+		return DNSSECInsecure
 	}
 	return DNSSECSecure
 }
