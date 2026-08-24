@@ -54,20 +54,14 @@ required = {
         "Production boundary",
     ),
     "docs/routed-dnssec-policy.md": (
+        "Private child-delegation trust carry",
         "ValidatingDelegatingStubResolver",
-        "child",
+        "Ordinary forwarded Internet data remains `DNSSECIndeterminate`",
     ),
     "docs/resolver-routing.md": (
         "ValidatingDelegatingStubResolver",
-        "child",
-    ),
-    "docs/iterative-dnssec-validation.md": (
-        "ValidatingDelegatingStubResolver",
-        "private",
-    ),
-    "docs/beacon.md": (
-        "ValidatingDelegatingStubResolver",
-        "private",
+        "child DNSKEY",
+        "Ordinary Internet forwarding remains `DNSSECIndeterminate`",
     ),
     ".github/workflows/lint.yml": (
         "validate_private_stub_dnssec.py",
