@@ -51,20 +51,20 @@ type memoryCacheShard struct {
 // The whole-cache gate makes Flush mutually exclusive with Get and Put while
 // shard locks keep ordinary query traffic independent across partitions.
 type MemoryCache struct {
-	gate   sync.RWMutex
-	shards []memoryCacheShard
-	mask   uint64
-	now    func() time.Time
-	stale  bool
+	gate     sync.RWMutex
+	shards   []memoryCacheShard
+	mask     uint64
+	now      func() time.Time
+	stale    bool
 	staleTTL time.Duration
-	seq    atomic.Uint64
+	seq      atomic.Uint64
 
 	hits      atomic.Uint64
 	misses    atomic.Uint64
 	staleHits atomic.Uint64
 	puts      atomic.Uint64
 	evictions atomic.Uint64
-	negative atomic.Uint64
+	negative  atomic.Uint64
 }
 
 // NewMemoryCache creates a cache with a power-of-two shard count.
@@ -263,11 +263,14 @@ func cacheKey(req *Request) (string, uint64, error) {
 		return "", 0, errors.New("goreecloud dns: cache request must contain a question")
 	}
 	q := req.Message.Question[0]
-	client := req.ClientID
-	if client == "" && req.ClientIP.IsValid() {
-		client = req.ClientIP.String()
+	clientIP := ""
+	if req.ClientIP.IsValid() {
+		clientIP = req.ClientIP.String()
 	}
-	key := fmt.Sprintf("%s|%d|%d|%s", dns.Fqdn(q.Name), q.Qtype, q.Qclass, client)
+	// Keep identity and address in the conservative cache partition. Route and
+	// split-horizon selection may depend on subnet context, so an otherwise
+	// stable ClientID must not carry a cached answer across network locations.
+	key := fmt.Sprintf("%s|%d|%d|id=%s|ip=%s", dns.Fqdn(q.Name), q.Qtype, q.Qclass, req.ClientID, clientIP)
 	h := fnv.New64a()
 	_, _ = h.Write([]byte(key))
 	return key, h.Sum64(), nil
@@ -316,6 +319,5 @@ func setResultTTL(res *Result, ttl uint32) {
 			if rr != nil && rr.Header().Rrtype != dns.TypeOPT {
 				rr.Header().Ttl = ttl
 			}
-		}
 	}
 }
