@@ -46,6 +46,8 @@
         'run': 'python3 scripts/validate_qname_minimisation.py'
       - 'name': 'Validate Beacon resolver-routing contract'
         'run': 'python3 scripts/validate_resolver_routing.py'
+      - 'name': 'Validate Beacon routed DNSSEC policy contract'
+        'run': 'python3 scripts/validate_routed_dnssec_policy.py'
       - 'name': 'Test native GoreeCloud DNS core'
         'run': 'go test ./internal/gcdns'
 
