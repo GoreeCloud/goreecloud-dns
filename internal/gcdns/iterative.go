@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net"
 	"sort"
 	"strings"
 	"time"
@@ -61,6 +60,10 @@ func NewIterativeResolver(exchanger DNSExchanger, cfg IterativeResolverConfig) (
 }
 
 func (r *IterativeResolver) Resolve(ctx context.Context, req *Request) (*Result, error) {
+	return r.resolveWithState(ctx, req, newResolutionState())
+}
+
+func (r *IterativeResolver) resolveWithState(ctx context.Context, req *Request, state *resolutionState) (*Result, error) {
 	if req == nil || req.Message == nil {
 		return nil, errors.New("goreecloud dns: iterative resolver request is nil")
 	}
@@ -70,6 +73,9 @@ func (r *IterativeResolver) Resolve(ctx context.Context, req *Request) (*Result,
 	if result, handled := compactDenialQueryResponse(req); handled {
 		return result, nil
 	}
+	if state == nil {
+		state = newResolutionState()
+	}
 
 	original := req
 	current := req
@@ -78,7 +84,7 @@ func (r *IterativeResolver) Resolve(ctx context.Context, req *Request) (*Result,
 	var priorTTL time.Duration
 
 	for aliasDepth := 0; aliasDepth < maxAliasTransitions; aliasDepth++ {
-		res, err := r.resolveSingle(ctx, current)
+		res, err := r.resolveSingle(ctx, current, state)
 		if err != nil {
 			return nil, err
 		}
@@ -111,7 +117,7 @@ func (r *IterativeResolver) Resolve(ctx context.Context, req *Request) (*Result,
 	return nil, errors.New("goreecloud dns: alias chain exceeds maximum transition depth")
 }
 
-func (r *IterativeResolver) resolveSingle(ctx context.Context, req *Request) (*Result, error) {
+func (r *IterativeResolver) resolveSingle(ctx context.Context, req *Request, state *resolutionState) (*Result, error) {
 	servers := append([]string(nil), r.rootServers...)
 	seenDelegations := map[string]struct{}{}
 	for depth := 0; depth < r.maxDepth; depth++ {
@@ -124,13 +130,17 @@ func (r *IterativeResolver) resolveSingle(ctx context.Context, req *Request) (*R
 			return res, nil
 		}
 
-		zone, nextServers, err := referralTargets(res.Message, req.Message.Question[0].Name)
+		plan, err := buildReferralPlan(res.Message, req.Message.Question[0].Name)
 		if err != nil {
 			return nil, err
 		}
-		key := delegationKey(zone, nextServers)
+		nextServers, err := completeReferralServers(ctx, req, plan, state, r.resolveWithState)
+		if err != nil {
+			return nil, err
+		}
+		key := delegationKey(plan.zone, nextServers)
 		if _, exists := seenDelegations[key]; exists {
-			return nil, fmt.Errorf("goreecloud dns: delegation loop detected at %s", zone)
+			return nil, fmt.Errorf("goreecloud dns: delegation loop detected at %s", plan.zone)
 		}
 		seenDelegations[key] = struct{}{}
 		servers = nextServers
@@ -207,57 +217,18 @@ func terminalDNSResponse(msg *dns.Msg) bool {
 	return false
 }
 
+// referralTargets preserves the conservative direct-glue helper used by the
+// focused referral tests. The resolver itself uses buildReferralPlan plus
+// completeReferralServers so out-of-bailiwick NS names can be resolved safely.
 func referralTargets(msg *dns.Msg, qname string) (string, []string, error) {
-	if msg == nil {
-		return "", nil, errors.New("goreecloud dns: nil referral response")
+	plan, err := buildReferralPlan(msg, qname)
+	if err != nil {
+		return "", nil, err
 	}
-	var zone string
-	nsHosts := map[string]struct{}{}
-	for _, rr := range msg.Ns {
-		ns, ok := rr.(*dns.NS)
-		if !ok {
-			continue
-		}
-		owner := dns.Fqdn(ns.Hdr.Name)
-		if !dns.IsSubDomain(owner, dns.Fqdn(qname)) {
-			continue
-		}
-		if zone == "" {
-			zone = owner
-		} else if !equalName(zone, owner) {
-			return "", nil, errors.New("goreecloud dns: mixed referral zones are not accepted")
-		}
-		nsHosts[strings.ToLower(dns.Fqdn(ns.Ns))] = struct{}{}
+	if len(plan.servers) == 0 {
+		return "", nil, fmt.Errorf("goreecloud dns: referral for %s has no usable in-bailiwick glue", plan.zone)
 	}
-	if zone == "" || len(nsHosts) == 0 {
-		return "", nil, errors.New("goreecloud dns: response does not contain a usable referral")
-	}
-
-	serverSet := map[string]struct{}{}
-	for _, rr := range msg.Extra {
-		name := strings.ToLower(dns.Fqdn(rr.Header().Name))
-		if _, advertised := nsHosts[name]; !advertised {
-			continue
-		}
-		if !dns.IsSubDomain(zone, name) {
-			continue
-		}
-		switch v := rr.(type) {
-		case *dns.A:
-			serverSet[net.JoinHostPort(v.A.String(), "53")] = struct{}{}
-		case *dns.AAAA:
-			serverSet[net.JoinHostPort(v.AAAA.String(), "53")] = struct{}{}
-		}
-	}
-	if len(serverSet) == 0 {
-		return "", nil, fmt.Errorf("goreecloud dns: referral for %s has no usable in-bailiwick glue", zone)
-	}
-	servers := make([]string, 0, len(serverSet))
-	for server := range serverSet {
-		servers = append(servers, server)
-	}
-	sort.Strings(servers)
-	return zone, servers, nil
+	return plan.zone, append([]string(nil), plan.servers...), nil
 }
 
 func delegationKey(zone string, servers []string) string {
@@ -290,7 +261,6 @@ func responseCacheTTL(msg *dns.Msg) time.Duration {
 				}
 				consider(negative)
 			}
-		}
 	}
 	if !set {
 		return 0
