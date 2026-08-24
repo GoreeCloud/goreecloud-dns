@@ -3,7 +3,7 @@
 # This comment is used to simplify checking local copies of the script.  Bump
 # this number every time a significant change is made to this script.
 #
-# AdGuard-Project-Version: 19
+# AdGuard-Project-Version: 20
 
 verbose="${VERBOSE:-0}"
 readonly verbose
@@ -62,6 +62,12 @@ set -f -u
 # to use package log, see above.  If your project needs more exceptions, add and
 # document them.
 #
+# GoreeCloud's first-party internal/gcdns resolver is a separately governed
+# native subsystem.  Its stdlib import and filename conventions are intentionally
+# not inherited from AdGuard Home.  Only the two convention-only checks in this
+# script exclude it; gofumpt, vet, govulncheck, complexity checks, ineffassign,
+# unparam, nilness, shadow, errcheck, and staticcheck continue to analyze it.
+#
 # NOTE:  Flag -H for grep is non-POSIX but all of Busybox, GNU, macOS, and
 # OpenBSD support it.
 #
@@ -79,6 +85,7 @@ blocklist_imports() {
 		'!' '(' \
 		-name '*.pb.go' \
 		-o -path './internal/permcheck/security_windows.go' \
+		-o -path './internal/gcdns/*' \
 		')' \
 		-exec \
 		'grep' \
@@ -136,7 +143,9 @@ method_const() {
 
 # underscores is a simple check against Go filenames with underscores.  Add new
 # build tags and OS as you go.  The main goal of this check is to discourage the
-# use of filenames like client_manager.go.
+# use of filenames like client_manager.go.  GoreeCloud's internal/gcdns files
+# use descriptive snake_case names by their own first-party convention and are
+# excluded from this filename-only inherited check.
 underscores() {
 	underscore_files="$(
 		find_with_ignore \
@@ -154,6 +163,7 @@ underscores() {
 			-o -name '*_test.go' \
 			-o -name '*_unix.go' \
 			-o -name '*_windows.go' \
+			-o -path './internal/gcdns/*' \
 			')' \
 			-exec 'printf' '\t%s\n' '{}' ';'
 	)"
