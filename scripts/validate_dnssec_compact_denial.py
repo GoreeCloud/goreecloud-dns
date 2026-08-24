@@ -5,8 +5,8 @@ ROOT = Path(__file__).resolve().parents[1]
 required = {
     "internal/gcdns/contracts.go": (
         "CompactAnswersOK bool",
-        "CompactDenial    bool",
-        "CompactDenialCO  bool",
+        "CompactDenial   bool",
+        "CompactDenialCO bool",
     ),
     "internal/gcdns/dnssec_compact_denial.go": (
         "func (v *DNSSECValidator) AuthenticateCompactDenial",
