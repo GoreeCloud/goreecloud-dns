@@ -8,7 +8,7 @@ The validating path performs these steps before a secure answer may be returned:
 
 1. Query the root zone for DNSKEY material with DNSSEC signaling enabled.
 2. Authenticate the root DNSKEY RRset against the carried GoreeCloud Beacon root DS trust anchors.
-3. Resolve the original question against the currently trusted authority set.
+3. Use RFC 9156 QNAME minimisation probes to locate zone cuts without exposing the full original QNAME prematurely; secure non-referral probes must authenticate before they may advance the minimisation cursor.
 4. For every signed referral, authenticate the child DS RRset with the currently trusted parent DNSKEY set.
 5. Resolve external authoritative nameserver hostnames when the referral does not provide directly acceptable in-domain glue.
 6. Query the child authority for its DNSKEY RRset.
@@ -128,6 +128,20 @@ A discovered server address does not authenticate child-zone data. The ordinary 
 
 The detailed design and current limits are in `docs/out-of-bailiwick-nameserver-discovery.md`. External NS hostname lookup is sequential in this first source slice; persistent infrastructure-address caching and parallel auxiliary lookup remain later optimization work.
 
+## RFC 9156 QNAME minimisation
+
+`internal/gcdns/qname_minimisation.go`, `internal/gcdns/iterative.go`, and `internal/gcdns/iterative_dnssec.go` implement Beacon's first privacy-preserving QNAME minimisation path.
+
+For eligible Internet data queries, Beacon sends a fixed A minimisation QTYPE regardless of the client's original QTYPE and reveals one additional QNAME label at a time from the current known authority boundary. Referrals advance that boundary. NOERROR non-referral responses, including NODATA and CNAME, advance the minimisation cursor without becoming the client's final answer. DNAME and compatibility failures return control to the existing full-QNAME path.
+
+A request-scoped counter limits minimisation to 10 probes for the complete top-level resolution. Alias-target resolution and external authoritative nameserver discovery share the same `resolutionState`, so related sub-resolution work does not receive an independent amplification budget. Budget exhaustion falls back to the normal original-QNAME/original-QTYPE iterative query.
+
+Beacon does not yet implement RFC 8020 NXDOMAIN cuts. NXDOMAIN received during minimisation therefore does not terminate the original query merely because an ancestor name was minimized; the cursor continues building or the resolver falls back to the full original question. Parent-side DS and selected meta/transfer QTYPEs remain outside this first minimisation stage.
+
+On a secure branch, secure minimisation behavior is stricter than the plain resolver. A non-referral minimisation response must authenticate using the currently trusted DNSKEY set before it may influence the minimisation cursor. If the result is `DNSSECIndeterminate`, Beacon abandons minimisation and sends the full original query rather than using unproven information for zone-cut inference. Cryptographic failure remains bogus. Secure referrals continue through the ordinary authenticated DS/DNSKEY transition. Below a proven insecure delegation, minimisation may continue but cannot restore secure trust.
+
+The complete source boundary is described in `docs/qname-minimisation.md`.
+
 ## Wildcard-expanded positive answers
 
 `internal/gcdns/dnssec_wildcard.go` closes the positive-answer wildcard validation gap identified by RFC 4035 and RFC 5155.
@@ -154,7 +168,7 @@ An intermediate branch-only experiment attempted to broaden NSEC NXDOMAIN handli
 
 ## Deliberate boundary
 
-QNAME minimization, DNSSEC algorithm/key-size policy, authenticated trust-anchor persistence/rollover, parallel/persistent nameserver infrastructure discovery, and end-to-end runtime acceptance remain staged work. Alias-target resolution and external NS hostname resolution currently use fresh validating walks rather than reusing cross-zone authority state; this is deliberate correctness-first behavior and can be optimized only after equivalent trust boundaries are proven.
+DNSSEC algorithm/key-size policy, authenticated trust-anchor persistence/rollover, RFC 8020 NXDOMAIN-cut integration, parent-side DS minimisation, parallel/persistent nameserver infrastructure discovery, and end-to-end runtime acceptance remain staged work. Alias-target resolution and external NS hostname resolution currently use fresh validating walks rather than reusing cross-zone authority state; this is deliberate correctness-first behavior and can be optimized only after equivalent trust boundaries are proven.
 
 ## Production status
 
@@ -162,7 +176,6 @@ This code remains isolated from production DNS traffic. Existing production AdGu
 
 ## Next DNSSEC stages
 
-- Implement QNAME minimization.
 - Add algorithm and digest policy with explicit unsupported-algorithm behavior.
 - Add trust-anchor lifecycle and rollover automation.
-- Add end-to-end runtime acceptance against controlled signed, unsigned, bogus, wildcard, CNAME, DNAME, out-of-bailiwick-NS, NSEC, NSEC3, Opt-Out, NXNAME, CO, and denial-of-existence test zones.
+- Add end-to-end runtime acceptance against controlled signed, unsigned, bogus, wildcard, CNAME, DNAME, out-of-bailiwick-NS, QNAME-minimisation, NSEC, NSEC3, Opt-Out, NXNAME, CO, and denial-of-existence test zones.
