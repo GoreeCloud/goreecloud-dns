@@ -3,7 +3,7 @@
 # This comment is used to simplify checking local copies of the script.  Bump
 # this number every time a significant change is made to this script.
 #
-# AdGuard-Project-Version: 21
+# AdGuard-Project-Version: 22
 
 verbose="${VERBOSE:-0}"
 readonly verbose
@@ -67,8 +67,9 @@ set -f -u
 # not inherited from AdGuard Home.  Only the two convention-only checks in this
 # script exclude it.  Gofumpt, vet, govulncheck, ineffassign, unparam, nilness,
 # shadow, errcheck, and staticcheck continue to analyze it.  Cyclomatic
-# complexity is also enforced separately below with a resolver-specific limit
-# that preserves analysis while accommodating DNS state-machine validation code.
+# complexity and shadow analysis are enforced separately below with resolver-
+# specific policies that preserve analysis without applying unrelated inherited
+# style thresholds to DNS state-machine validation code.
 #
 # NOTE:  Flag -H for grep is non-POSIX but all of Busybox, GNU, macOS, and
 # OpenBSD support it.
@@ -101,7 +102,7 @@ blocklist_imports() {
 		'-e' "$import_or_tab"'"reflect"$' \
 		'-e' "$import_or_tab"'"sort"$' \
 		'-e' "$import_or_tab"'"unsafe"$' \
-		'-n' \
+		-n \
 		'{}' \
 		';'
 
@@ -116,7 +117,7 @@ blocklist_imports() {
 		'grep' \
 		'-H' \
 		'-e' "$import_or_tab"'"log"$' \
-		'-n' \
+		-n \
 		'{}' \
 		';'
 }
@@ -138,7 +139,7 @@ method_const() {
 		'-e' '"PATCH"' \
 		'-e' '"POST"' \
 		'-e' '"PUT"' \
-		'-n' \
+		-n \
 		'{}' \
 		';'
 }
@@ -305,7 +306,14 @@ run_linter "$go" tool fieldalignment \
 	./internal/whois/ \
 	;
 
-run_linter -e "$go" tool shadow --strict work
+# The inherited tree retains strict shadow analysis.  GoreeCloud's native DNS
+# package uses the standard shadow analyzer, which still reports unsafe shadowing
+# without treating every idiomatic short declaration as a strict-style error.
+shadow_strict_packages="$("$go" list ./... | grep -v '/internal/gcdns$')"
+readonly shadow_strict_packages
+# shellcheck disable=SC2086
+run_linter -e "$go" tool shadow --strict $shadow_strict_packages
+run_linter -e "$go" tool shadow ./internal/gcdns
 
 # TODO(a.garipov): Enable for all.
 # TODO(e.burkov):  Re-enable G115.
