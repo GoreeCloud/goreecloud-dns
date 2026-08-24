@@ -11,8 +11,9 @@ import (
 )
 
 type chainAuthenticatorFunc struct {
-	dnskey func(string, *dns.Msg, []*dns.DS) ([]*dns.DNSKEY, DNSSECStatus, error)
-	ds     func(string, *dns.Msg, []*dns.DNSKEY) ([]*dns.DS, DNSSECStatus, error)
+	dnskey   func(string, *dns.Msg, []*dns.DS) ([]*dns.DNSKEY, DNSSECStatus, error)
+	ds       func(string, *dns.Msg, []*dns.DNSKEY) ([]*dns.DS, DNSSECStatus, error)
+	terminal func(*dns.Msg, []*dns.DNSKEY) (DNSSECStatus, error)
 }
 
 func (f chainAuthenticatorFunc) AuthenticateDNSKEYResponse(zone string, msg *dns.Msg, parentDS []*dns.DS) ([]*dns.DNSKEY, DNSSECStatus, error) {
@@ -21,6 +22,13 @@ func (f chainAuthenticatorFunc) AuthenticateDNSKEYResponse(zone string, msg *dns
 
 func (f chainAuthenticatorFunc) AuthenticateDelegationDS(zone string, msg *dns.Msg, parentKeys []*dns.DNSKEY) ([]*dns.DS, DNSSECStatus, error) {
 	return f.ds(zone, msg, parentKeys)
+}
+
+func (f chainAuthenticatorFunc) AuthenticateTerminalAnswer(msg *dns.Msg, keys []*dns.DNSKEY) (DNSSECStatus, error) {
+	if f.terminal == nil {
+		return DNSSECIndeterminate, nil
+	}
+	return f.terminal(msg, keys)
 }
 
 func testDNSKEY(zone string, tagSeed uint16) *dns.DNSKEY {
@@ -69,7 +77,7 @@ func TestValidatingIterativeResolverCarriesSecureDelegationTrust(t *testing.T) {
 		}
 	})
 
-	var dnskeyAuthCalls, dsAuthCalls int
+	var dnskeyAuthCalls, dsAuthCalls, terminalAuthCalls int
 	chain := chainAuthenticatorFunc{
 		dnskey: func(zone string, _ *dns.Msg, parentDS []*dns.DS) ([]*dns.DNSKEY, DNSSECStatus, error) {
 			dnskeyAuthCalls++
@@ -87,6 +95,11 @@ func TestValidatingIterativeResolverCarriesSecureDelegationTrust(t *testing.T) {
 			require.Equal(t, []*dns.DNSKEY{rootKey}, parentKeys)
 			return []*dns.DS{childDS}, DNSSECSecure, nil
 		},
+		terminal: func(_ *dns.Msg, keys []*dns.DNSKEY) (DNSSECStatus, error) {
+			terminalAuthCalls++
+			require.Equal(t, []*dns.DNSKEY{childKey}, keys)
+			return DNSSECSecure, nil
+		},
 	}
 
 	resolver, err := NewValidatingIterativeResolver(exchanger, IterativeResolverConfig{RootServers: []string{root}, MaxDepth: 8, AttemptTimeout: time.Second, MaxConcurrent: 2}, chain)
@@ -97,11 +110,12 @@ func TestValidatingIterativeResolverCarriesSecureDelegationTrust(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, child, res.Source)
 	require.Equal(t, 90*time.Second, res.CacheTTL)
-	require.Equal(t, DNSSECIndeterminate, res.DNSSECStatus)
+	require.Equal(t, DNSSECSecure, res.DNSSECStatus)
 	require.Equal(t, 1, rootDNSKEYQueries)
 	require.Equal(t, 1, childDNSKEYQueries)
 	require.Equal(t, 2, dnskeyAuthCalls)
 	require.Equal(t, 1, dsAuthCalls)
+	require.Equal(t, 1, terminalAuthCalls)
 }
 
 func TestValidatingIterativeResolverCarriesProvenInsecureDelegation(t *testing.T) {
