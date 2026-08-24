@@ -7,7 +7,7 @@ ROOT = Path(__file__).resolve().parents[1]
 POLICY = ROOT / "internal/gcdns/dnssec_algorithm_policy.go"
 VALIDATOR = ROOT / "internal/gcdns/dnssec.go"
 TESTS = ROOT / "internal/gcdns/dnssec_algorithm_policy_test.go"
-DOCS = ROOT / "docs/beacon.md"
+DOCS = ROOT / "docs/dnssec-cryptographic-policy.md"
 WORKFLOW = ROOT / ".github/workflows/lint.yml"
 
 
@@ -73,9 +73,11 @@ def main() -> None:
     require(
         DOCS,
         [
-            "### DNSSEC algorithm, digest, and key-strength policy",
+            "# Beacon DNSSEC Cryptographic Policy",
             "1024-4096-bit RSA",
-            "trust-anchor persistence",
+            "authenticated trust-anchor persistence",
+            "RFC 9904",
+            "RFC 9905",
         ],
     )
     require(WORKFLOW, ["scripts/validate_dnssec_algorithm_policy.py"])
