@@ -50,8 +50,10 @@
         'run': 'python3 scripts/validate_routed_dnssec_policy.py'
       - 'name': 'Validate Beacon private stub DNSSEC trust-carry contract'
         'run': 'python3 scripts/validate_private_stub_dnssec.py'
-      - 'name': 'Validate Beacon DNSSEC algorithm and digest policy'
+      - 'name': 'Validate Beacon DNSSEC algorithm, digest, and key-strength policy'
         'run': 'python3 scripts/validate_dnssec_algorithm_policy.py'
+      - 'name': 'Validate Beacon persistent trust-anchor lifecycle'
+        'run': 'python3 scripts/validate_trust_anchor_lifecycle.py'
       - 'name': 'Test native GoreeCloud DNS core'
         'run': 'go test ./internal/gcdns'
 
