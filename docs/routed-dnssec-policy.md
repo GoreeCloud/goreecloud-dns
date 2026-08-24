@@ -36,19 +36,35 @@ This lets a configured KSK authenticate the apex DNSKEY RRset and then allows a 
 
 Trust-anchor material is configuration, not data learned from the routed DNS response. Provisioning, secure storage, update approval, rollover, backup, recovery, and audit of private trust anchors remain separate lifecycle responsibilities.
 
+## Private child-delegation trust carry
+
+`ValidatingDelegatingStubResolver` extends the private anchor model through delegated children inside the configured stub namespace.
+
+The validating stub first authenticates the configured private apex DNSKEY RRset from the out-of-band anchor. At each closer referral, Beacon then applies the same DS/DNSKEY transition already used by validating Internet recursion:
+
+- an authenticated child DS RRset is validated with the current parent DNSKEY set;
+- child authoritative addresses are obtained through the bounded private-stub referral planner;
+- the child apex DNSKEY RRset is queried with RD=0, DO enabled, and CD=1;
+- a DNSKEY matching the authenticated DS must authenticate the complete child apex DNSKEY RRset; and
+- only the resulting authenticated child keyset is carried into the next delegation or terminal-answer check.
+
+A missing DS is not enough to classify a child as unsigned. Existing NSEC, exact-name NSEC3, and scoped NSEC3 Opt-Out insecure-delegation validation must authenticate DS absence. After that transition, the branch becomes `DNSSECInsecure`, child DNSKEY acquisition is skipped, and deeper referrals cannot restore secure trust without a separate explicit anchor.
+
+A referral that provides neither authenticated DS nor authenticated DS-absence proof fails before the child authority is contacted.
+
+Secure terminal data is validated through `AuthenticateTerminalAnswer` using the current authenticated child keyset. Authenticated-insecure terminal data is returned as `DNSSECInsecure` without requiring signatures that the proven unsigned child cannot provide.
+
+The validating private stub keeps every existing namespace and operational bound: referrals must remain below the configured stub apex, must move strictly closer to QNAME, are limited to 16 transitions, keep mandatory in-domain glue fail-closed, refuse public recursion for nameservers outside the private stub namespace, and apply runtime listener self-target checks to dynamically discovered child endpoints.
+
+The detailed implementation boundary is in `docs/private-stub-dnssec.md`.
+
 ## Routing-runtime safety
 
 A DNSSEC-validation wrapper must not hide its underlying forward or stub target from routing safety checks. `routing_runtime_validation.go` therefore unwraps `PrivateTrustAnchorResolver` when discovering configured native target endpoints.
 
-When a private trust-anchor wrapper contains `DelegatingStubResolver`, `NewRuntimeValidatedRoutingResolver` recursively clones the wrapper and attaches the active listener boundary to the inner delegating stub. Dynamically discovered child-authority addresses remain subject to the same self-target rejection before exchange.
+`NewRuntimeValidatedRoutingResolver` also recognizes `ValidatingDelegatingStubResolver`, validates its configured root-authority endpoints, clones it with the active runtime boundary attached, and applies that boundary to every dynamically discovered child-authority endpoint before exchange.
 
-## Current delegation boundary
-
-This private trust-anchor stage validates terminal data with the authenticated key set from the configured zone apex. It does not yet establish and carry a private DNSSEC trust chain through signed child delegations below that apex.
-
-A terminal answer signed by a separate delegated child zone therefore does not become secure merely because the parent private zone is anchored. Private DS/DNSKEY delegation walking, authenticated insecure-delegation transitions below a private anchor, and per-child private trust-anchor policy remain staged work.
-
-The same limitation applies when a `DelegatingStubResolver` follows private subdelegations: referral transport can reach the child, but local DNSSEC trust does not automatically cross the child delegation in this stage.
+When a private trust-anchor wrapper contains `DelegatingStubResolver`, runtime construction still recursively clones the wrapper and attaches the active listener boundary to the inner delegating stub. DNSSEC validation layers therefore do not create a self-target bypass.
 
 ## Internet forwarding boundary
 
@@ -70,10 +86,15 @@ Deterministic source tests cover:
 - rejection when the configured anchor does not authenticate the DNSKEY RRset;
 - rejection of malformed, non-zone-key, empty, or blank-zone trust-anchor configuration;
 - rejection of questions outside the anchored namespace;
-- runtime self-target validation through a private trust-anchor wrapper; and
-- propagation of the runtime listener boundary through a wrapped delegating stub.
+- secure private parent-DS to child-DNSKEY trust carry;
+- authenticated insecure private child transition without child DNSKEY lookup;
+- rejection of unproven private child delegations before child contact;
+- exact validating-stub/trust-anchor namespace matching;
+- runtime root self-target validation for validating private stubs;
+- runtime listener-boundary attachment to validating private stubs; and
+- dynamic child-authority self-target rejection before child contact.
 
-The focused routed-DNSSEC source contract is executed by the `beacon-native-core` workflow before `go test ./internal/gcdns`.
+The focused routed-DNSSEC and private-stub DNSSEC source contracts are executed by the `beacon-native-core` workflow before `go test ./internal/gcdns`.
 
 ## Production boundary
 
