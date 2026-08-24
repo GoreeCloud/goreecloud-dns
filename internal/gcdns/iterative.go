@@ -160,6 +160,12 @@ func (r *IterativeResolver) resolveSingle(ctx context.Context, req *Request, sta
 					cursor = plan.zone
 					delegations++
 					continue
+				} else if sameDNSName(child, q.Name) && q.Qtype == qnameMinimisationQType {
+					// The final minimisation probe is byte-for-byte the original DNS
+					// question when the client also asked for A. Reuse it instead of
+					// issuing a redundant full-QNAME A query.
+					probeRes.CacheTTL = responseCacheTTL(probeRes.Message)
+					return probeRes, nil
 				} else if probeRes.Message != nil && probeRes.Message.Rcode == dns.RcodeSuccess && !qnameMinimisationResponseHasDNAME(probeRes.Message) {
 					// RFC 9156 relaxed mode: NOERROR, including NODATA and CNAME,
 					// means no zone cut was learned here. Reveal the next label.
