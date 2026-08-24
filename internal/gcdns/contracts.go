@@ -32,20 +32,31 @@ const (
 )
 
 // Request is the normalized request consumed by the native Beacon pipeline.
+// CompactAnswersOK is an internal resolver capability signal. It is separate
+// from the downstream query's EDNS CO bit so Beacon cannot accidentally copy a
+// hop-by-hop client signal into an upstream request without an explicit
+// validating-resolver decision.
 type Request struct {
-	Message   *dns.Msg
-	ClientIP  netip.Addr
-	ClientID  string
-	Transport Transport
+	Message          *dns.Msg
+	ClientIP         netip.Addr
+	ClientID         string
+	Transport        Transport
+	CompactAnswersOK bool
 }
 
 // Result is the normalized result returned by a Beacon subsystem.
+// CompactDenial records a DNSSEC-authenticated RFC 9824 NXNAME conclusion.
+// CompactDenialCO preserves whether the upstream Compact Answer carried the CO
+// response flag so cache state retains the hop-by-hop protocol evidence even
+// though downstream response presentation is decided per request.
 type Result struct {
-	Message      *dns.Msg
-	Source       string
-	CacheTTL     time.Duration
-	Stale        bool
-	DNSSECStatus DNSSECStatus
+	Message          *dns.Msg
+	Source           string
+	CacheTTL         time.Duration
+	Stale            bool
+	DNSSECStatus     DNSSECStatus
+	CompactDenial    bool
+	CompactDenialCO  bool
 }
 
 // Policy applies request policy before DNS data is resolved.
