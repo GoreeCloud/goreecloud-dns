@@ -164,11 +164,17 @@ For NSEC3, Beacon requires an authenticated closest-encloser proof, authenticate
 
 ## Routed forward/stub DNSSEC boundary
 
-`internal/gcdns/routing.go` can select direct recursion, a recursive forwarding target, or a non-recursive stub target after the normal policy/authority/cache stages. Direct recursion may continue through `ValidatingIterativeResolver`, but the first forwarding and stub transports do not impersonate local DNSSEC validation.
+`internal/gcdns/routing.go` can select direct recursion, a recursive forwarding target, or a non-recursive stub target after the normal policy/authority/cache stages. Direct recursion may continue through `ValidatingIterativeResolver`. Raw forward, terminal-only stub, and delegating-stub transports clear AD and return `DNSSECIndeterminate`; transport selection is not trust evidence.
 
-Forwarded and stub responses explicitly clear any received `AD` bit and return `DNSSECIndeterminate`. Beacon therefore does not treat an upstream recursive resolver's AD assertion or an authoritative stub response as proof equivalent to its own DS/DNSKEY/terminal validation chain. Routed CNAME/DNAME chains combine DNSSEC state conservatively, so an indeterminate forwarded or stub hop cannot be promoted to `DNSSECSecure` merely because a later hop is secure.
+`PrivateTrustAnchorResolver` now provides an explicit local-validation path for a configured private or otherwise locally administered signed zone. Beacon forces CD=1 on the wrapped apex-DNSKEY and terminal lookups, ignores any upstream AD assertion, requires the configured DNSKEY to appear in and authenticate the complete apex DNSKEY RRset, then uses the authenticated apex keyset to validate the terminal response locally. The normalized result becomes `DNSSECSecure` only after that validation succeeds. The client's original CD bit is restored before the response is returned.
 
-Local validation of forwarded data, authenticated-upstream policy, private trust anchors for stub namespaces, and DNSSEC-validating stub subdelegation walking remain staged work. Until those paths exist, the routing milestone is a resolver-selection foundation rather than a DNSSEC-secure forwarding implementation.
+The private DNSKEY trust anchor is out-of-band configuration. It is not learned from the routed response. A configured KSK can authenticate the apex DNSKEY RRset, after which an authenticated ZSK from that same RRset may authenticate terminal data.
+
+This first private-anchor path does not yet carry trust through separately signed child delegations beneath the anchored zone. A `DelegatingStubResolver` may reach a child authority, but the wrapper does not yet authenticate the parent DS, child DNSKEY RRset, or an insecure-delegation transition in that private hierarchy. Such child data therefore cannot become secure merely because the parent apex is anchored.
+
+Runtime routing safety still applies through the validation wrapper. Endpoint discovery unwraps `PrivateTrustAnchorResolver`, and runtime construction propagates the active listener boundary through a wrapped delegating stub so dynamically discovered child targets cannot bypass self-target rejection.
+
+Ordinary Internet forwarding remains `DNSSECIndeterminate`; upstream AD is never sufficient. A future general validating-forwarder path must establish the normal root-to-zone chain locally or deliberately reuse the validating iterative resolver's trust machinery. The focused private policy is in `docs/routed-dnssec-policy.md`.
 
 ## Corrected development history
 
@@ -176,7 +182,7 @@ An intermediate branch-only experiment attempted to broaden NSEC NXDOMAIN handli
 
 ## Deliberate boundary
 
-DNSSEC algorithm/key-size policy, authenticated trust-anchor persistence/rollover, RFC 8020 NXDOMAIN-cut integration, parent-side DS minimisation, local validation for forwarded and stub resolver data, authenticated upstream policy, private stub trust anchors, stub subdelegation walking, parallel/persistent nameserver infrastructure discovery, and end-to-end runtime acceptance remain staged work. Alias-target resolution and external NS hostname resolution currently use fresh validating walks rather than reusing cross-zone authority state; this is deliberate correctness-first behavior and can be optimized only after equivalent trust boundaries are proven.
+DNSSEC algorithm/key-size policy, authenticated trust-anchor persistence/rollover, RFC 8020 NXDOMAIN-cut integration, parent-side DS minimisation, general local validation for arbitrary forwarded Internet data, private DS/DNSKEY trust carry through child delegations, authenticated upstream transport policy, parallel/persistent nameserver infrastructure discovery, and end-to-end runtime acceptance remain staged work. Alias-target resolution and external NS hostname resolution currently use fresh validating walks rather than reusing cross-zone authority state; this is deliberate correctness-first behavior and can be optimized only after equivalent trust boundaries are proven.
 
 ## Production status
 
@@ -184,7 +190,8 @@ This code remains isolated from production DNS traffic. Existing production AdGu
 
 ## Next DNSSEC stages
 
+- Extend routed private validation through signed and authenticated-insecure child delegations beneath a configured private anchor.
+- Define general Internet forwarding validation policy without trusting upstream AD.
 - Add algorithm and digest policy with explicit unsupported-algorithm behavior.
-- Add trust-anchor lifecycle and rollover automation.
-- Add local DNSSEC validation for forwarded/stub data and explicit private-zone trust-anchor policy.
-- Add end-to-end runtime acceptance against controlled signed, unsigned, bogus, wildcard, CNAME, DNAME, out-of-bailiwick-NS, QNAME-minimisation, routed-forward, stub, split-horizon, NSEC, NSEC3, Opt-Out, NXNAME, CO, and denial-of-existence test zones.
+- Add trust-anchor lifecycle, secure private-anchor provisioning/storage policy, and rollover automation.
+- Add end-to-end runtime acceptance against controlled signed, unsigned, bogus, wildcard, CNAME, DNAME, out-of-bailiwick-NS, QNAME-minimisation, routed-forward, private-anchor, stub, split-horizon, NSEC, NSEC3, Opt-Out, NXNAME, CO, and denial-of-existence test zones.
