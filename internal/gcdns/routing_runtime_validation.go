@@ -89,6 +89,8 @@ func nativeRouteTargetEndpoints(route ResolverRoute) ([]string, error) {
 		return schedulerTargetNames(resolver.scheduler), nil
 	case *StubResolver:
 		return schedulerTargetNames(resolver.scheduler), nil
+	case *DelegatingStubResolver:
+		return resolver.routeTargetEndpoints(), nil
 	default:
 		return nil, fmt.Errorf("goreecloud dns: resolver route %q does not expose native target endpoints for runtime self-target validation", route.Name)
 	}
