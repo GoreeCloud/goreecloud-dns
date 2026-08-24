@@ -14,6 +14,21 @@ type runtimeDNSEndpoint struct {
 	port uint16
 }
 
+// NewRuntimeValidatedRoutingResolver creates a routing resolver only after the
+// route graph and active listener/target relationship have both passed their
+// fail-closed construction checks. Production startup should use this boundary
+// once the native listener runtime supplies its actual endpoint state.
+func NewRuntimeValidatedRoutingResolver(defaultResolver Resolver, routes []ResolverRoute, listeners []string, localAddresses []netip.Addr) (*RoutingResolver, error) {
+	router, err := NewRoutingResolver(defaultResolver, routes)
+	if err != nil {
+		return nil, err
+	}
+	if err := ValidateRoutingRuntime(listeners, localAddresses, router.routes); err != nil {
+		return nil, err
+	}
+	return router, nil
+}
+
 // ValidateRoutingRuntime rejects routed classic-DNS targets that would send a
 // query back into an active GoreeCloud DNS listener. localAddresses is the
 // caller's startup snapshot of addresses assigned to this host. The validator
