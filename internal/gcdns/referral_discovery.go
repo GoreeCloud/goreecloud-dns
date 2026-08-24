@@ -76,18 +76,8 @@ func buildReferralPlan(msg *dns.Msg, qname string) (*referralPlan, error) {
 		if !advertised || !dns.IsSubDomain(zone, host) {
 			continue
 		}
-		var endpoint string
-		switch value := rr.(type) {
-		case *dns.A:
-			if value.A != nil {
-				endpoint = net.JoinHostPort(value.A.String(), "53")
-			}
-		case *dns.AAAA:
-			if value.AAAA != nil {
-				endpoint = net.JoinHostPort(value.AAAA.String(), "53")
-			}
-		}
-		if endpoint == "" {
+		endpoint, ok := rrAddressEndpoint(rr)
+		if !ok {
 			continue
 		}
 		if glue[owner] == nil {
@@ -131,14 +121,13 @@ func completeReferralServers(ctx context.Context, req *Request, plan *referralPl
 	for _, server := range plan.servers {
 		serverSet[server] = struct{}{}
 	}
+	var lastDiscoveryErr error
 	for _, host := range plan.outOfBailiwickNS {
 		addresses, err := discoverNameServerAddresses(ctx, req, host, state, resolve)
 		if err != nil {
-			// One broken external nameserver must not discard already usable
-			// delegation targets. If nothing else is available, surface the error.
-			if len(serverSet) == 0 {
-				return nil, err
-			}
+			// A broken external nameserver must not prevent another advertised
+			// nameserver from making the delegation reachable.
+			lastDiscoveryErr = err
 			continue
 		}
 		for _, server := range addresses {
@@ -148,6 +137,9 @@ func completeReferralServers(ctx context.Context, req *Request, plan *referralPl
 	if len(serverSet) == 0 {
 		if len(plan.missingInDomainNS) != 0 {
 			return nil, fmt.Errorf("goreecloud dns: referral for %s is missing mandatory in-domain glue for %s", plan.zone, strings.Join(plan.missingInDomainNS, ", "))
+		}
+		if lastDiscoveryErr != nil {
+			return nil, fmt.Errorf("goreecloud dns: referral for %s has no resolvable nameserver addresses: %w", plan.zone, lastDiscoveryErr)
 		}
 		return nil, fmt.Errorf("goreecloud dns: referral for %s has no resolvable nameserver addresses", plan.zone)
 	}
@@ -208,6 +200,9 @@ func resolvedAddressEndpoints(msg *dns.Msg, qname string, qtype uint16) []string
 	if msg == nil || (qtype != dns.TypeA && qtype != dns.TypeAAAA) {
 		return nil
 	}
+	if err := validateAliasAnswerShape(msg); err != nil {
+		return nil
+	}
 	current := dns.Fqdn(qname)
 	seen := map[string]struct{}{dns.CanonicalName(current): {}}
 	for depth := 0; depth < maxAliasTransitions; depth++ {
@@ -228,18 +223,11 @@ func resolvedAddressEndpoints(msg *dns.Msg, qname string, qtype uint16) []string
 
 	set := map[string]struct{}{}
 	for _, rr := range msg.Answer {
-		if rr == nil || !sameDNSName(rr.Header().Name, current) {
+		if rr == nil || !sameDNSName(rr.Header().Name, current) || rr.Header().Rrtype != qtype {
 			continue
 		}
-		switch value := rr.(type) {
-		case *dns.A:
-			if qtype == dns.TypeA && value.A != nil {
-				set[net.JoinHostPort(value.A.String(), "53")] = struct{}{}
-			}
-		case *dns.AAAA:
-			if qtype == dns.TypeAAAA && value.AAAA != nil {
-				set[net.JoinHostPort(value.AAAA.String(), "53")] = struct{}{}
-			}
+		if endpoint, ok := rrAddressEndpoint(rr); ok {
+			set[endpoint] = struct{}{}
 		}
 	}
 	out := make([]string, 0, len(set))
@@ -248,4 +236,23 @@ func resolvedAddressEndpoints(msg *dns.Msg, qname string, qtype uint16) []string
 	}
 	sort.Strings(out)
 	return out
+}
+
+func rrAddressEndpoint(rr dns.RR) (string, bool) {
+	switch value := rr.(type) {
+	case *dns.A:
+		ip := value.A.To4()
+		if ip == nil {
+			return "", false
+		}
+		return net.JoinHostPort(net.IP(ip).String(), "53"), true
+	case *dns.AAAA:
+		ip := value.AAAA.To16()
+		if ip == nil {
+			return "", false
+		}
+		return net.JoinHostPort(net.IP(ip).String(), "53"), true
+	default:
+		return "", false
+	}
 }
