@@ -30,6 +30,25 @@ func runtimeValidationStub(t *testing.T, zone, server string) *StubResolver {
 	return resolver
 }
 
+func runtimeValidationDefaultResolver() Resolver {
+	return routingResolverFunc(func(_ context.Context, req *Request) (*Result, error) {
+		return routingAnswer(req, "recursive", 1), nil
+	})
+}
+
+func TestNewRuntimeValidatedRoutingResolverRejectsSelfTarget(t *testing.T) {
+	routes := []ResolverRoute{{Name: "forward", Suffix: ".", Mode: RouteForward, Resolver: runtimeValidationForwarder(t, "127.0.0.1:53")}}
+	_, err := NewRuntimeValidatedRoutingResolver(runtimeValidationDefaultResolver(), routes, []string{"127.0.0.1:53"}, nil)
+	require.ErrorContains(t, err, "points back to an active GoreeCloud DNS listener")
+}
+
+func TestNewRuntimeValidatedRoutingResolverAcceptsExternalTarget(t *testing.T) {
+	routes := []ResolverRoute{{Name: "forward", Suffix: ".", Mode: RouteForward, Resolver: runtimeValidationForwarder(t, "1.1.1.1:53")}}
+	router, err := NewRuntimeValidatedRoutingResolver(runtimeValidationDefaultResolver(), routes, []string{"0.0.0.0:53"}, []netip.Addr{netip.MustParseAddr("192.0.2.10")})
+	require.NoError(t, err)
+	require.NotNil(t, router)
+}
+
 func TestValidateRoutingRuntimeRejectsExactForwardSelfTarget(t *testing.T) {
 	route := ResolverRoute{Name: "forward", Suffix: ".", Mode: RouteForward, Resolver: runtimeValidationForwarder(t, "127.0.0.1:53")}
 	err := ValidateRoutingRuntime([]string{"127.0.0.1:53"}, nil, []ResolverRoute{route})
