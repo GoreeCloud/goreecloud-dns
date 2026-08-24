@@ -68,7 +68,7 @@ required = {
     ),
     "docs/iterative-dnssec-validation.md": (
         "ValidatingDelegatingStubResolver",
-        "authenticated DS-absence proof",
+        "authenticates the secure-to-insecure transition",
         "Raw `ForwardingResolver`, terminal-only `StubResolver`, and ordinary `DelegatingStubResolver` clear AD and return `DNSSECIndeterminate`",
         "ValidatingForwardingResolver",
     ),
