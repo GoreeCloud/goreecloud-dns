@@ -319,5 +319,6 @@ func setResultTTL(res *Result, ttl uint32) {
 			if rr != nil && rr.Header().Rrtype != dns.TypeOPT {
 				rr.Header().Ttl = ttl
 			}
+		}
 	}
 }
