@@ -16,6 +16,10 @@ import (
 // including signaled CO+NXDOMAIN responses. Ordinary NOERROR then uses exact-
 // owner or wildcard NODATA through NSEC/NSEC3, while conventional NXDOMAIN uses
 // the ordinary authenticated NSEC/NSEC3 denial path.
+//
+// Ordinary CNAME RRsets require their own valid RRSIG. An unsigned CNAME is
+// accepted only when it is exactly the RFC 6672 CNAME synthesized from a
+// securely validated DNAME RRset in the same response.
 func (v *DNSSECValidator) AuthenticateTerminalAnswer(msg *dns.Msg, keys []*dns.DNSKEY) (DNSSECStatus, error) {
 	if msg == nil {
 		return DNSSECBogus, errors.New("goreecloud dns: terminal DNSSEC response is nil")
@@ -51,6 +55,12 @@ func (v *DNSSECValidator) AuthenticateTerminalAnswer(msg *dns.Msg, keys []*dns.D
 	if len(keys) == 0 {
 		return DNSSECBogus, errors.New("goreecloud dns: terminal DNSSEC validation requires authenticated DNSKEYs")
 	}
+	if len(msg.Question) == 1 {
+		q := msg.Question[0]
+		if _, _, err := unresolvedAliasTarget(msg, q.Name, q.Qtype); err != nil {
+			return DNSSECBogus, fmt.Errorf("goreecloud dns: terminal alias-chain validation failed: %w", err)
+		}
+	}
 
 	type rrsetKey struct {
 		owner    string
@@ -75,6 +85,15 @@ func (v *DNSSECValidator) AuthenticateTerminalAnswer(msg *dns.Msg, keys []*dns.D
 		return DNSSECIndeterminate, nil
 	}
 	for key, rrset := range rrsets {
+		if key.typeCode == dns.TypeCNAME {
+			covered, err := v.authenticateSynthesizedDNAMECNAME(msg, rrset, sigs[key], keys)
+			if err != nil {
+				return DNSSECBogus, fmt.Errorf("goreecloud dns: terminal DNSSEC validation failed: synthesized CNAME %s: %w", key.owner, err)
+			}
+			if covered {
+				continue
+			}
+		}
 		if err := v.authenticateTerminalPositiveRRSet(msg, rrset, sigs[key], keys); err != nil {
 			return DNSSECBogus, fmt.Errorf("goreecloud dns: terminal DNSSEC validation failed: RRset %s type %d: %w", key.owner, key.typeCode, err)
 		}
@@ -143,4 +162,61 @@ func (v *DNSSECValidator) authenticateTerminalPositiveRRSet(msg *dns.Msg, rrset 
 		return lastErr
 	}
 	return fmt.Errorf("RRset %s type %d has no valid direct or wildcard RRSIG", owner, rrtype)
+}
+
+func (v *DNSSECValidator) authenticateSynthesizedDNAMECNAME(msg *dns.Msg, cnameRRSet []dns.RR, cnameSigs []*dns.RRSIG, keys []*dns.DNSKEY) (bool, error) {
+	if len(cnameRRSet) == 0 || cnameRRSet[0] == nil || cnameRRSet[0].Header().Rrtype != dns.TypeCNAME {
+		return false, nil
+	}
+	if len(cnameRRSet) != 1 {
+		return false, errors.New("CNAME RRset must contain exactly one record")
+	}
+	cname, ok := cnameRRSet[0].(*dns.CNAME)
+	if !ok {
+		return false, errors.New("CNAME RRset has unexpected record type")
+	}
+	dname, err := closestAnswerDNAME(msg, cname.Hdr.Name)
+	if err != nil {
+		return false, err
+	}
+	if dname == nil {
+		return false, nil
+	}
+
+	target, err := dnameSubstitution(cname.Hdr.Name, dname)
+	if err != nil {
+		return true, err
+	}
+	if !sameDNSName(cname.Target, target) {
+		return true, fmt.Errorf("CNAME target %s does not match signed DNAME substitution %s", cname.Target, target)
+	}
+	if cname.Hdr.Ttl != 0 && cname.Hdr.Ttl != dname.Hdr.Ttl {
+		return true, fmt.Errorf("CNAME TTL %d is neither zero nor the DNAME TTL %d", cname.Hdr.Ttl, dname.Hdr.Ttl)
+	}
+	if len(cnameSigs) != 0 {
+		return true, errors.New("RFC 6672 synthesized CNAME unexpectedly carries an RRSIG")
+	}
+
+	var dnameRRSet []dns.RR
+	var dnameSigs []*dns.RRSIG
+	for _, rr := range msg.Answer {
+		if rr == nil || !sameDNSName(rr.Header().Name, dname.Hdr.Name) {
+			continue
+		}
+		switch value := rr.(type) {
+		case *dns.DNAME:
+			dnameRRSet = append(dnameRRSet, value)
+		case *dns.RRSIG:
+			if value.TypeCovered == dns.TypeDNAME {
+				dnameSigs = append(dnameSigs, value)
+			}
+		}
+	}
+	if len(dnameRRSet) != 1 {
+		return true, fmt.Errorf("DNAME RRset at %s must contain exactly one record", dname.Hdr.Name)
+	}
+	if err := v.authenticateTerminalPositiveRRSet(msg, dnameRRSet, dnameSigs, keys); err != nil {
+		return true, fmt.Errorf("signed DNAME did not validate synthesized CNAME: %w", err)
+	}
+	return true, nil
 }
