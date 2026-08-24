@@ -21,9 +21,10 @@ type referralPlan struct {
 }
 
 type resolutionState struct {
-	nsAddresses map[string][]string
-	nsActive    map[string]struct{}
-	nsLookups   int
+	nsAddresses               map[string][]string
+	nsActive                  map[string]struct{}
+	nsLookups                 int
+	qnameMinimisationQueries  int
 }
 
 type internalResolveFunc func(context.Context, *Request, *resolutionState) (*Result, error)
