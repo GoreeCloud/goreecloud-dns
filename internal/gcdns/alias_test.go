@@ -69,6 +69,16 @@ func TestUnresolvedAliasTargetDetectsCNAMECycle(t *testing.T) {
 	require.ErrorContains(t, err, "alias loop")
 }
 
+func TestUnresolvedAliasTargetRejectsCNAMECoexistingData(t *testing.T) {
+	msg := new(dns.Msg)
+	msg.Answer = []dns.RR{
+		&dns.CNAME{Hdr: dns.RR_Header{Name: "alias.example.test.", Rrtype: dns.TypeCNAME, Class: dns.ClassINET, Ttl: 60}, Target: "target.example.test."},
+		&dns.A{Hdr: dns.RR_Header{Name: "alias.example.test.", Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: 60}, A: []byte{192, 0, 2, 10}},
+	}
+	_, _, err := unresolvedAliasTarget(msg, "alias.example.test.", dns.TypeA)
+	require.ErrorContains(t, err, "coexists with other data")
+}
+
 func TestAuthenticateTerminalAnswerSignedCNAME(t *testing.T) {
 	key, signer := nsec3TestKey(t, "example.test.")
 	cname := &dns.CNAME{
@@ -125,6 +135,51 @@ func TestAuthenticateTerminalAnswerRejectsMismatchedDNAMECNAME(t *testing.T) {
 	require.Equal(t, DNSSECBogus, status)
 }
 
+func TestAuthenticateTerminalAnswerRejectsSynthesizedCNAMETTLMismatch(t *testing.T) {
+	key, signer := nsec3TestKey(t, "example.test.")
+	dname := &dns.DNAME{
+		Hdr:    dns.RR_Header{Name: "bar.example.test.", Rrtype: dns.TypeDNAME, Class: dns.ClassINET, Ttl: 300},
+		Target: "bar.example.net.",
+	}
+	cname := &dns.CNAME{
+		Hdr:    dns.RR_Header{Name: "foo.bar.example.test.", Rrtype: dns.TypeCNAME, Class: dns.ClassINET, Ttl: 30},
+		Target: "foo.bar.example.net.",
+	}
+	msg := new(dns.Msg)
+	msg.SetQuestion("foo.bar.example.test.", dns.TypeA)
+	msg.Answer = []dns.RR{dname, signAliasTestRRSet(t, []dns.RR{dname}, key, signer), cname}
+
+	validator := NewDNSSECValidator(func() time.Time { return nsec3TestNow })
+	status, err := validator.AuthenticateTerminalAnswer(msg, []*dns.DNSKEY{key})
+	require.ErrorContains(t, err, "does not match DNAME TTL")
+	require.Equal(t, DNSSECBogus, status)
+}
+
+func TestAuthenticateTerminalAnswerRejectsSignedSynthesizedCNAME(t *testing.T) {
+	key, signer := nsec3TestKey(t, "example.test.")
+	dname := &dns.DNAME{
+		Hdr:    dns.RR_Header{Name: "bar.example.test.", Rrtype: dns.TypeDNAME, Class: dns.ClassINET, Ttl: 300},
+		Target: "bar.example.net.",
+	}
+	cname := &dns.CNAME{
+		Hdr:    dns.RR_Header{Name: "foo.bar.example.test.", Rrtype: dns.TypeCNAME, Class: dns.ClassINET, Ttl: 300},
+		Target: "foo.bar.example.net.",
+	}
+	msg := new(dns.Msg)
+	msg.SetQuestion("foo.bar.example.test.", dns.TypeA)
+	msg.Answer = []dns.RR{
+		dname,
+		signAliasTestRRSet(t, []dns.RR{dname}, key, signer),
+		cname,
+		signAliasTestRRSet(t, []dns.RR{cname}, key, signer),
+	}
+
+	validator := NewDNSSECValidator(func() time.Time { return nsec3TestNow })
+	status, err := validator.AuthenticateTerminalAnswer(msg, []*dns.DNSKEY{key})
+	require.ErrorContains(t, err, "unexpectedly carries an RRSIG")
+	require.Equal(t, DNSSECBogus, status)
+}
+
 func TestAuthenticatedNSECDNAMEConflictDetectsApplicableDNAME(t *testing.T) {
 	msg := new(dns.Msg)
 	msg.Ns = []dns.RR{&dns.NSEC{
@@ -134,6 +189,14 @@ func TestAuthenticatedNSECDNAMEConflictDetectsApplicableDNAME(t *testing.T) {
 	}}
 	keys := []*dns.DNSKEY{{Hdr: dns.RR_Header{Name: "example.test.", Rrtype: dns.TypeDNSKEY, Class: dns.ClassINET}}}
 	require.True(t, authenticatedNSECDNAMEConflict(msg, "foo.example.test.", keys))
+}
+
+func TestAuthenticatedNSEC3DNAMEConflictDetectsApplicableDNAME(t *testing.T) {
+	record := nsec3TestRecord("example.test.", "example.test.", []uint16{dns.TypeDNAME, dns.TypeNSEC3, dns.TypeRRSIG})
+	msg := new(dns.Msg)
+	msg.Ns = []dns.RR{record}
+	keys := []*dns.DNSKEY{{Hdr: dns.RR_Header{Name: "example.test.", Rrtype: dns.TypeDNSKEY, Class: dns.ClassINET}}}
+	require.True(t, authenticatedNSEC3DNAMEConflict(msg, "foo.example.test.", keys))
 }
 
 func TestMergeAliasResultZeroTTLDisablesCombinedCaching(t *testing.T) {
