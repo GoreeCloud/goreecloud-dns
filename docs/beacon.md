@@ -36,9 +36,9 @@ Beacon Cache also preserves RFC 9824 Compact Denial semantic metadata (`CompactD
 
 `internal/gcdns/iterative.go` provides the native delegation walker. It starts from an approved root/bootstrap endpoint set, clears the recursion-desired bit on authoritative queries, uses the Beacon scheduler for per-delegation failover, sends queries through the DNSExchanger/ClassicTransport boundary, follows NS referrals, derives cache lifetimes from terminal responses, and stops on configured delegation depth or repeated delegation state.
 
-The resolver now also follows bounded CNAME/DNAME alias chains when a terminal response ends on an alias rather than the requested record type. An unresolved alias target is resolved through a fresh iterative walk and the completed response is merged back under the original question only after the target result is obtained.
+The resolver follows bounded CNAME/DNAME alias chains when a terminal response ends on an alias rather than the requested record type. An unresolved alias target is resolved through a fresh iterative walk and the completed response is merged back under the original question only after the target result is obtained.
 
-Referral processing remains conservative: only advertised in-bailiwick glue is accepted. Out-of-bailiwick nameserver address discovery remains a later resolver milestone.
+Referral processing now includes bounded out-of-bailiwick authoritative nameserver discovery. Beacon accepts direct A/AAAA glue only for NS names inside the delegated child, ignores sibling or unrelated Additional-section addresses, and resolves those external NS hostnames through normal recursion instead. Missing mandatory in-domain glue fails closed. External NS address work is request-scoped, cycle-checked, and capped at 32 distinct NS hostname discoveries per top-level resolution.
 
 ## Beacon DNSSEC Foundation
 
@@ -125,6 +125,18 @@ The validating resolver starts a fresh root-to-target DNSSEC walk for every unre
 
 Authenticated negative answers are DNAME-aware. A securely validated NSEC or NSEC3 NXDOMAIN proof is rejected if the authenticated closest-encloser bitmap states that an applicable DNAME exists and redirection should have occurred instead of NXDOMAIN.
 
+## Beacon out-of-bailiwick authoritative nameserver discovery
+
+`internal/gcdns/referral_discovery.go` extends referral walking without trusting arbitrary Additional-section address data. A referral is divided into usable in-domain glue, in-domain NS names missing required glue, and sibling or unrelated NS hostnames that require recursive address discovery.
+
+Only syntactically valid A/AAAA data for advertised NS names inside the delegated child is accepted directly as glue. Additional addresses for sibling or unrelated nameservers are ignored even if their owner matches an advertised NS hostname. Those names are resolved through A and AAAA lookups using the same resolver mode as the original request.
+
+Nameserver-address discovery is request-scoped. Successful addresses are reused only within the current top-level resolution, active lookup cycles are rejected, and no more than 32 distinct external NS hostnames may enter discovery. A failed external NS hostname does not prevent another advertised external NS from being tried. If the referral has no usable server and required in-domain glue is missing, resolution fails closed rather than recursively chasing the in-domain NS name and creating a glue dependency loop.
+
+The validating resolver authenticates the parent delegation state before it proceeds below the child and resolves external NS hostnames through the validating path. Discovered IP addresses identify servers to contact; they do not confer trust on child-zone data. Existing DS/DNSKEY and terminal validation still determine whether the resulting DNS data is Secure, Insecure, Indeterminate, or Bogus.
+
+The focused design record is `docs/out-of-bailiwick-nameserver-discovery.md`. This first implementation performs bounded external NS hostname discovery sequentially and does not create a persistent cross-request infrastructure-address cache.
+
 ## Beacon Wildcard Validation
 
 `internal/gcdns/dnssec_wildcard.go` authenticates wildcard-expanded positive answers and wildcard NODATA responses.
@@ -143,7 +155,7 @@ A short-lived branch-only experiment used the phrase "compact NSEC NXDOMAIN" for
 
 ## Security boundary
 
-The native foundation currently enforces source-level invariants for DNSSEC validation, DNS rebinding protection, explicit recursion and administration ACLs, no accidental open recursion, bogus-result rejection before cache insertion, bounded cache/scheduler/transport behavior, delegation depth and loop protection, alias-loop protection, in-bailiwick glue acceptance, root trust anchors, DS/DNSKEY authentication, terminal positive RRset validation, CNAME/DNAME alias chains including signed DNAME coverage of a synthesized CNAME, wildcard-positive no-closer-match validation, wildcard NODATA validation, NSEC/NSEC3 insecure-delegation proof including scoped Opt-Out DS-absence transitions, exact-owner NSEC/NSEC3 NODATA proof, conventional NSEC/NSEC3 NXDOMAIN proof with DNAME conflict checks, RFC 9824 NXNAME compact-denial recognition, validating-resolver CO signaling, and per-client cache-aware Compact Denial response restoration.
+The native foundation currently enforces source-level invariants for DNSSEC validation, DNS rebinding protection, explicit recursion and administration ACLs, no accidental open recursion, bogus-result rejection before cache insertion, bounded cache/scheduler/transport behavior, delegation depth and loop protection, alias-loop protection, request-scoped out-of-bailiwick nameserver discovery, mandatory in-domain glue handling, root trust anchors, DS/DNSKEY authentication, terminal positive RRset validation, CNAME/DNAME alias chains including signed DNAME coverage of a synthesized CNAME, wildcard-positive no-closer-match validation, wildcard NODATA validation, NSEC/NSEC3 insecure-delegation proof including scoped Opt-Out DS-absence transitions, exact-owner NSEC/NSEC3 NODATA proof, conventional NSEC/NSEC3 NXDOMAIN proof with DNAME conflict checks, RFC 9824 NXNAME compact-denial recognition, validating-resolver CO signaling, and per-client cache-aware Compact Denial response restoration.
 
 These are development controls, not production acceptance evidence.
 
@@ -153,8 +165,7 @@ No production traffic is routed through `internal/gcdns` yet. Existing AdGuard H
 
 ## Next implementation sequence
 
-1. Implement out-of-bailiwick authoritative nameserver address discovery.
-2. Implement QNAME minimization, forward/conditional/stub routing, and split-horizon routing.
-3. Add persistent cache, prefetch/auto-prefetch, encrypted DNS, authoritative DNS, filtering, DHCP, clustering, APIs, identity, and Glaze UI administration.
-4. Validate the competitive-superset requirement with feature, security, privacy, control, resilience, and operational acceptance matrices.
-5. Perform controlled migration and production replacement only after GoreeCloud release and production-readiness gates pass.
+1. Implement QNAME minimization, then forward/conditional/stub routing and split-horizon routing.
+2. Add persistent cache, prefetch/auto-prefetch, encrypted DNS, authoritative DNS, filtering, DHCP, clustering, APIs, identity, and Glaze UI administration.
+3. Validate the competitive-superset requirement with feature, security, privacy, control, resilience, and operational acceptance matrices.
+4. Perform controlled migration and production replacement only after GoreeCloud release and production-readiness gates pass.
