@@ -32,6 +32,7 @@ func TestDelegatingStubResolverEnforcesDelegationDepth(t *testing.T) {
 				index = i
 				break
 			}
+		}
 		if index >= len(zones) {
 			reply := new(dns.Msg)
 			reply.SetReply(query)
