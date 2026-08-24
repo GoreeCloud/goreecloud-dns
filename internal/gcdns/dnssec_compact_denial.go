@@ -8,13 +8,14 @@ import (
 )
 
 // AuthenticateCompactDenial recognizes the RFC 9824 NXNAME signal in an
-// authenticated Compact Denial of Existence response. Compact denial uses a
-// NOERROR response with an empty Answer section and an exact/matching signed
-// NSEC or NSEC3 proof for QNAME. The returned bool reports whether NXNAME
-// material was present, so malformed compact answers fail closed instead of
-// falling through to ordinary NODATA validation.
+// authenticated Compact Denial of Existence response. A normal Compact Answer
+// uses NOERROR with an empty Answer section. When the hop-by-hop CO flag is
+// present in the response, RFC 9824 also permits NXDOMAIN while retaining the
+// signed NXNAME proof. The returned bool reports whether NXNAME material was
+// present, so malformed compact answers fail closed instead of falling through
+// to ordinary NODATA validation.
 func (v *DNSSECValidator) AuthenticateCompactDenial(msg *dns.Msg, qname string, keys []*dns.DNSKEY) (DNSSECStatus, bool, error) {
-	if msg == nil || msg.Rcode != dns.RcodeSuccess || len(msg.Answer) != 0 {
+	if msg == nil || len(msg.Answer) != 0 {
 		return DNSSECIndeterminate, false, nil
 	}
 
@@ -35,6 +36,18 @@ func (v *DNSSECValidator) AuthenticateCompactDenial(msg *dns.Msg, qname string, 
 	if len(nxNSEC) == 0 && len(nxNSEC3) == 0 {
 		return DNSSECIndeterminate, false, nil
 	}
+
+	switch msg.Rcode {
+	case dns.RcodeSuccess:
+		// Normal Compact Answer.
+	case dns.RcodeNameError:
+		if !messageCompactAnswersOK(msg) {
+			return DNSSECBogus, true, errors.New("goreecloud dns: NXNAME response used NXDOMAIN without the RFC 9824 CO response flag")
+		}
+	default:
+		return DNSSECBogus, true, fmt.Errorf("goreecloud dns: NXNAME compact denial used unsupported response code %d", msg.Rcode)
+	}
+
 	if len(nxNSEC) != 0 && len(nxNSEC3) != 0 {
 		return DNSSECBogus, true, errors.New("goreecloud dns: compact denial mixes NSEC and NSEC3 NXNAME material")
 	}
@@ -132,6 +145,68 @@ func nsec3BitmapExactly(record *dns.NSEC3, expected ...uint16) bool {
 		seen[rrtype] = struct{}{}
 	}
 	return len(seen) == len(want)
+}
+
+func messageCompactAnswersOK(msg *dns.Msg) bool {
+	if msg == nil {
+		return false
+	}
+	opt := msg.IsEdns0()
+	return opt != nil && opt.Co()
+}
+
+func compactDenialMessageMetadata(msg *dns.Msg) (present bool, responseCO bool) {
+	if msg == nil {
+		return false, false
+	}
+	for _, section := range [][]dns.RR{msg.Ns, msg.Answer} {
+		for _, rr := range section {
+			switch value := rr.(type) {
+			case *dns.NSEC:
+				if nsecHasType(value, dns.TypeNXNAME) {
+					return true, messageCompactAnswersOK(msg)
+				}
+			case *dns.NSEC3:
+				if nsec3HasType(value, dns.TypeNXNAME) {
+					return true, messageCompactAnswersOK(msg)
+				}
+			}
+		}
+	}
+	return false, messageCompactAnswersOK(msg)
+}
+
+// prepareCompactDenialForClient applies RFC 9824 response-code restoration to
+// a defensive result copy. Compact Denial semantics are cached independently
+// of the requesting client's EDNS flags; the RCODE and response CO flag are
+// therefore decided only when returning a result to a downstream requester.
+func prepareCompactDenialForClient(req *Request, res *Result) *Result {
+	if res == nil || res.Message == nil || !res.CompactDenial || req == nil || req.Message == nil {
+		return res
+	}
+	out := cloneResult(res)
+	requestOPT := req.Message.IsEdns0()
+	do := requestOPT != nil && requestOPT.Do()
+	co := requestOPT != nil && requestOPT.Co()
+
+	// RFC 9824 recommends preserving NXDOMAIN when possible. A DNSSEC-enabled
+	// client without CO cannot accept NXDOMAIN with a Compact Answer and must see
+	// NOERROR. Non-DO clients and CO-capable DNSSEC clients can receive NXDOMAIN.
+	if do && !co {
+		out.Message.Rcode = dns.RcodeSuccess
+	} else {
+		out.Message.Rcode = dns.RcodeNameError
+	}
+
+	responseOPT := out.Message.IsEdns0()
+	if requestOPT != nil && responseOPT == nil {
+		out.Message.SetEdns0(requestOPT.UDPSize(), requestOPT.Do())
+		responseOPT = out.Message.IsEdns0()
+	}
+	if responseOPT != nil {
+		responseOPT.SetCo(co)
+	}
+	return out
 }
 
 // compactDenialQueryResponse implements RFC 9824's rule that NXNAME is a
