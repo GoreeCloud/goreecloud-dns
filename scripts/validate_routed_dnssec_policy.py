@@ -55,15 +55,18 @@ required = {
     ),
     "docs/resolver-routing.md": (
         "PrivateTrustAnchorResolver",
-        "private trust",
+        "private trust path",
+        "Ordinary Internet forwarding remains `DNSSECIndeterminate`",
     ),
     "docs/iterative-dnssec-validation.md": (
         "PrivateTrustAnchorResolver",
-        "private",
+        "configured private or otherwise locally administered signed zone",
+        "Ordinary Internet forwarding remains `DNSSECIndeterminate`",
     ),
     "docs/beacon.md": (
+        "Beacon Routed Private DNSSEC Trust Anchors",
         "PrivateTrustAnchorResolver",
-        "private trust",
+        "Ordinary Internet forwarding therefore remains `DNSSECIndeterminate`",
     ),
     ".github/workflows/lint.yml": (
         "validate_routed_dnssec_policy.py",
