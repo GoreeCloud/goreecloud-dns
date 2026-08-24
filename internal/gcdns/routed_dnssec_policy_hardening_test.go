@@ -85,3 +85,9 @@ func TestAuthenticateDNSKEYTrustAnchorRejectsNonZoneKeyAnchor(t *testing.T) {
 	require.Equal(t, DNSSECBogus, status)
 	require.Empty(t, keys)
 }
+
+func TestPrivateTrustAnchorResolverRejectsBlankZone(t *testing.T) {
+	anchor := rootKSK2017()
+	_, err := NewPrivateTrustAnchorResolver(runtimeValidationDefaultResolver(), PrivateDNSKEYTrustAnchor{Zone: "   ", Keys: []*dns.DNSKEY{anchor}}, NewDNSSECValidator(nil))
+	require.ErrorContains(t, err, "zone must not be blank")
+}
