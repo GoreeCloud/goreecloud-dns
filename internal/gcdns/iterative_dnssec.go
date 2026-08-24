@@ -271,7 +271,6 @@ func (r *ValidatingIterativeResolver) advanceValidatingReferral(ctx context.Cont
 		switch status {
 		case DNSSECInsecure:
 			chainSecure = false
-			parentKeys = nil
 		case DNSSECSecure:
 			// Authenticate the child DNSKEY RRset after authoritative server
 			// addresses are available.
