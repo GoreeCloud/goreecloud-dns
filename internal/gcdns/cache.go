@@ -238,7 +238,7 @@ func (c *MemoryCache) removeExpired(s *memoryCacheShard, key string) {
 
 func (c *MemoryCache) evictOldestLocked(s *memoryCacheShard, protected string) {
 	var oldestKey string
-	var oldestSeq uint64 = ^uint64(0)
+	oldestSeq := ^uint64(0)
 	for key, entry := range s.entries {
 		if key == protected && len(s.entries) > 1 {
 			continue
