@@ -54,11 +54,17 @@ The router can continue an alias chain after a stub answer. If a stub response e
 
 Subdelegation walking below a stub zone is deliberately staged. The first stub implementation does not reinterpret an authority referral as a terminal answer.
 
-## Loop and ambiguity controls
+## Loop, ambiguity, and runtime self-target controls
 
 A request carries an internal route-execution context. If a route resolver re-enters the same named route before the previous execution has completed, Beacon fails with a resolver-route-loop error. Alias loops remain covered by the existing bounded alias engine.
 
-Network-endpoint self-forward detection requires the final runtime listener/route configuration to be available together. This source slice validates endpoint syntax and resolver graph loops, but it does not yet compare forwarding endpoints against every active GoreeCloud DNS listener. That startup validation must be added before routed forwarding is eligible for production.
+`internal/gcdns/routing_runtime_validation.go` adds deterministic runtime self-target validation for classic forward and stub routes. `ValidateRoutingRuntime` receives the active GoreeCloud DNS listener endpoints, a startup snapshot of local interface addresses, and the configured native routes. It does not perform DNS resolution or interface discovery itself.
+
+The validator rejects an exact target/listener address and port match. An unspecified wildcard listener such as `0.0.0.0:53` or `[::]:53` rejects same-family targets on that port when the target is loopback or appears in the supplied local-address snapshot. An external resolver on the same port remains valid, and a local address on a different port remains a distinct service boundary.
+
+Runtime self-target validation requires numeric IP target addresses. A hostname target cannot be proven non-self without a separate approved bootstrap-resolution lifecycle and therefore fails this startup check. Unspecified target addresses and malformed listener or local-address state also fail closed.
+
+The startup integrator is responsible for supplying the complete active listener set and the relevant local-address snapshot. Addresses hidden behind NAT, external VIPs, VRFs, container namespaces, or other network indirection cannot be inferred by this network-free validator unless they are represented in that startup state. Production eligibility therefore still requires runtime integration tests against the actual GoreeCloud DNS listener environment.
 
 ## DNSSEC boundary
 
@@ -68,4 +74,4 @@ Local DNSSEC validation for forwarded or stub data, authenticated-upstream polic
 
 ## Production boundary
 
-`RoutingResolver`, `ForwardingResolver`, and `StubResolver` remain inside the isolated `internal/gcdns` development path. No production AdGuard Home, Unbound, NetBird/GoreeCloud Network nameserver assignment, client DNS setting, forwarding target, Caddy rule, firewall rule, DHCP behavior, or production cutover is changed by this source milestone.
+`RoutingResolver`, `ForwardingResolver`, `StubResolver`, and runtime self-target validation remain inside the isolated `internal/gcdns` development path. No production AdGuard Home, Unbound, NetBird/GoreeCloud Network nameserver assignment, client DNS setting, forwarding target, Caddy rule, firewall rule, DHCP behavior, or production cutover is changed by this source milestone.
