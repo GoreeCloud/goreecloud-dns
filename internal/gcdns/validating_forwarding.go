@@ -16,19 +16,35 @@ const maxForwardValidationLabels = 128
 // transports for DNS data. Beacon establishes the root-to-QNAME DNSSEC trust
 // path locally and never treats an upstream AD bit as validation evidence.
 type ValidatingForwardingResolver struct {
-	forwarder *ForwardingResolver
-	validator *DNSSECValidator
+	forwarder   *ForwardingResolver
+	validator   *DNSSECValidator
+	rootAnchors []*dns.DS
 }
 
 func NewValidatingForwardingResolver(exchanger DNSExchanger, servers []string, cfg SchedulerConfig, validator *DNSSECValidator) (*ValidatingForwardingResolver, error) {
+	return newValidatingForwardingResolver(exchanger, servers, cfg, validator, RootTrustAnchors())
+}
+
+func newValidatingForwardingResolver(exchanger DNSExchanger, servers []string, cfg SchedulerConfig, validator *DNSSECValidator, rootAnchors []*dns.DS) (*ValidatingForwardingResolver, error) {
 	if validator == nil {
 		return nil, errors.New("goreecloud dns: validating forwarding resolver requires a DNSSEC validator")
+	}
+	if len(rootAnchors) == 0 {
+		return nil, errors.New("goreecloud dns: validating forwarding resolver requires at least one root DS trust anchor")
+	}
+	anchors := make([]*dns.DS, 0, len(rootAnchors))
+	for _, anchor := range rootAnchors {
+		if anchor == nil || !sameDNSName(anchor.Hdr.Name, ".") {
+			return nil, errors.New("goreecloud dns: validating forwarding resolver contains an invalid root DS trust anchor")
+		}
+		copyAnchor := *anchor
+		anchors = append(anchors, &copyAnchor)
 	}
 	forwarder, err := NewForwardingResolver(exchanger, servers, cfg)
 	if err != nil {
 		return nil, err
 	}
-	return &ValidatingForwardingResolver{forwarder: forwarder, validator: validator}, nil
+	return &ValidatingForwardingResolver{forwarder: forwarder, validator: validator, rootAnchors: anchors}, nil
 }
 
 func (r *ValidatingForwardingResolver) Resolve(ctx context.Context, req *Request) (*Result, error) {
@@ -155,7 +171,7 @@ func (r *ValidatingForwardingResolver) authenticateName(ctx context.Context, ori
 	if err != nil {
 		return nil, true, fmt.Errorf("goreecloud dns: validating forwarding root DNSKEY acquisition failed: %w", err)
 	}
-	parentKeys, status, err := r.validator.AuthenticateDNSKEYResponse(".", rootMsg, RootTrustAnchors())
+	parentKeys, status, err := r.validator.AuthenticateDNSKEYResponse(".", rootMsg, r.rootAnchors)
 	if err != nil || status != DNSSECSecure {
 		if err == nil {
 			err = fmt.Errorf("root DNSKEY RRset did not establish secure trust: %s", status)
@@ -281,6 +297,7 @@ func forwardingAliasLinkMessage(msg *dns.Msg, current string, qtype uint16) (*dn
 				}
 				if sig, ok := rr.(*dns.RRSIG); ok && sig.TypeCovered == dns.TypeCNAME {
 					out.Answer = append(out.Answer, rr)
+					continue
 				}
 			}
 			continue
