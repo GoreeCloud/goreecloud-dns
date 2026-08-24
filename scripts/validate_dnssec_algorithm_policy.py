@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fail-closed source contract for Beacon DNSSEC algorithm and digest policy."""
+"""Fail-closed source contract for Beacon DNSSEC algorithm, digest, and key-strength policy."""
 
 from pathlib import Path
 
@@ -18,7 +18,7 @@ def require(path: Path, markers: list[str]) -> None:
     missing = [marker for marker in markers if marker not in text]
     if missing:
         raise SystemExit(
-            f"{path.relative_to(ROOT)} missing required DNSSEC algorithm-policy markers: {missing}"
+            f"{path.relative_to(ROOT)} missing required DNSSEC cryptographic-policy markers: {missing}"
         )
 
 
@@ -30,6 +30,10 @@ def main() -> None:
             "dnssecDelegationAlgorithmAccepted",
             "dnssecSHA1DelegationAlgorithm",
             "dnssecDSDigestSupported",
+            "dnssecDNSKEYStrengthAccepted",
+            "dnssecRSAModulusBits",
+            "dnssecMinRSAModulusBits = 1024",
+            "dnssecMaxRSAModulusBits = 4096",
             "dnssecAlgorithmRSASHA1",
             "dnssecAlgorithmRSASHA1NSEC3SHA1",
             "dnssecAlgorithmRSASHA256",
@@ -45,9 +49,11 @@ def main() -> None:
             "dnssecDSDigestSupported(ds.DigestType)",
             "dnssecSHA1DelegationAlgorithm(ds.Algorithm)",
             "dnssecDelegationAlgorithmAccepted(ds.Algorithm)",
+            "dnssecDNSKEYStrengthAccepted(key.Algorithm, key.PublicKey)",
             "return DNSSECInsecure, nil",
             "dnssecSignatureAlgorithmSupported(sig.Algorithm)",
             "DNSSEC RRset has no supported signature algorithm",
+            "acceptable key strength",
         ],
     )
     require(
@@ -59,17 +65,21 @@ def main() -> None:
             "TestMatchDSDoesNotDowngradeMixedDelegation",
             "TestValidateRRSetUnsupportedAlgorithmIsIndeterminate",
             "TestDNSSECDigestPolicy",
+            "TestDNSSECRSAKeyStrengthPolicy",
+            "TestDNSSECRSAKeyStrengthRejectsMalformedEncoding",
+            "TestDNSSECFixedSizeKeyPolicyRequiresMaterial",
         ],
     )
     require(
         DOCS,
         [
-            "### DNSSEC algorithm and digest policy",
-            "DNSSEC key-size policy is still a separate unfinished part of this milestone.",
+            "### DNSSEC algorithm, digest, and key-strength policy",
+            "1024-4096-bit RSA",
+            "trust-anchor persistence",
         ],
     )
     require(WORKFLOW, ["scripts/validate_dnssec_algorithm_policy.py"])
-    print("Beacon DNSSEC algorithm/digest policy source contract: PASS")
+    print("Beacon DNSSEC algorithm/digest/key-strength policy source contract: PASS")
 
 
 if __name__ == "__main__":
