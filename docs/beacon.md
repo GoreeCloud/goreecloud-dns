@@ -22,6 +22,8 @@ GoreeCloud DNS targets a stable capability superset of Technitium DNS Server, Pi
 
 `internal/gcdns/cache.go` provides a sharded, concurrency-safe bounded in-memory DNS cache with TTL expiration and wire-TTL aging, negative-response accounting, optional bounded serve-stale behavior, defensive DNS message copies, client-aware cache partitioning, serialized whole-cache flushes, and privacy-safe runtime statistics.
 
+Beacon Cache also preserves RFC 9824 Compact Denial semantic metadata (`CompactDenial` and `CompactDenialCO`) through defensive result cloning. It does not permanently rewrite a cached Compact Denial response into one downstream client's preferred RCODE form.
+
 ## Beacon Resolver Scheduler
 
 `internal/gcdns/scheduler.go` implements named resolver targets, bounded scheduler concurrency, per-attempt context deadlines, caller cancellation, deterministic failover, health-aware target ordering, latency-aware ordering, and privacy-safe target statistics.
@@ -40,7 +42,7 @@ Referral processing remains conservative: only advertised in-bailiwick glue is a
 
 Beacon carries the current root-zone DS trust-anchor set for KSK-2017 and KSK-2024. The validator supports DS-to-DNSKEY authentication, DNSKEY RRset authentication, RRSIG validity-window and cryptographic verification, secure parent-to-child trust carry, terminal positive-RRset validation, wildcard-positive validation, wildcard NODATA validation, authenticated NSEC/NSEC3 denial, narrowly scoped NSEC3 Opt-Out insecure-delegation validation, and RFC 9824 Compact Denial of Existence recognition through authenticated NXNAME proof.
 
-Iterative queries explicitly request DNSSEC material with EDNS and the DO bit.
+Iterative queries explicitly request DNSSEC material with EDNS and the DO bit. The DNSSEC-validating resolver also advertises RFC 9824 Compact Answers OK upstream through a separate internal capability flag; the plain non-validating iterative resolver does not advertise CO merely because a downstream client did.
 
 ## Beacon NSEC Authenticated Denial
 
@@ -84,15 +86,27 @@ The terminal validator tries NSEC first and only falls through to NSEC3 when the
 
 ## RFC 9824 Compact Denial of Existence
 
-`internal/gcdns/dnssec_compact_denial.go` implements the first Beacon resolver-side RFC 9824 Compact Denial boundary.
+`internal/gcdns/dnssec_compact_denial.go` implements Beacon's resolver-side RFC 9824 Compact Denial boundary.
 
-RFC 9824 Compact Answers represent a nonexistent name as a signed NODATA-style response: NOERROR, an empty Answer section, and exact/matching NSEC or NSEC3 proof carrying the NXNAME Meta-TYPE. Beacon recognizes that authenticated signal before ordinary NODATA validation.
+RFC 9824 Compact Answers represent a nonexistent name through authenticated NXNAME proof. For the normal form, the response uses NOERROR and an empty Answer section. A response using NXDOMAIN is accepted as Compact Denial only when the response also carries the RFC 9824 Compact Answers OK (CO) flag.
 
-For NSEC, the owner must match QNAME and the Type Bit Maps field must contain exactly RRSIG, NSEC, and NXNAME. For NSEC3, the proof must match QNAME and its Type Bit Maps field must contain exactly NXNAME. The proof RRset must validate against authenticated zone DNSKEY material. Malformed NXNAME responses fail closed rather than being treated as ordinary NODATA.
+For NSEC, the owner must match QNAME and the Type Bit Maps field must contain exactly RRSIG, NSEC, and NXNAME. For NSEC3, the proof must match QNAME and its Type Bit Maps field must contain exactly NXNAME. The proof RRset must validate against authenticated zone DNSKEY material. Malformed NXNAME responses fail closed rather than being treated as ordinary NODATA or conventional NXDOMAIN.
 
-Ordinary NODATA and Empty Non-Terminal responses without NXNAME remain on the existing NODATA path. Explicit NXNAME queries are rejected locally with FORMERR before iterative network work because NXNAME is a Meta-TYPE and is not a normal resolvable RR type.
+Ordinary NODATA and Empty Non-Terminal responses without NXNAME remain on the existing NODATA path. Conventional NXDOMAIN responses without NXNAME remain on the existing NSEC/NSEC3 NXDOMAIN path. Explicit NXNAME queries are rejected locally with FORMERR before iterative network work because NXNAME is a Meta-TYPE and is not a normal resolvable RR type.
 
-The optional RFC 9824 Compact Answers OK (CO) EDNS signal and response-code restoration are not implemented yet. Beacon does not reinterpret conventional NXDOMAIN proof as Compact Denial and does not yet preserve CO state in cache metadata.
+## RFC 9824 Compact Answers OK hop-by-hop handling
+
+CO is treated as hop-by-hop state. The normalized `Request.CompactAnswersOK` field records whether the resolver component itself is prepared to consume Compact Answers. The validating iterative resolver sets this capability for its upstream authority/DNSKEY work. The plain iterative resolver does not automatically inherit a downstream client's CO bit.
+
+`exchangeResolver` sets the EDNS CO bit only when `CompactAnswersOK` is true. When a secure terminal response contains NXNAME proof, the validating resolver records `Result.CompactDenial=true` and preserves the upstream response CO state in `Result.CompactDenialCO` before any downstream presentation occurs.
+
+`Pipeline.Resolve` stores that normalized result before client-specific response restoration. On resolver results and cache hits, `prepareCompactDenialForClient` uses a defensive message copy and renders the response for the current downstream request:
+
+- downstream DO=1, CO=0: NOERROR, response CO clear;
+- downstream DO=1, CO=1: NXDOMAIN, response CO set;
+- downstream DO=0: NXDOMAIN restoration, with response CO following only the current downstream query's CO request.
+
+This prevents one client's EDNS flags from contaminating shared Compact Denial cache state and preserves the RFC 9824 hop-by-hop boundary.
 
 ## Beacon Wildcard Validation
 
@@ -112,7 +126,7 @@ A short-lived branch-only experiment used the phrase "compact NSEC NXDOMAIN" for
 
 ## Security boundary
 
-The native foundation currently enforces source-level invariants for DNSSEC validation, DNS rebinding protection, explicit recursion and administration ACLs, no accidental open recursion, bogus-result rejection before cache insertion, bounded cache/scheduler/transport behavior, delegation depth and loop protection, in-bailiwick glue acceptance, root trust anchors, DS/DNSKEY authentication, terminal positive RRset validation, wildcard-positive no-closer-match validation, wildcard NODATA validation, NSEC/NSEC3 insecure-delegation proof including scoped Opt-Out DS-absence transitions, exact-owner NSEC/NSEC3 NODATA proof, conventional NSEC/NSEC3 NXDOMAIN proof, and RFC 9824 NXNAME compact-denial recognition.
+The native foundation currently enforces source-level invariants for DNSSEC validation, DNS rebinding protection, explicit recursion and administration ACLs, no accidental open recursion, bogus-result rejection before cache insertion, bounded cache/scheduler/transport behavior, delegation depth and loop protection, in-bailiwick glue acceptance, root trust anchors, DS/DNSKEY authentication, terminal positive RRset validation, wildcard-positive no-closer-match validation, wildcard NODATA validation, NSEC/NSEC3 insecure-delegation proof including scoped Opt-Out DS-absence transitions, exact-owner NSEC/NSEC3 NODATA proof, conventional NSEC/NSEC3 NXDOMAIN proof, RFC 9824 NXNAME compact-denial recognition, validating-resolver CO signaling, and per-client cache-aware Compact Denial response restoration.
 
 These are development controls, not production acceptance evidence.
 
@@ -122,9 +136,8 @@ No production traffic is routed through `internal/gcdns` yet. Existing AdGuard H
 
 ## Next implementation sequence
 
-1. Add RFC 9824 CO signaling and cache-aware response-code restoration only after hop-by-hop state handling is defined.
-2. Complete signed CNAME/DNAME chain handling and out-of-bailiwick nameserver discovery.
-3. Implement QNAME minimization, forward/conditional/stub routing, and split-horizon routing.
-4. Add persistent cache, prefetch/auto-prefetch, encrypted DNS, authoritative DNS, filtering, DHCP, clustering, APIs, identity, and Glaze UI administration.
-5. Validate the competitive-superset requirement with feature, security, privacy, control, resilience, and operational acceptance matrices.
-6. Perform controlled migration and production replacement only after GoreeCloud release and production-readiness gates pass.
+1. Complete signed CNAME/DNAME chain handling and out-of-bailiwick nameserver discovery.
+2. Implement QNAME minimization, forward/conditional/stub routing, and split-horizon routing.
+3. Add persistent cache, prefetch/auto-prefetch, encrypted DNS, authoritative DNS, filtering, DHCP, clustering, APIs, identity, and Glaze UI administration.
+4. Validate the competitive-superset requirement with feature, security, privacy, control, resilience, and operational acceptance matrices.
+5. Perform controlled migration and production replacement only after GoreeCloud release and production-readiness gates pass.
