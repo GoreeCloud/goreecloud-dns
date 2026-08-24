@@ -18,7 +18,9 @@ type Pipeline struct {
 }
 
 // Resolve executes policy -> authority -> cache -> resolver. Bogus DNSSEC
-// results are rejected before cache insertion.
+// results are rejected before cache insertion. RFC 9824 Compact Denial results
+// are cached in normalized semantic form and presented to each downstream
+// client according to that request's DO/CO capability only after cache work.
 func (p *Pipeline) Resolve(ctx context.Context, req *Request) (*Result, error) {
 	if req == nil || req.Message == nil {
 		return nil, errors.New("goreecloud dns: nil request")
@@ -29,12 +31,12 @@ func (p *Pipeline) Resolve(ctx context.Context, req *Request) (*Result, error) {
 
 	if res, handled, err := p.Policy.Evaluate(ctx, req); err != nil || handled {
 		p.observe(ctx, "policy", res, false, err, 0)
-		return res, err
+		return prepareCompactDenialForClient(req, res), err
 	}
 
 	if res, handled, err := p.Authority.ResolveAuthoritative(ctx, req); err != nil || handled {
 		p.observe(ctx, "authoritative", res, false, err, 0)
-		return res, err
+		return prepareCompactDenialForClient(req, res), err
 	}
 
 	started := time.Now()
@@ -44,7 +46,7 @@ func (p *Pipeline) Resolve(ctx context.Context, req *Request) (*Result, error) {
 		return nil, fmt.Errorf("goreecloud dns: cache get: %w", err)
 	}
 	if ok {
-		return res, nil
+		return prepareCompactDenialForClient(req, res), nil
 	}
 
 	started = time.Now()
@@ -69,7 +71,7 @@ func (p *Pipeline) Resolve(ctx context.Context, req *Request) (*Result, error) {
 		}
 	}
 
-	return res, nil
+	return prepareCompactDenialForClient(req, res), nil
 }
 
 func (p *Pipeline) observe(ctx context.Context, stage string, res *Result, cacheHit bool, err error, duration time.Duration) {
