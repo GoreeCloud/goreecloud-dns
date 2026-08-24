@@ -6,7 +6,7 @@ GoreeCloud Beacon keeps resolver routing and DNSSEC trust as separate decisions.
 
 `ForwardingResolver`, `StubResolver`, and `DelegatingStubResolver` clear any received `AD` bit and return `DNSSECIndeterminate`. Beacon does not accept an upstream recursive resolver's AD assertion or an authoritative server response as equivalent to local DNSSEC validation.
 
-Direct Internet recursion may continue through `ValidatingIterativeResolver`, which establishes trust from the configured root trust-anchor set and validates the delegation chain and terminal response locally.
+Direct Internet recursion may continue through `ValidatingIterativeResolver`, which establishes trust from the configured root trust-anchor set and validates the delegation chain and terminal response locally. Internet forwarding may use `ValidatingForwardingResolver`, which likewise establishes the root-to-signer chain locally while using configured recursive forwarders only as transports.
 
 ## Explicit private DNSKEY trust anchors
 
@@ -60,7 +60,7 @@ The detailed implementation boundary is in `docs/private-stub-dnssec.md`.
 
 ## Routing-runtime safety
 
-A DNSSEC-validation wrapper must not hide its underlying forward or stub target from routing safety checks. `routing_runtime_validation.go` therefore unwraps `PrivateTrustAnchorResolver` when discovering configured native target endpoints.
+A DNSSEC-validation wrapper must not hide its underlying forward or stub target from routing safety checks. `routing_runtime_validation.go` therefore unwraps `PrivateTrustAnchorResolver` and exposes configured targets behind `ValidatingForwardingResolver` when discovering native resolver endpoints.
 
 `NewRuntimeValidatedRoutingResolver` also recognizes `ValidatingDelegatingStubResolver`, validates its configured root-authority endpoints, clones it with the active runtime boundary attached, and applies that boundary to every dynamically discovered child-authority endpoint before exchange.
 
@@ -68,9 +68,11 @@ When a private trust-anchor wrapper contains `DelegatingStubResolver`, runtime c
 
 ## Internet forwarding boundary
 
-A private DNSKEY anchor is not a substitute for validating arbitrary Internet forwarding. Ordinary forwarded Internet data remains `DNSSECIndeterminate` until Beacon implements a local forwarding-validation path that builds the normal root-to-zone DNSSEC chain or routes the query through the validating iterative resolver.
+Raw `ForwardingResolver` remains `DNSSECIndeterminate`; an upstream recursive resolver's AD bit is never local validation evidence. `ValidatingForwardingResolver` is the explicit locally validating Internet-forwarding path. It sends RD=1/DO/CD queries, ignores and clears upstream AD, authenticates the root DNSKEY RRset from Beacon's root DS anchors, and validates DS-to-DNSKEY transitions through the response signer zone before terminal data may become `DNSSECSecure`.
 
-No policy in this stage permits promoting a forwarded result because an upstream server set AD.
+Authenticated denial of DS at a real delegation may transition a validating-forwarded branch to `DNSSECInsecure`. Missing or unclassified DS state does not create trust. Private DNSKEY anchors are not substituted for the public root trust chain.
+
+The focused forwarding boundary and current non-delegation proof limitations are documented in `docs/validating-forwarding.md`.
 
 ## Tests and source contract
 
@@ -94,7 +96,7 @@ Deterministic source tests cover:
 - runtime listener-boundary attachment to validating private stubs; and
 - dynamic child-authority self-target rejection before child contact.
 
-The focused routed-DNSSEC and private-stub DNSSEC source contracts are executed by the `beacon-native-core` workflow before `go test ./internal/gcdns`.
+The focused routed-DNSSEC and private-stub DNSSEC source contracts are executed by the `beacon-native-core` workflow before `go test ./internal/gcdns`. Locally validating forwarding has an additional focused contract and package-test workflow.
 
 ## Production boundary
 
