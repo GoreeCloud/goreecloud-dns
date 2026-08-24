@@ -23,6 +23,7 @@ func unresolvedAliasTarget(msg *dns.Msg, qname string, qtype uint16) (string, bo
 	}
 	current := dns.Fqdn(qname)
 	seen := map[string]struct{}{dns.CanonicalName(current): {}}
+	transitioned := false
 
 	for depth := 0; depth < maxAliasTransitions; depth++ {
 		if answerHasTypeAt(msg, current, qtype) {
@@ -34,6 +35,9 @@ func unresolvedAliasTarget(msg *dns.Msg, qname string, qtype uint16) (string, bo
 			return "", false, err
 		}
 		if !found {
+			if transitioned {
+				return current, true, nil
+			}
 			return "", false, nil
 		}
 		target = dns.Fqdn(target)
@@ -43,6 +47,7 @@ func unresolvedAliasTarget(msg *dns.Msg, qname string, qtype uint16) (string, bo
 		}
 		seen[canonical] = struct{}{}
 		current = target
+		transitioned = true
 	}
 
 	return "", false, errors.New("goreecloud dns: alias chain exceeds maximum transition depth")
