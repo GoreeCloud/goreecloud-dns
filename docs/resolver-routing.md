@@ -66,9 +66,11 @@ A request carries an internal route-execution context. If a route resolver re-en
 
 `internal/gcdns/routing_runtime_validation.go` adds deterministic runtime self-target validation for classic forward and stub routes. `ValidateRoutingRuntime` receives the active GoreeCloud DNS listener endpoints, a startup snapshot of local interface addresses, and the configured native routes. It does not perform DNS resolution or interface discovery itself.
 
-`NewRuntimeValidatedRoutingResolver` combines ordinary route-graph validation with runtime listener/target validation and is the intended construction boundary once the native listener runtime supplies its actual endpoint state.
+`NewRuntimeValidatedRoutingResolver` combines ordinary route-graph validation with runtime listener/target validation and is the intended construction boundary once the native listener runtime supplies its actual endpoint state. For each `DelegatingStubResolver`, the constructor clones the resolver into the returned route graph and attaches the same immutable listener boundary to that clone.
 
-The validator rejects an exact target/listener address and port match. An unspecified wildcard listener such as `0.0.0.0:53` or `[::]:53` rejects same-family targets on that port when the target is loopback or appears in the supplied local-address snapshot. An external resolver on the same port remains valid, and a local address on a different port remains a distinct service boundary. The same protection applies to `DelegatingStubResolver` root-authority targets.
+The validator rejects an exact target/listener address and port match. An unspecified wildcard listener such as `0.0.0.0:53` or `[::]:53` rejects same-family targets on that port when the target is loopback or appears in the supplied local-address snapshot. An external resolver on the same port remains valid, and a local address on a different port remains a distinct service boundary.
+
+The attached boundary is also applied after every delegating-stub referral. Newly discovered child-authority endpoints are checked before the next DNS exchange, so a safe configured stub root cannot redirect the resolver back into a local GoreeCloud DNS listener through glue or an internally resolved sibling nameserver address.
 
 Runtime self-target validation requires numeric IP target addresses. A hostname target cannot be proven non-self without a separate approved bootstrap-resolution lifecycle and therefore fails this startup check. Unspecified target addresses and malformed listener or local-address state also fail closed.
 
