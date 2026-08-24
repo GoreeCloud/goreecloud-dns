@@ -162,13 +162,15 @@ func (r *ValidatingIterativeResolver) resolveSingle(ctx context.Context, req *Re
 					delegations++
 					continue
 				} else if probeRes.Message != nil && (probeRes.Message.Rcode == dns.RcodeSuccess || probeRes.Message.Rcode == dns.RcodeNameError) {
+					probeStatus := DNSSECInsecure
 					if chainSecure {
 						if r.terminal == nil {
 							minimise = false
+							probeStatus = DNSSECIndeterminate
 						} else {
-							probeStatus, authErr := r.terminal.AuthenticateTerminalAnswer(probeRes.Message, parentKeys)
-							if authErr != nil {
-								return nil, fmt.Errorf("goreecloud dns: QNAME minimisation DNSSEC authentication failed: %w", authErr)
+							probeStatus, err = r.terminal.AuthenticateTerminalAnswer(probeRes.Message, parentKeys)
+							if err != nil {
+								return nil, fmt.Errorf("goreecloud dns: QNAME minimisation DNSSEC authentication failed: %w", err)
 							}
 							if probeStatus != DNSSECSecure {
 								// Do not let unproven minimisation responses influence zone-cut
@@ -177,6 +179,23 @@ func (r *ValidatingIterativeResolver) resolveSingle(ctx context.Context, req *Re
 							}
 						}
 					}
+
+					if sameDNSName(child, q.Name) && q.Qtype == qnameMinimisationQType && (probeStatus == DNSSECSecure || !chainSecure) {
+						// The final A minimisation probe is the client's original query.
+						// Reuse it after the same trust decision required for an ordinary
+						// terminal response instead of sending a duplicate A query.
+						probeRes.CacheTTL = responseCacheTTL(probeRes.Message)
+						if chainSecure {
+							probeRes.DNSSECStatus = DNSSECSecure
+							present, responseCO := compactDenialMessageMetadata(probeRes.Message)
+							probeRes.CompactDenial = present
+							probeRes.CompactDenialCO = present && responseCO
+						} else {
+							probeRes.DNSSECStatus = DNSSECInsecure
+						}
+						return probeRes, nil
+					}
+
 					if minimise || !chainSecure {
 						if probeRes.Message.Rcode == dns.RcodeSuccess && qnameMinimisationResponseHasDNAME(probeRes.Message) {
 							minimise = false
