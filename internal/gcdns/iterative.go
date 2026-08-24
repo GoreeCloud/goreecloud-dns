@@ -261,6 +261,7 @@ func responseCacheTTL(msg *dns.Msg) time.Duration {
 				}
 				consider(negative)
 			}
+		}
 	}
 	if !set {
 		return 0
