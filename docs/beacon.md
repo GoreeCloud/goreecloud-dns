@@ -36,11 +36,13 @@ Beacon Cache also preserves RFC 9824 Compact Denial semantic metadata (`CompactD
 
 `internal/gcdns/iterative.go` provides the native delegation walker. It starts from an approved root/bootstrap endpoint set, clears the recursion-desired bit on authoritative queries, uses the Beacon scheduler for per-delegation failover, sends queries through the DNSExchanger/ClassicTransport boundary, follows NS referrals, derives cache lifetimes from terminal responses, and stops on configured delegation depth or repeated delegation state.
 
+The resolver now also follows bounded CNAME/DNAME alias chains when a terminal response ends on an alias rather than the requested record type. An unresolved alias target is resolved through a fresh iterative walk and the completed response is merged back under the original question only after the target result is obtained.
+
 Referral processing remains conservative: only advertised in-bailiwick glue is accepted. Out-of-bailiwick nameserver address discovery remains a later resolver milestone.
 
 ## Beacon DNSSEC Foundation
 
-Beacon carries the current root-zone DS trust-anchor set for KSK-2017 and KSK-2024. The validator supports DS-to-DNSKEY authentication, DNSKEY RRset authentication, RRSIG validity-window and cryptographic verification, secure parent-to-child trust carry, terminal positive-RRset validation, wildcard-positive validation, wildcard NODATA validation, authenticated NSEC/NSEC3 denial, narrowly scoped NSEC3 Opt-Out insecure-delegation validation, and RFC 9824 Compact Denial of Existence recognition through authenticated NXNAME proof.
+Beacon carries the current root-zone DS trust-anchor set for KSK-2017 and KSK-2024. The validator supports DS-to-DNSKEY authentication, DNSKEY RRset authentication, RRSIG validity-window and cryptographic verification, secure parent-to-child trust carry, terminal positive-RRset validation, CNAME/DNAME alias chains, wildcard-positive validation, wildcard NODATA validation, authenticated NSEC/NSEC3 denial, narrowly scoped NSEC3 Opt-Out insecure-delegation validation, and RFC 9824 Compact Denial of Existence recognition through authenticated NXNAME proof.
 
 Iterative queries explicitly request DNSSEC material with EDNS and the DO bit. The DNSSEC-validating resolver also advertises RFC 9824 Compact Answers OK upstream through a separate internal capability flag; the plain non-validating iterative resolver does not advertise CO merely because a downstream client did.
 
@@ -109,6 +111,20 @@ CO is treated as hop-by-hop state. The normalized `Request.CompactAnswersOK` fie
 
 This prevents one client's EDNS flags from contaminating shared Compact Denial cache state, preserves normal downstream DNSSEC filtering, and maintains the RFC 9824 hop-by-hop boundary.
 
+## Beacon CNAME/DNAME alias chains
+
+`internal/gcdns/alias.go` provides shared alias parsing, DNAME substitution, cycle detection, follow-up request construction, merged response handling, and DNSSEC chain-state combination for the plain and validating iterative resolvers.
+
+An ordinary CNAME remains a normal RRset and requires its own valid RRSIG in a secure zone. If the original response already contains the requested final RR type after a CNAME chain, Beacon validates the complete returned RRsets without issuing an unnecessary target query. If the response ends on CNAME, the target is resolved separately and the final Answer is merged under the original question.
+
+DNAME handling follows RFC 6672 semantics. DNAME applies to names strictly below its owner, and Beacon selects the closest applicable DNAME. It derives the substituted target deterministically and accepts an unsigned synthesized CNAME only when that CNAME target exactly matches the DNAME substitution and its TTL is either zero or the DNAME TTL. The signed DNAME RRset supplies the DNSSEC authentication for that synthesized CNAME. A mismatched, conflicting, or unexpectedly signed synthesized CNAME fails closed.
+
+Alias processing is capped at 16 transitions. Beacon rejects an alias loop, multiple CNAME records at one owner, conflicting DNAME records, malformed substitutions, and DNS names exceeding protocol length. A zero-TTL alias hop prevents the merged chain from being cached as a fresh combined answer.
+
+The validating resolver starts a fresh root-to-target DNSSEC walk for every unresolved external alias target instead of reusing the prior zone's DNSKEY state. The merged chain is Secure only when every hop is Secure. Bogus or indeterminate hops fail closed; an authenticated insecure hop makes the completed determinate chain Insecure. This preserves the weakest-link DNSSEC boundary across zone-changing CNAME/DNAME chains.
+
+Authenticated negative answers are DNAME-aware. A securely validated NSEC or NSEC3 NXDOMAIN proof is rejected if the authenticated closest-encloser bitmap states that an applicable DNAME exists and redirection should have occurred instead of NXDOMAIN.
+
 ## Beacon Wildcard Validation
 
 `internal/gcdns/dnssec_wildcard.go` authenticates wildcard-expanded positive answers and wildcard NODATA responses.
@@ -127,7 +143,7 @@ A short-lived branch-only experiment used the phrase "compact NSEC NXDOMAIN" for
 
 ## Security boundary
 
-The native foundation currently enforces source-level invariants for DNSSEC validation, DNS rebinding protection, explicit recursion and administration ACLs, no accidental open recursion, bogus-result rejection before cache insertion, bounded cache/scheduler/transport behavior, delegation depth and loop protection, in-bailiwick glue acceptance, root trust anchors, DS/DNSKEY authentication, terminal positive RRset validation, wildcard-positive no-closer-match validation, wildcard NODATA validation, NSEC/NSEC3 insecure-delegation proof including scoped Opt-Out DS-absence transitions, exact-owner NSEC/NSEC3 NODATA proof, conventional NSEC/NSEC3 NXDOMAIN proof, RFC 9824 NXNAME compact-denial recognition, validating-resolver CO signaling, and per-client cache-aware Compact Denial response restoration.
+The native foundation currently enforces source-level invariants for DNSSEC validation, DNS rebinding protection, explicit recursion and administration ACLs, no accidental open recursion, bogus-result rejection before cache insertion, bounded cache/scheduler/transport behavior, delegation depth and loop protection, alias-loop protection, in-bailiwick glue acceptance, root trust anchors, DS/DNSKEY authentication, terminal positive RRset validation, CNAME/DNAME alias chains including signed DNAME coverage of a synthesized CNAME, wildcard-positive no-closer-match validation, wildcard NODATA validation, NSEC/NSEC3 insecure-delegation proof including scoped Opt-Out DS-absence transitions, exact-owner NSEC/NSEC3 NODATA proof, conventional NSEC/NSEC3 NXDOMAIN proof with DNAME conflict checks, RFC 9824 NXNAME compact-denial recognition, validating-resolver CO signaling, and per-client cache-aware Compact Denial response restoration.
 
 These are development controls, not production acceptance evidence.
 
@@ -137,7 +153,7 @@ No production traffic is routed through `internal/gcdns` yet. Existing AdGuard H
 
 ## Next implementation sequence
 
-1. Complete signed CNAME/DNAME chain handling and out-of-bailiwick nameserver discovery.
+1. Implement out-of-bailiwick authoritative nameserver address discovery.
 2. Implement QNAME minimization, forward/conditional/stub routing, and split-horizon routing.
 3. Add persistent cache, prefetch/auto-prefetch, encrypted DNS, authoritative DNS, filtering, DHCP, clustering, APIs, identity, and Glaze UI administration.
 4. Validate the competitive-superset requirement with feature, security, privacy, control, resilience, and operational acceptance matrices.
