@@ -49,13 +49,14 @@ required = {
         "Explicit private DNSKEY trust anchors",
         "forces `CD=1`",
         "restores the original client's CD value",
-        "does not yet establish and carry a private DNSSEC trust chain through signed child delegations",
+        "Private child-delegation trust carry",
+        "ValidatingDelegatingStubResolver",
         "Ordinary forwarded Internet data remains `DNSSECIndeterminate`",
         "Production boundary",
     ),
     "docs/resolver-routing.md": (
         "PrivateTrustAnchorResolver",
-        "private trust path",
+        "ValidatingDelegatingStubResolver",
         "Ordinary Internet forwarding remains `DNSSECIndeterminate`",
     ),
     "docs/iterative-dnssec-validation.md": (
