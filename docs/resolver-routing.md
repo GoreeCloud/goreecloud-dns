@@ -1,6 +1,6 @@
 # Beacon Resolver Routing
 
-GoreeCloud Beacon implements the first native forward, conditional, stub, and split-horizon resolver-routing stage in `internal/gcdns/routing.go`.
+GoreeCloud Beacon implements native forward, conditional, stub, and split-horizon resolver routing in `internal/gcdns` while keeping routing after policy, authoritative data, and cache lookup.
 
 ## Pipeline position
 
@@ -14,7 +14,7 @@ Each `ResolverRoute` has a DNS suffix and one of three modes:
 
 - `recursive` — use the default native recursive resolver;
 - `forward` — send the full question to configured recursive upstream targets;
-- `stub` — send the full question non-recursively to explicitly configured authoritative targets for the routed zone.
+- `stub` — send the question non-recursively to explicitly configured authoritative targets for the routed zone.
 
 The router uses longest DNS-suffix matching. An explicit recursive route can therefore override a broader forwarding rule. A root (`.`) forwarding route can implement normal forwarding while narrower recursive, conditional-forwarding, or stub routes remain more specific.
 
@@ -48,19 +48,27 @@ Encrypted forwarding is not part of this classic-DNS source slice. It will use t
 
 ## Stub resolution
 
-`StubResolver` sends RD=0 to explicitly configured authoritative targets and uses the scheduler for target failover. A target must return a terminal authoritative NOERROR or NXDOMAIN response. Non-authoritative responses, referrals, and retryable error codes are rejected for this first stub stage.
+`StubResolver` remains the strict terminal-only stub implementation. It sends RD=0 to explicitly configured authoritative targets, uses scheduler failover, and requires terminal authoritative NOERROR or NXDOMAIN. It rejects referrals rather than silently treating them as final data.
+
+`internal/gcdns/stub_subdelegation.go` adds `DelegatingStubResolver` for namespaces that legitimately contain delegated children. It starts from the configured stub-zone authorities and follows only referrals that are strictly closer to the requested name and remain below the configured stub zone. Referral walking is capped at 16 delegation transitions.
+
+The subdelegation path reuses Beacon's conservative referral planner. Direct A/AAAA glue is accepted only for an advertised NS hostname inside the delegated child. Required in-domain glue remains fail-closed. Sibling NS Additional-section addresses are not trusted as glue. When a sibling NS hostname is still inside the configured stub namespace, Beacon may resolve its A/AAAA address through the same stub namespace and then continue the child delegation.
+
+A nameserver hostname outside the configured stub namespace is not resolved through public Internet recursion by this stage. If no other usable authoritative target exists, the stub referral fails. This keeps private stub resolution from leaking internal delegation infrastructure into an unrelated recursive path and prevents an external dependency from being introduced implicitly.
+
+Every subdelegation target still receives RD=0. Terminal data must be authoritative. Referral responses must parse as usable, closer delegations before they can change the authority set. AD is cleared and the result remains `DNSSECIndeterminate`; subdelegation walking does not create a private trust anchor by itself.
 
 The router can continue an alias chain after a stub answer. If a stub response ends in CNAME/DNAME redirection, the alias target is routed again using its own namespace and client scope, so a private stub alias may transition to normal recursion or another route without inheriting the previous route's trust state.
 
-Subdelegation walking below a stub zone is deliberately staged. The first stub implementation does not reinterpret an authority referral as a terminal answer.
-
 ## Loop, ambiguity, and runtime self-target controls
 
-A request carries an internal route-execution context. If a route resolver re-enters the same named route before the previous execution has completed, Beacon fails with a resolver-route-loop error. Alias loops remain covered by the existing bounded alias engine.
+A request carries an internal route-execution context. If a route resolver re-enters the same named route before the previous execution has completed, Beacon fails with a resolver-route-loop error. Alias loops remain covered by the existing bounded alias engine. Delegating stub referrals must move strictly closer to the QNAME and are also bounded by the 16-transition stub depth limit.
 
 `internal/gcdns/routing_runtime_validation.go` adds deterministic runtime self-target validation for classic forward and stub routes. `ValidateRoutingRuntime` receives the active GoreeCloud DNS listener endpoints, a startup snapshot of local interface addresses, and the configured native routes. It does not perform DNS resolution or interface discovery itself.
 
-The validator rejects an exact target/listener address and port match. An unspecified wildcard listener such as `0.0.0.0:53` or `[::]:53` rejects same-family targets on that port when the target is loopback or appears in the supplied local-address snapshot. An external resolver on the same port remains valid, and a local address on a different port remains a distinct service boundary.
+`NewRuntimeValidatedRoutingResolver` combines ordinary route-graph validation with runtime listener/target validation and is the intended construction boundary once the native listener runtime supplies its actual endpoint state.
+
+The validator rejects an exact target/listener address and port match. An unspecified wildcard listener such as `0.0.0.0:53` or `[::]:53` rejects same-family targets on that port when the target is loopback or appears in the supplied local-address snapshot. An external resolver on the same port remains valid, and a local address on a different port remains a distinct service boundary. The same protection applies to `DelegatingStubResolver` root-authority targets.
 
 Runtime self-target validation requires numeric IP target addresses. A hostname target cannot be proven non-self without a separate approved bootstrap-resolution lifecycle and therefore fails this startup check. Unspecified target addresses and malformed listener or local-address state also fail closed.
 
@@ -68,10 +76,14 @@ The startup integrator is responsible for supplying the complete active listener
 
 ## DNSSEC boundary
 
-Direct recursion can continue to use the existing `ValidatingIterativeResolver`. Forward and stub transports in this stage return `DNSSECIndeterminate`; they do not bypass or impersonate local DNSSEC validation. Alias chains that cross routed resolvers combine DNSSEC state conservatively, so an indeterminate routed hop cannot be promoted by a later secure hop.
+Direct recursion can continue to use the existing `ValidatingIterativeResolver`. Forward, terminal-only stub, and delegating-stub transports return `DNSSECIndeterminate`; they do not bypass or impersonate local DNSSEC validation. Alias chains that cross routed resolvers combine DNSSEC state conservatively, so an indeterminate routed hop cannot be promoted by a later secure hop.
 
 Local DNSSEC validation for forwarded or stub data, authenticated-upstream policy, and trust-anchor behavior for private stub namespaces remain separate implementation stages.
 
+## Standards boundary
+
+The delegating-stub path follows normal non-recursive referral semantics: an authority may answer with data, an error, or a referral closer to the desired name. In-domain glue remains mandatory referral infrastructure, while sibling addresses are treated conservatively rather than trusted merely because they appear in Additional. The implementation applies these referral rules only inside the configured stub namespace.
+
 ## Production boundary
 
-`RoutingResolver`, `ForwardingResolver`, `StubResolver`, and runtime self-target validation remain inside the isolated `internal/gcdns` development path. No production AdGuard Home, Unbound, NetBird/GoreeCloud Network nameserver assignment, client DNS setting, forwarding target, Caddy rule, firewall rule, DHCP behavior, or production cutover is changed by this source milestone.
+`RoutingResolver`, `ForwardingResolver`, `StubResolver`, `DelegatingStubResolver`, and runtime self-target validation remain inside the isolated `internal/gcdns` development path. No production AdGuard Home, Unbound, NetBird/GoreeCloud Network nameserver assignment, client DNS setting, forwarding target, Caddy rule, firewall rule, DHCP behavior, or production cutover is changed by this source milestone.
