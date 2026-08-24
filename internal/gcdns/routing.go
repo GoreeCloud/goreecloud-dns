@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net"
 	"net/netip"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -470,15 +469,6 @@ func validateDNSTarget(server string) error {
 		return fmt.Errorf("goreecloud dns: invalid resolver target port in %q", server)
 	}
 	return nil
-}
-
-func sortedRouteNames(routes []ResolverRoute) []string {
-	names := make([]string, 0, len(routes))
-	for _, route := range routes {
-		names = append(names, route.Name)
-	}
-	sort.Strings(names)
-	return names
 }
 
 var (
