@@ -86,6 +86,12 @@ func compactClientRequest(do, co bool) *Request {
 	return &Request{Message: msg, Transport: TransportDNS}
 }
 
+func compactClientRequestWithoutEDNS() *Request {
+	msg := new(dns.Msg)
+	msg.SetQuestion("missing.example.test.", dns.TypeAAAA)
+	return &Request{Message: msg, Transport: TransportDNS}
+}
+
 func compactCachedResult(t *testing.T) *Result {
 	t.Helper()
 	msg, _ := compactDenialCOResponse(t, dns.RcodeNameError, true)
@@ -103,7 +109,9 @@ func TestPrepareCompactDenialForDNSSECClientWithoutCO(t *testing.T) {
 	cached := compactCachedResult(t)
 	out := prepareCompactDenialForClient(compactClientRequest(true, false), cached)
 	require.Equal(t, dns.RcodeSuccess, out.Message.Rcode)
+	require.True(t, out.Message.IsEdns0().Do())
 	require.False(t, out.Message.IsEdns0().Co())
+	require.Len(t, out.Message.Ns, 2)
 	require.True(t, out.CompactDenial)
 	require.True(t, out.CompactDenialCO)
 	require.Equal(t, dns.RcodeNameError, cached.Message.Rcode)
@@ -113,13 +121,25 @@ func TestPrepareCompactDenialForDNSSECClientWithoutCO(t *testing.T) {
 func TestPrepareCompactDenialForCOClient(t *testing.T) {
 	out := prepareCompactDenialForClient(compactClientRequest(true, true), compactCachedResult(t))
 	require.Equal(t, dns.RcodeNameError, out.Message.Rcode)
+	require.True(t, out.Message.IsEdns0().Do())
 	require.True(t, out.Message.IsEdns0().Co())
+	require.Len(t, out.Message.Ns, 2)
 }
 
 func TestPrepareCompactDenialForNonDOClient(t *testing.T) {
 	out := prepareCompactDenialForClient(compactClientRequest(false, false), compactCachedResult(t))
 	require.Equal(t, dns.RcodeNameError, out.Message.Rcode)
+	require.NotNil(t, out.Message.IsEdns0())
+	require.False(t, out.Message.IsEdns0().Do())
 	require.False(t, out.Message.IsEdns0().Co())
+	require.Empty(t, out.Message.Ns)
+}
+
+func TestPrepareCompactDenialForClientWithoutEDNS(t *testing.T) {
+	out := prepareCompactDenialForClient(compactClientRequestWithoutEDNS(), compactCachedResult(t))
+	require.Equal(t, dns.RcodeNameError, out.Message.Rcode)
+	require.Nil(t, out.Message.IsEdns0())
+	require.Empty(t, out.Message.Ns)
 }
 
 func TestCompactDenialMessageMetadata(t *testing.T) {
