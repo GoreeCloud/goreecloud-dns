@@ -18,6 +18,9 @@ func unresolvedAliasTarget(msg *dns.Msg, qname string, qtype uint16) (string, bo
 	if msg == nil || len(msg.Answer) == 0 {
 		return "", false, nil
 	}
+	if err := validateAliasAnswerShape(msg); err != nil {
+		return "", false, err
+	}
 	current := dns.Fqdn(qname)
 	seen := map[string]struct{}{dns.CanonicalName(current): {}}
 
@@ -43,6 +46,54 @@ func unresolvedAliasTarget(msg *dns.Msg, qname string, qtype uint16) (string, bo
 	}
 
 	return "", false, errors.New("goreecloud dns: alias chain exceeds maximum transition depth")
+}
+
+// validateAliasAnswerShape enforces protocol-level owner constraints before
+// resolver or DNSSEC logic can treat an answer as a valid alias chain. CNAME is
+// exclusive with ordinary data at its owner; DNSSEC metadata may coexist.
+func validateAliasAnswerShape(msg *dns.Msg) error {
+	if msg == nil {
+		return nil
+	}
+	type ownerState struct {
+		cnames int
+		dnames int
+		other  bool
+	}
+	owners := map[string]*ownerState{}
+	for _, rr := range msg.Answer {
+		if rr == nil {
+			continue
+		}
+		owner := dns.CanonicalName(rr.Header().Name)
+		state := owners[owner]
+		if state == nil {
+			state = &ownerState{}
+			owners[owner] = state
+		}
+		switch rr.Header().Rrtype {
+		case dns.TypeCNAME:
+			state.cnames++
+		case dns.TypeDNAME:
+			state.dnames++
+		case dns.TypeRRSIG, dns.TypeNSEC:
+			// DNSSEC metadata is permitted at a CNAME owner.
+		default:
+			state.other = true
+		}
+	}
+	for owner, state := range owners {
+		if state.cnames > 1 {
+			return fmt.Errorf("goreecloud dns: multiple CNAME records at %s", owner)
+		}
+		if state.cnames == 1 && (state.dnames != 0 || state.other) {
+			return fmt.Errorf("goreecloud dns: CNAME at %s coexists with other data", owner)
+		}
+		if state.dnames > 1 {
+			return fmt.Errorf("goreecloud dns: multiple DNAME records at %s", owner)
+		}
+	}
+	return nil
 }
 
 func nextAliasTarget(msg *dns.Msg, current string, qtype uint16) (string, bool, error) {
