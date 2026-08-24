@@ -44,10 +44,26 @@ func (v *DNSSECValidator) AuthenticateTerminalAnswer(msg *dns.Msg, keys []*dns.D
 				return v.AuthenticateWildcardNODATA(msg, q.Name, q.Qtype, keys)
 			case dns.RcodeNameError:
 				status, err = v.AuthenticateNSECNXDOMAIN(msg, q.Name, keys)
-				if err != nil || status != DNSSECIndeterminate {
+				if err != nil {
 					return status, err
 				}
-				return v.AuthenticateNSEC3NXDOMAIN(msg, q.Name, keys)
+				if status == DNSSECSecure {
+					if authenticatedNSECDNAMEConflict(msg, q.Name, keys) {
+						return DNSSECBogus, fmt.Errorf("goreecloud dns: authenticated NSEC NXDOMAIN proof for %s suppresses an applicable DNAME", dns.Fqdn(q.Name))
+					}
+					return status, nil
+				}
+				if status != DNSSECIndeterminate {
+					return status, nil
+				}
+				status, err = v.AuthenticateNSEC3NXDOMAIN(msg, q.Name, keys)
+				if err != nil {
+					return status, err
+				}
+				if status == DNSSECSecure && authenticatedNSEC3DNAMEConflict(msg, q.Name, keys) {
+					return DNSSECBogus, fmt.Errorf("goreecloud dns: authenticated NSEC3 NXDOMAIN proof for %s suppresses an applicable DNAME", dns.Fqdn(q.Name))
+				}
+				return status, nil
 			}
 		}
 		return DNSSECIndeterminate, nil
@@ -219,4 +235,24 @@ func (v *DNSSECValidator) authenticateSynthesizedDNAMECNAME(msg *dns.Msg, cnameR
 		return true, fmt.Errorf("signed DNAME did not validate synthesized CNAME: %w", err)
 	}
 	return true, nil
+}
+
+func authenticatedNSECDNAMEConflict(msg *dns.Msg, qname string, keys []*dns.DNSKEY) bool {
+	if msg == nil || len(keys) == 0 {
+		return false
+	}
+	zone := dns.Fqdn(keys[0].Hdr.Name)
+	records, _ := allNSECMaterial(msg)
+	closest := closestEncloserNSEC(dns.Fqdn(qname), zone, records)
+	return closest != nil && nsecHasType(closest, dns.TypeDNAME)
+}
+
+func authenticatedNSEC3DNAMEConflict(msg *dns.Msg, qname string, keys []*dns.DNSKEY) bool {
+	zone, err := authenticatedDNSKEYZone(keys)
+	if err != nil || msg == nil {
+		return false
+	}
+	records, _ := nsec3Material(msg)
+	_, closest := closestEncloserNSEC3(dns.Fqdn(qname), zone, records)
+	return closest != nil && nsec3HasType(closest, dns.TypeDNAME)
 }
