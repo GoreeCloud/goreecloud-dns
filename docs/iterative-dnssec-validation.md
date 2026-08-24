@@ -17,8 +17,9 @@ The validating path performs these steps before a secure answer may be returned:
 9. Once an insecure delegation is authenticated, preserve `DNSSECInsecure` below that boundary instead of attempting to recreate trust without another configured trust anchor.
 10. For a positive terminal response, group the answer into RRsets and validate each RRset against matching RRSIG material using the authenticated DNSKEY set for the answering zone.
 11. If a validated positive RRSIG has fewer `RRSIG Labels` than its expanded owner name, treat the RRset as wildcard synthesized and require authenticated proof that the wildcard was the correct match.
-12. For an empty NOERROR response, recognize authenticated RFC 9824 NXNAME Compact Denial first, then authenticate ordinary exact-owner NODATA and wildcard NODATA.
-13. For an empty NXDOMAIN response, authenticate conventional signed NSEC or NSEC3 closest-encloser, next-closer, and wildcard nonexistence evidence.
+12. For an empty response carrying NXNAME, validate RFC 9824 Compact Denial before ordinary negative-answer handling.
+13. For an ordinary empty NOERROR response without NXNAME, authenticate exact-owner NODATA and then wildcard NODATA.
+14. For conventional NXDOMAIN without NXNAME, authenticate signed NSEC or NSEC3 closest-encloser, next-closer, and wildcard nonexistence evidence.
 
 If a delegation cannot establish either secure DS trust or authenticated denial proving an intentionally unsigned child, the validating path stops before contacting the child authority. Positive terminal RRsets and malformed or cryptographically invalid denial proofs fail closed.
 
@@ -64,18 +65,35 @@ This behavior follows the RFC 5155 unsigned-referral model while preserving the 
 
 RFC 9824, published in September 2025 and updating RFCs 4034 and 4035, defines Compact Denial of Existence as a signed NODATA-style response for a nonexistent name. It is distinct from conventional NXDOMAIN proof and from RFC 4470 minimally covering NSEC.
 
-`internal/gcdns/dnssec_compact_denial.go` recognizes the authenticated NXNAME Meta-TYPE signal before ordinary NODATA validation. The initial Beacon boundary supports the resolver/validator side of the protocol:
+`internal/gcdns/dnssec_compact_denial.go` recognizes the authenticated NXNAME Meta-TYPE signal before ordinary NODATA or conventional NXDOMAIN validation.
 
-- the DNS response must use NOERROR with an empty Answer section;
-- an NSEC compact nonexistent-name proof must have an owner matching QNAME and a Type Bit Maps field containing exactly RRSIG, NSEC, and NXNAME;
-- an NSEC3 compact nonexistent-name proof must match the QNAME hash and contain exactly NXNAME in its Type Bit Maps field;
-- the relied-on NSEC or NSEC3 RRset must validate cryptographically with authenticated zone DNSKEY material;
-- NSEC3 proof remains non-Opt-Out and subject to the existing authenticated-zone and supported-hash checks;
-- malformed NXNAME material is treated as bogus and is not allowed to fall through to ordinary NODATA validation;
+A Compact Answer is accepted only when the proof itself establishes the RFC 9824 shape:
+
+- the Answer section is empty;
+- an NSEC proof has an owner matching QNAME and a Type Bit Maps field containing exactly RRSIG, NSEC, and NXNAME;
+- an NSEC3 proof matches the QNAME hash and contains exactly NXNAME in its Type Bit Maps field;
+- the relied-on NSEC or NSEC3 RRset validates cryptographically with authenticated zone DNSKEY material;
+- NSEC3 proof remains non-Opt-Out and subject to existing authenticated-zone and supported-hash checks;
+- malformed NXNAME material is bogus and cannot fall through into ordinary NODATA handling;
 - ordinary NODATA and Empty Non-Terminal responses without NXNAME remain distinct and use the existing NODATA path;
 - an explicit query for the NXNAME Meta-TYPE is answered locally with FORMERR and is not sent into iterative resolution.
 
-The optional RFC 9824 Compact Answers OK (CO) EDNS flag and response-code restoration are not implemented in this first slice. Beacon therefore does not reinterpret a conventional NXDOMAIN response as Compact Denial, and it does not yet synthesize or forward CO state through cache entries.
+Normal Compact Answers use NOERROR. When the upstream response has the RFC 9824 Compact Answers OK response flag, a Compact Answer using NXDOMAIN is also accepted. NXNAME with NXDOMAIN but without the CO response flag fails closed instead of being treated as conventional NXDOMAIN.
+
+## RFC 9824 Compact Answers OK hop-by-hop handling
+
+EDNS Compact Answers OK is hop-by-hop. Beacon does not copy a downstream client's CO bit directly into upstream traffic. Instead, `Request.CompactAnswersOK` records whether the resolver component itself is prepared to consume Compact Answers. The DNSSEC-validating iterative resolver sets this internal capability for its authority and DNSKEY queries; the plain non-validating iterative resolver does not. `exchangeResolver` emits `OPT.SetCo()` only when that internal capability is true.
+
+After DNSSEC validation establishes a Compact Denial result, Beacon records `Result.CompactDenial` and `Result.CompactDenialCO`. These fields survive defensive cache cloning. The cached semantic result is not rewritten for the client that caused the cache insertion.
+
+`prepareCompactDenialForClient` performs downstream response presentation after policy/authority/cache/resolver processing:
+
+- a DNSSEC-capable downstream request with DO set and CO clear receives NOERROR with response CO clear;
+- a DNSSEC-capable downstream request with both DO and CO set receives NXDOMAIN with response CO set;
+- a downstream request without DO receives NXDOMAIN restoration and no response CO unless the downstream query itself advertised CO;
+- cached Compact Denial metadata remains unchanged while the returned DNS message is a defensive copy.
+
+This preserves RFC 9824's hop-by-hop distinction and prevents one downstream request's EDNS flags from changing the cached result seen by another client.
 
 ## Wildcard-expanded positive answers
 
@@ -103,7 +121,7 @@ An intermediate branch-only experiment attempted to broaden NSEC NXDOMAIN handli
 
 ## Deliberate boundary
 
-Complete signed CNAME/DNAME chain resolution across additional authority transitions, DNSSEC algorithm/key-size policy, authenticated trust-anchor persistence/rollover, RFC 9824 CO signaling, and broader runtime acceptance remain staged work.
+Complete signed CNAME/DNAME chain resolution across additional authority transitions, DNSSEC algorithm/key-size policy, authenticated trust-anchor persistence/rollover, and end-to-end runtime acceptance remain staged work.
 
 ## Production status
 
@@ -111,8 +129,7 @@ This code remains isolated from production DNS traffic. Existing production AdGu
 
 ## Next DNSSEC stages
 
-- Add RFC 9824 CO signaling and cache-aware response-code restoration only after hop-by-hop state handling is defined.
 - Complete signed CNAME/DNAME chain validation across zone transitions.
 - Add algorithm and digest policy with explicit unsupported-algorithm behavior.
 - Add trust-anchor lifecycle and rollover automation.
-- Add end-to-end runtime acceptance against controlled signed, unsigned, bogus, wildcard, NSEC, NSEC3, Opt-Out, NXNAME, and denial-of-existence test zones.
+- Add end-to-end runtime acceptance against controlled signed, unsigned, bogus, wildcard, NSEC, NSEC3, Opt-Out, NXNAME, CO, and denial-of-existence test zones.
