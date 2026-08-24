@@ -62,11 +62,12 @@ func (r *ValidatingIterativeResolver) Resolve(ctx context.Context, req *Request)
 		return nil, fmt.Errorf("goreecloud dns: root DNSSEC authentication failed: %w", err)
 	}
 
+	upstreamReq := requestWithCompactAnswersOK(req)
 	servers := append([]string(nil), r.iterative.rootServers...)
 	seenDelegations := map[string]struct{}{}
 	chainSecure := true
 	for depth := 0; depth < r.iterative.maxDepth; depth++ {
-		res, err := r.iterative.resolveAgainst(ctx, req, servers)
+		res, err := r.iterative.resolveAgainst(ctx, upstreamReq, servers)
 		if err != nil {
 			return nil, err
 		}
@@ -85,6 +86,11 @@ func (r *ValidatingIterativeResolver) Resolve(ctx context.Context, req *Request)
 				return nil, fmt.Errorf("goreecloud dns: terminal DNSSEC authentication failed: %w", err)
 			}
 			res.DNSSECStatus = status
+			if status == DNSSECSecure {
+				present, responseCO := compactDenialMessageMetadata(res.Message)
+				res.CompactDenial = present
+				res.CompactDenialCO = present && responseCO
+			}
 			if len(res.Message.Answer) > 0 && status != DNSSECSecure {
 				return nil, errors.New("goreecloud dns: positive terminal answer did not establish secure DNSSEC validation")
 			}
@@ -147,7 +153,7 @@ func (r *ValidatingIterativeResolver) Resolve(ctx context.Context, req *Request)
 func (r *ValidatingIterativeResolver) resolveDNSKEY(ctx context.Context, zone string, servers []string) (*dns.Msg, error) {
 	msg := new(dns.Msg)
 	msg.SetQuestion(dns.Fqdn(zone), dns.TypeDNSKEY)
-	req := &Request{Message: msg, Transport: TransportDNS}
+	req := &Request{Message: msg, Transport: TransportDNS, CompactAnswersOK: true}
 	res, err := r.iterative.resolveAgainst(ctx, req, servers)
 	if err != nil {
 		return nil, err
@@ -156,6 +162,15 @@ func (r *ValidatingIterativeResolver) resolveDNSKEY(ctx context.Context, zone st
 		return nil, errors.New("goreecloud dns: DNSKEY query returned no DNS message")
 	}
 	return res.Message, nil
+}
+
+func requestWithCompactAnswersOK(req *Request) *Request {
+	if req == nil {
+		return nil
+	}
+	copy := *req
+	copy.CompactAnswersOK = true
+	return &copy
 }
 
 var _ Resolver = (*ValidatingIterativeResolver)(nil)
