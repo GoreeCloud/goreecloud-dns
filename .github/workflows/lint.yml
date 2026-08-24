@@ -44,6 +44,8 @@
         'run': 'python3 scripts/validate_referral_discovery.py'
       - 'name': 'Validate Beacon QNAME minimisation contract'
         'run': 'python3 scripts/validate_qname_minimisation.py'
+      - 'name': 'Validate Beacon resolver-routing contract'
+        'run': 'python3 scripts/validate_resolver_routing.py'
       - 'name': 'Test native GoreeCloud DNS core'
         'run': 'go test ./internal/gcdns'
 
@@ -89,8 +91,7 @@
     # Secrets are not passed to workflows that are triggered by a pull request
     # from a fork.
     #
-    # Use always() to signal to the runner that this job must run even if the
-    # previous ones failed.
+    # Use always() to ensure this job runs even if a dependency fails.
     'if': |
       ${{
         always() &&
@@ -102,7 +103,6 @@
       }}
     'runs-on': 'ubuntu-latest'
     'permissions':
-      # Required by workflow-conclusion-action to check workflow status.
       'actions': 'read'
       'contents': 'read'
     'steps':
