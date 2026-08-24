@@ -22,6 +22,7 @@ required = {
         "TestAuthenticateCompactDenialNSEC3RejectsExtraType",
         "TestAuthenticateTerminalAnswerUsesCompactDenial",
         "TestCompactDenialNXNAMEQueryReturnsFORMERR",
+        "TestIterativeResolverRejectsNXNAMEWithoutExchange",
     ),
     "internal/gcdns/dnssec_answer.go": (
         "AuthenticateCompactDenial",
