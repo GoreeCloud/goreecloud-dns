@@ -34,17 +34,31 @@ GoreeCloud Network/VLAN/group identity is not yet copied into the native `Reques
 
 ## Cache isolation
 
-The in-memory cache remains conservatively client-partitioned. Its key now contains both `ClientID` and `ClientIP` rather than preferring identity and discarding the address. This prevents an otherwise stable client identity from reusing a split-horizon cache entry after moving to another network address or subnet.
+The in-memory cache remains conservatively client-partitioned. Its key contains both `ClientID` and `ClientIP`. This prevents an otherwise stable client identity from reusing a split-horizon cache entry after moving to another network address or subnet.
 
 This conservative partition is intentionally narrower than a future route-aware shared-cache model. Route configuration changes, Network identity scopes, and explicitly shareable split-horizon views require their own cache-scope lifecycle before cache sharing can be broadened safely.
 
 ## Forwarding
 
-`ForwardingResolver` uses the existing `TargetScheduler` for bounded target failover. Upstream queries set RD=1 and continue to request DNSSEC material through EDNS/DO. SERVFAIL, REFUSED, FORMERR, NOTIMP, and other non-NOERROR/NXDOMAIN responses are treated as target failures so another configured forward target can be attempted.
+`ForwardingResolver` uses the existing `TargetScheduler` for bounded target failover. Upstream queries set RD=1 and request DNSSEC material through EDNS/DO. SERVFAIL, REFUSED, FORMERR, NOTIMP, and other non-NOERROR/NXDOMAIN responses are treated as target failures so another configured forward target can be attempted.
 
-Forwarded responses do not inherit DNSSEC trust from the upstream `AD` bit. Beacon clears `AD` and records `DNSSECIndeterminate` because a route transport alone is not local DNSSEC validation evidence.
+Raw forwarded responses do not inherit DNSSEC trust from the upstream `AD` bit. `ForwardingResolver` clears `AD` and records `DNSSECIndeterminate` because a route transport alone is not local DNSSEC validation evidence.
 
-Encrypted forwarding is not part of this classic-DNS source slice. It will use the same route-selection model when approved DoT, DoH, and DoQ upstream transports are implemented.
+`ValidatingForwardingResolver` is the locally validating forward variant. It uses the same recursive target scheduler but forces CD on validation traffic, ignores AD, authenticates the root DNSKEY RRset from Beacon's root DS trust anchors, authenticates DS-to-DNSKEY transitions to the response signer zone, validates terminal data locally, and returns `DNSSECSecure` only when the complete supported trust path succeeds.
+
+A signed forwarded response identifies its authoritative signer zone through RRSIG Signer Name. Beacon walks trust to that signer zone instead of probing DS at ordinary signed owner names. If a candidate between the current authenticated zone and a deeper signer zone is not a delegation, Beacon requires an authenticated exact-name NSEC or non-Opt-Out NSEC3 DS-NODATA proof before continuing with the same parent keys.
+
+If authenticated denial proves a real delegation has no DS, the forwarding trust state becomes `DNSSECInsecure` and does not silently recover below that boundary. A missing DS alone is never sufficient. A DS state that cannot be authenticated as a secure delegation, an insecure delegation, or a supported non-delegation fails closed.
+
+Client DS queries preserve parent-side semantics: the terminal DS RRset is validated with authenticated parent keys instead of crossing into the child first.
+
+Recursive forwarders may return complete CNAME/DNAME chains spanning multiple zones. The validating forwarder isolates and validates the current alias link, then issues a fresh locally validating forwarded query for the target rather than validating target-zone data with source-zone keys. The existing 16-hop alias bound and weakest-link DNSSEC combination remain active.
+
+Configured validating-forwarder endpoints are exposed to runtime self-target validation exactly like raw forwarder endpoints. A validation wrapper therefore cannot hide a forward target that points back into an active GoreeCloud DNS listener.
+
+The detailed locally validating forwarding boundary is in `docs/validating-forwarding.md`.
+
+Encrypted forwarding is not part of this classic-DNS source slice. Approved DoT, DoH, and DoQ forwarding transports will use the same routing and local-validation separation when implemented.
 
 ## Stub resolution
 
@@ -56,7 +70,7 @@ The subdelegation path reuses Beacon's conservative referral planner. Direct A/A
 
 A nameserver hostname outside the configured stub namespace is not resolved through public Internet recursion by this stage. If no other usable authoritative target exists, the stub referral fails. This keeps private stub resolution from leaking internal delegation infrastructure into an unrelated recursive path and prevents an external dependency from being introduced implicitly.
 
-Every ordinary subdelegation target still receives RD=0. Terminal data must be authoritative. Referral responses must parse as usable, closer delegations before they can change the authority set. AD is cleared and the ordinary `DelegatingStubResolver` result remains `DNSSECIndeterminate`; transport walking alone does not create DNSSEC trust.
+Every ordinary subdelegation target receives RD=0. Terminal data must be authoritative. Referral responses must parse as usable, closer delegations before they can change the authority set. AD is cleared and the ordinary `DelegatingStubResolver` result remains `DNSSECIndeterminate`; transport walking alone does not create DNSSEC trust.
 
 `ValidatingDelegatingStubResolver` adds an explicit local DNSSEC-validation variant for a stub namespace whose apex has an out-of-band configured DNSKEY trust anchor. It preserves the same namespace, 16-referral, glue, sibling-discovery, and external-NS restrictions while authenticating signed and deliberately unsigned child delegations locally.
 
@@ -78,22 +92,26 @@ Runtime self-target validation requires numeric IP target addresses. A hostname 
 
 The startup integrator is responsible for supplying the complete active listener set and the relevant local-address snapshot. Addresses hidden behind NAT, external VIPs, VRFs, container namespaces, or other network indirection cannot be inferred by this network-free validator unless they are represented in that startup state. Production eligibility therefore still requires runtime integration tests against the actual GoreeCloud DNS listener environment.
 
-Resolver wrappers do not create a bypass. Runtime endpoint discovery unwraps `PrivateTrustAnchorResolver`, and runtime construction recursively clones that wrapper when necessary so a wrapped delegating stub still receives the active listener boundary for dynamically discovered referral targets.
+Resolver wrappers do not create a bypass. Runtime endpoint discovery unwraps `PrivateTrustAnchorResolver` and `ValidatingForwardingResolver`; runtime construction recursively clones private trust-anchor wrappers when necessary so a wrapped delegating stub still receives the active listener boundary for dynamically discovered referral targets.
 
 ## DNSSEC boundary
 
-Direct recursion can continue to use the existing `ValidatingIterativeResolver`. Forward, terminal-only stub, and ordinary delegating-stub transports return `DNSSECIndeterminate`; they do not bypass or impersonate local DNSSEC validation. Alias chains that cross routed resolvers combine DNSSEC state conservatively, so an indeterminate routed hop cannot be promoted by a later secure hop.
+Direct recursion can use `ValidatingIterativeResolver`. Raw forward, terminal-only stub, and ordinary delegating-stub transports return `DNSSECIndeterminate`; they do not impersonate local validation.
 
-`PrivateTrustAnchorResolver` provides local terminal validation for a configured private or otherwise locally administered signed namespace when the answer is authenticated by the anchored apex keyset. The configured DNSKEY trust anchor must be obtained out of band, must belong to the exact routed zone, and must authenticate the complete apex DNSKEY RRset before Beacon trusts the returned apex keyset. Beacon forces CD upstream, ignores upstream AD, validates the terminal result locally, restores the downstream client's original CD bit, and returns `DNSSECSecure` only after local validation succeeds.
+`ValidatingForwardingResolver` now supplies root-anchored local validation for ordinary Internet forwarding without trusting upstream AD. It returns `DNSSECSecure` only after its local root/DS/DNSKEY/terminal validation succeeds, or `DNSSECInsecure` after an authenticated insecure-delegation transition. Unsupported or unproven trust states fail closed.
 
-`ValidatingDelegatingStubResolver` extends that trust through private child delegations. For a signed child, the parent-authenticated DS RRset must lead to a child DNSKEY that authenticates the complete child apex DNSKEY RRset before child keys are carried forward. If authenticated NSEC/NSEC3 denial instead proves DS absence, the branch becomes `DNSSECInsecure`, child DNSKEY acquisition is skipped, and deeper referrals cannot restore secure trust without another explicit anchor. A child with neither authenticated DS nor authenticated DS-absence proof is rejected before contact.
+`PrivateTrustAnchorResolver` provides local terminal validation for a configured private or otherwise locally administered signed namespace when the answer is authenticated by the anchored apex keyset. The configured DNSKEY trust anchor must be obtained out of band, must belong to the exact routed zone, and must authenticate the complete apex DNSKEY RRset before Beacon trusts the returned apex keyset.
 
-Ordinary Internet forwarding remains `DNSSECIndeterminate`; an upstream AD bit is never sufficient to promote it. General local root-to-zone validation for arbitrary forwarded Internet data remains a separate stage. The routed trust boundaries are documented in `docs/routed-dnssec-policy.md` and `docs/private-stub-dnssec.md`.
+`ValidatingDelegatingStubResolver` extends that private trust through child delegations. For a signed child, the parent-authenticated DS RRset must lead to a child DNSKEY that authenticates the complete child apex DNSKEY RRset before child keys are carried forward. If authenticated denial instead proves DS absence, the branch becomes `DNSSECInsecure`, child DNSKEY acquisition is skipped, and deeper referrals cannot restore secure trust without another explicit anchor.
+
+Alias chains that cross routed resolvers combine DNSSEC state conservatively. An insecure hop makes the completed determinate chain insecure; bogus or indeterminate secure-branch data cannot be hidden by a later secure hop.
+
+The routed trust boundaries are documented in `docs/routed-dnssec-policy.md`, `docs/private-stub-dnssec.md`, and `docs/validating-forwarding.md`.
 
 ## Standards boundary
 
-The delegating-stub path follows normal non-recursive referral semantics: an authority may answer with data, an error, or a referral closer to the desired name. In-domain glue remains mandatory referral infrastructure, while sibling addresses are treated conservatively rather than trusted merely because they appear in Additional. The validating variant adds the DNSSEC requirement that an authenticated parent DS establish a signed child path, or authenticated denial establish an insecure path, before the referral can change trust state.
+The delegating-stub path follows normal non-recursive referral semantics. The validating-forwarding path follows the validating-stub DNSSEC model: CD requests unsuppressed DNSSEC material from the recursive forwarder, AD is not relied upon, DS authenticates child DNSKEY state, and terminal data is accepted as secure only after local validation.
 
 ## Production boundary
 
-`RoutingResolver`, `ForwardingResolver`, `StubResolver`, `DelegatingStubResolver`, `ValidatingDelegatingStubResolver`, `PrivateTrustAnchorResolver`, and runtime self-target validation remain inside the isolated `internal/gcdns` development path. No production AdGuard Home, Unbound, NetBird/GoreeCloud Network nameserver assignment, client DNS setting, forwarding target, stub target, private trust anchor, Caddy rule, firewall rule, DHCP behavior, or production cutover is changed by this source milestone.
+`RoutingResolver`, `ForwardingResolver`, `ValidatingForwardingResolver`, `StubResolver`, `DelegatingStubResolver`, `ValidatingDelegatingStubResolver`, `PrivateTrustAnchorResolver`, and runtime self-target validation remain inside the isolated `internal/gcdns` development path. No production AdGuard Home, Unbound, NetBird/GoreeCloud Network nameserver assignment, client DNS setting, forwarding target, stub target, private trust anchor, Caddy rule, firewall rule, DHCP behavior, or production cutover is changed by this source milestone.
