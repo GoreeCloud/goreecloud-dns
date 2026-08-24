@@ -52,7 +52,7 @@ required = {
     "docs/iterative-dnssec-validation.md": (
         "Signed CNAME and DNAME chains",
         "synthesized CNAME",
-        "weakest",
+        "combined chain is only `DNSSECSecure` when all hops are secure",
         "DNAME",
     ),
     "docs/beacon.md": (
