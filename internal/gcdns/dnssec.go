@@ -77,7 +77,7 @@ func (v *DNSSECValidator) MatchDS(zone string, dsRecords []*dns.DS, keys []*dns.
 		}
 		acceptedDelegation = true
 		for _, key := range keys {
-			if key == nil || key.Protocol != 3 || !sameDNSName(key.Hdr.Name, zone) || key.KeyTag() != ds.KeyTag || key.Algorithm != ds.Algorithm {
+			if key == nil || key.Protocol != 3 || !sameDNSName(key.Hdr.Name, zone) || key.KeyTag() != ds.KeyTag || key.Algorithm != ds.Algorithm || !dnssecDNSKEYStrengthAccepted(key.Algorithm, key.PublicKey) {
 				continue
 			}
 			computed := key.ToDS(ds.DigestType)
@@ -98,7 +98,7 @@ func (v *DNSSECValidator) MatchDS(zone string, dsRecords []*dns.DS, keys []*dns.
 	if !acceptedDelegation {
 		return DNSSECIndeterminate, fmt.Errorf("goreecloud dns: DNSSEC delegation for %s has no accepted validation algorithm", zone)
 	}
-	return DNSSECBogus, fmt.Errorf("goreecloud dns: DNSSEC DS/DNSKEY mismatch for %s", zone)
+	return DNSSECBogus, fmt.Errorf("goreecloud dns: DNSSEC DS/DNSKEY mismatch or unacceptable key strength for %s", zone)
 }
 
 // ValidateRRSet validates one uniform RRset using matching trusted DNSKEY and
@@ -139,7 +139,7 @@ func (v *DNSSECValidator) ValidateRRSet(rrset []dns.RR, signatures []*dns.RRSIG,
 			continue
 		}
 		for _, key := range keys {
-			if key == nil || key.Protocol != 3 || !dnssecSignatureAlgorithmSupported(key.Algorithm) || key.KeyTag() != sig.KeyTag || key.Algorithm != sig.Algorithm || !sameDNSName(key.Hdr.Name, sig.SignerName) {
+			if key == nil || key.Protocol != 3 || !dnssecSignatureAlgorithmSupported(key.Algorithm) || !dnssecDNSKEYStrengthAccepted(key.Algorithm, key.PublicKey) || key.KeyTag() != sig.KeyTag || key.Algorithm != sig.Algorithm || !sameDNSName(key.Hdr.Name, sig.SignerName) {
 				continue
 			}
 			matched = true
@@ -157,7 +157,7 @@ func (v *DNSSECValidator) ValidateRRSet(rrset []dns.RR, signatures []*dns.RRSIG,
 		return DNSSECBogus, fmt.Errorf("goreecloud dns: DNSSEC RRset validation failed: %w", lastErr)
 	}
 	if !matched {
-		return DNSSECBogus, errors.New("goreecloud dns: DNSSEC RRset has no matching trusted key")
+		return DNSSECBogus, errors.New("goreecloud dns: DNSSEC RRset has no matching trusted key with acceptable strength")
 	}
 	return DNSSECBogus, errors.New("goreecloud dns: DNSSEC RRset validation failed")
 }
