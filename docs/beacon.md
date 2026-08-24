@@ -54,15 +54,17 @@ Split-horizon routing can scope a route to exact `ClientID` values, client IP pr
 
 Routed aliases are re-evaluated under the target name's own route instead of inheriting the previous namespace route. Named route re-entry is cycle-checked. Ambiguous equal-specificity routes fail closed, and target endpoint syntax is validated before construction.
 
-`DelegatingStubResolver` follows bounded subdelegations inside the configured stub namespace. Referrals must move strictly closer to the requested name, remain inside that namespace, and stay within the 16-delegation limit. Required in-domain glue remains fail-closed, sibling Additional data is not trusted as glue, sibling NS names can be resolved only inside the stub namespace, and external NS infrastructure is not silently sent into public recursion.
+`DelegatingStubResolver` follows bounded subdelegations inside the configured stub namespace. Referrals must move strictly closer to the requested name, remain inside that namespace, and stay within the 16-delegation limit. Required in-domain glue remains fail-closed, sibling Additional data is not trusted as glue, sibling NS names can be resolved only inside the stub namespace, and external NS infrastructure is not silently sent into public recursion. Blank stub namespaces are rejected before FQDN normalization.
 
-`NewRuntimeValidatedRoutingResolver` rejects configured targets that would point back into active GoreeCloud DNS listeners and propagates the same listener boundary to dynamically discovered delegating-stub child targets. Resolver wrappers cannot hide endpoints from this safety check.
+`ValidatingDelegatingStubResolver` preserves those transport restrictions while carrying DNSSEC trust from an out-of-band configured private DNSKEY anchor through signed child delegations or authenticated insecure transitions.
 
-Forwarded and stub responses clear `AD` and remain `DNSSECIndeterminate` unless a separate local validation layer establishes trust. Explicit GoreeCloud Network/VLAN/group selectors remain staged. The detailed routing boundary is in `docs/resolver-routing.md`.
+`NewRuntimeValidatedRoutingResolver` rejects configured targets that would point back into active GoreeCloud DNS listeners and propagates the same listener boundary to dynamically discovered ordinary and validating delegating-stub child targets. Resolver wrappers cannot hide endpoints from this safety check.
+
+Forwarded and ordinary stub responses clear `AD` and remain `DNSSECIndeterminate` unless a separate local validation layer establishes trust. Explicit GoreeCloud Network/VLAN/group selectors remain staged. The detailed routing boundary is in `docs/resolver-routing.md`.
 
 ## Beacon Routed Private DNSSEC Trust Anchors
 
-`PrivateTrustAnchorResolver` adds local validation for an explicitly configured private or otherwise locally administered signed namespace. The DNSKEY trust anchor must be provisioned through an authenticated mechanism outside ordinary DNS resolution and must belong to the exact configured zone.
+`PrivateTrustAnchorResolver` adds local terminal validation for an explicitly configured private or otherwise locally administered signed namespace. The DNSKEY trust anchor must be provisioned through an authenticated mechanism outside ordinary DNS resolution and must belong to the exact configured zone.
 
 Beacon forces `CD=1` on the wrapped DNSKEY and terminal lookups so local validation, not the upstream resolver's policy, determines trust. Upstream `AD` is always ignored. The configured DNSKEY must appear in the returned apex DNSKEY RRset and authenticate an RRSIG over that complete RRset before the other apex keys become trusted. Beacon can then use an authenticated ZSK from that keyset to validate terminal RRsets through the existing DNSSEC terminal validator.
 
@@ -70,13 +72,19 @@ The internal CD override is not leaked downstream. After successful local valida
 
 Private trust-anchor wrappers remain subject to routing self-target protection. Runtime endpoint discovery unwraps the validation layer, and a wrapped `DelegatingStubResolver` receives the runtime listener boundary for dynamically discovered child targets.
 
-This first private-anchor stage does not carry DNSSEC trust through separately signed child delegations beneath the anchored apex. Private DS/DNSKEY delegation validation, authenticated insecure-delegation transitions beneath a private anchor, and arbitrary Internet forwarding validation remain staged. Ordinary Internet forwarding therefore remains `DNSSECIndeterminate`; upstream AD is never sufficient. The focused boundary is in `docs/routed-dnssec-policy.md`.
+`ValidatingDelegatingStubResolver` now extends the private apex anchor through delegated children. For a signed child, the parent-authenticated DS RRset must lead to a matching child DNSKEY, and that DS-authenticated key must validate the complete child apex DNSKEY RRset before Beacon carries the child keyset forward. For an intentionally unsigned child, authenticated NSEC, exact-name NSEC3, or scoped NSEC3 Opt-Out proof must establish DS absence before the branch becomes `DNSSECInsecure`. A missing DS by itself remains insufficient.
+
+After an authenticated insecure transition Beacon skips child DNSKEY acquisition, preserves `DNSSECInsecure` below that boundary, and does not silently restore trust from a deeper DS record. A referral with neither authenticated DS nor authenticated DS-absence proof fails before the child authority is contacted.
+
+The validating private stub keeps the same 16-delegation limit, namespace containment, closer-referral rule, mandatory-glue boundary, same-namespace sibling NS discovery, external-NS refusal, and runtime self-target protection as the ordinary delegating stub. Terminal data on a secure branch must validate with the current authenticated keyset; terminal data on a proven insecure branch is returned as `DNSSECInsecure`.
+
+Ordinary Internet forwarding remains `DNSSECIndeterminate`; upstream AD is never sufficient. The focused boundaries are in `docs/routed-dnssec-policy.md` and `docs/private-stub-dnssec.md`.
 
 ## Beacon DNSSEC Foundation
 
-Beacon carries the current root-zone DS trust-anchor set for KSK-2017 and KSK-2024. The validator supports DS-to-DNSKEY authentication, DNSKEY RRset authentication, configured DNSKEY trust-anchor authentication, RRSIG validity-window and cryptographic verification, secure parent-to-child trust carry, terminal positive-RRset validation, CNAME/DNAME alias chains, wildcard-positive validation, wildcard NODATA validation, authenticated NSEC/NSEC3 denial, narrowly scoped NSEC3 Opt-Out insecure-delegation validation, and RFC 9824 Compact Denial of Existence recognition through authenticated NXNAME proof.
+Beacon carries the current root-zone DS trust-anchor set for KSK-2017 and KSK-2024. The validator supports DS-to-DNSKEY authentication, DNSKEY RRset authentication, configured DNSKEY trust-anchor authentication, RRSIG validity-window and cryptographic verification, secure parent-to-child trust carry in both Internet recursion and validating private stubs, terminal positive-RRset validation, CNAME/DNAME alias chains, wildcard-positive validation, wildcard NODATA validation, authenticated NSEC/NSEC3 denial, narrowly scoped NSEC3 Opt-Out insecure-delegation validation, and RFC 9824 Compact Denial of Existence recognition through authenticated NXNAME proof.
 
-Iterative queries explicitly request DNSSEC material with EDNS and the DO bit. The DNSSEC-validating resolver also advertises RFC 9824 Compact Answers OK upstream through a separate internal capability flag; the plain non-validating iterative resolver does not advertise CO merely because a downstream client did.
+Iterative and validating private-stub queries explicitly request DNSSEC material with EDNS and the DO bit. The validating paths use CD where local validation must receive raw DNSSEC material rather than inherit an upstream validation decision. The DNSSEC-validating resolver also advertises RFC 9824 Compact Answers OK upstream through a separate internal capability flag; the plain non-validating iterative resolver does not advertise CO merely because a downstream client did.
 
 ## Beacon NSEC Authenticated Denial
 
@@ -130,9 +138,9 @@ Ordinary NODATA and Empty Non-Terminal responses without NXNAME remain on the ex
 
 ## RFC 9824 Compact Answers OK hop-by-hop handling
 
-CO is treated as hop-by-hop state. The normalized `Request.CompactAnswersOK` field records whether the resolver component itself is prepared to consume Compact Answers. The validating iterative resolver sets this capability for its upstream authority/DNSKEY work. The plain iterative resolver does not automatically inherit a downstream client's CO bit.
+CO is treated as hop-by-hop state. The normalized `Request.CompactAnswersOK` field records whether the resolver component itself is prepared to consume Compact Answers. The validating iterative resolver and validating private stub set this internal capability for DNSSEC-validation work; plain non-validating paths do not automatically inherit a downstream client's CO bit.
 
-`exchangeResolver` sets the EDNS CO bit only when `CompactAnswersOK` is true. When a secure terminal response contains NXNAME proof, the validating resolver records `Result.CompactDenial=true` and preserves the upstream response CO state in `Result.CompactDenialCO` before any downstream presentation occurs.
+`exchangeResolver` and stub transport helpers set the EDNS CO bit only when `CompactAnswersOK` is true. When a secure terminal response contains NXNAME proof, Beacon records `Result.CompactDenial=true` and preserves the upstream response CO state in `Result.CompactDenialCO` before any downstream presentation occurs.
 
 `Pipeline.Resolve` stores that normalized result before client-specific response restoration. On resolver results and cache hits, `prepareCompactDenialForClient` uses a defensive message copy and renders the response for the current downstream request:
 
@@ -145,15 +153,15 @@ This prevents one client's EDNS flags from contaminating shared Compact Denial c
 
 ## Beacon CNAME/DNAME alias chains
 
-`internal/gcdns/alias.go` provides shared alias parsing, DNAME substitution, cycle detection, follow-up request construction, merged response handling, and DNSSEC chain-state combination for the plain and validating iterative resolvers.
+`internal/gcdns/alias.go` provides shared alias parsing, DNAME substitution, cycle detection, follow-up request construction, merged response handling, and DNSSEC chain-state combination for the plain and validating iterative resolvers and routed resolver composition.
 
 An ordinary CNAME remains a normal RRset and requires its own valid RRSIG in a secure zone. If the original response already contains the requested final RR type after a CNAME chain, Beacon validates the complete returned RRsets without issuing an unnecessary target query. If the response ends on CNAME, the target is resolved separately and the final Answer is merged under the original question.
 
-DNAME handling follows RFC 6672 semantics. DNAME applies to names strictly below its owner, and Beacon selects the closest applicable DNAME. It derives the substituted target deterministically and accepts an unsigned synthesized CNAME only when that CNAME target exactly matches the DNAME substitution and its TTL is either zero or the DNAME TTL. The signed DNAME RRset supplies the DNSSEC authentication for that synthesized CNAME. A mismatched, conflicting, or unexpectedly signed synthesized CNAME fails closed.
+DNAME handling follows RFC 6672 semantics. DNAME applies to names strictly below its owner, and Beacon selects the closest applicable DNAME. It derives the substituted target deterministically and accepts an unsigned synthesized CNAME only when that CNAME target exactly matches the DNAME substitution and its TTL is either zero or equal to the DNAME TTL. The signed DNAME RRset supplies the DNSSEC authentication for that synthesized CNAME. A mismatched, conflicting, or unexpectedly signed synthesized CNAME fails closed.
 
 Alias processing is capped at 16 transitions. Beacon rejects an alias loop, multiple CNAME records at one owner, conflicting DNAME records, malformed substitutions, and DNS names exceeding protocol length. A zero-TTL alias hop prevents the merged chain from being cached as a fresh combined answer.
 
-The validating resolver starts a fresh root-to-target DNSSEC walk for every unresolved external alias target instead of reusing the prior zone's DNSKEY state. The merged chain is Secure only when every hop is Secure. Bogus or indeterminate hops fail closed; an authenticated insecure hop makes the completed determinate chain Insecure. This preserves the weakest-link DNSSEC boundary across zone-changing CNAME/DNAME chains.
+The validating iterative resolver starts a fresh root-to-target DNSSEC walk for every unresolved external alias target instead of reusing the prior zone's DNSKEY state. Routed alias processing similarly reselects the resolver for a target name rather than carrying an unrelated private trust anchor across a route boundary. The merged chain is Secure only when every hop is Secure. Bogus or indeterminate hops fail closed; an authenticated insecure hop makes the completed determinate chain Insecure.
 
 Authenticated negative answers are DNAME-aware. A securely validated NSEC or NSEC3 NXDOMAIN proof is rejected if the authenticated closest-encloser bitmap states that an applicable DNAME exists and redirection should have occurred instead of NXDOMAIN.
 
@@ -165,7 +173,7 @@ Only syntactically valid A/AAAA data for advertised NS names inside the delegate
 
 Nameserver-address discovery is request-scoped. Successful addresses are reused only within the current top-level resolution, active lookup cycles are rejected, and no more than 32 distinct external NS hostnames may enter discovery. A failed external NS hostname does not prevent another advertised external NS from being tried. If the referral has no usable server and required in-domain glue is missing, resolution fails closed rather than recursively chasing the in-domain NS name and creating a glue dependency loop.
 
-The validating resolver authenticates the parent delegation state before it proceeds below the child and resolves external NS hostnames through the validating path. Discovered IP addresses identify servers to contact; they do not confer trust on child-zone data. Existing DS/DNSKEY and terminal validation still determine whether the resulting DNS data is Secure, Insecure, Indeterminate, or Bogus.
+The validating iterative resolver authenticates the parent delegation state before it proceeds below the child and resolves external NS hostnames through the validating path. The validating private stub applies the same distinction within its configured namespace: sibling nameserver addresses may be resolved through the same validating private path, but the resulting IP address identifies transport only and does not authenticate child-zone data.
 
 The focused design record is `docs/out-of-bailiwick-nameserver-discovery.md`. This first implementation performs bounded external NS hostname discovery sequentially and does not create a persistent cross-request infrastructure-address cache.
 
@@ -197,7 +205,7 @@ A short-lived branch-only experiment used the phrase "compact NSEC NXDOMAIN" for
 
 ## Security boundary
 
-The native foundation currently enforces source-level invariants for DNSSEC validation, DNS rebinding protection, explicit recursion and administration ACLs, no accidental open recursion, bogus-result rejection before cache insertion, bounded cache/scheduler/transport behavior, delegation depth and loop protection, alias-loop protection, request-scoped out-of-bailiwick nameserver discovery, mandatory in-domain glue handling, RFC 9156 QNAME minimisation with a request-scoped 10-probe bound and DNSSEC-authenticated secure minimisation responses, longest-suffix resolver routing, client/subnet split-horizon selection, route-loop and ambiguity rejection, client-identity-plus-address cache partitioning, forward/stub target failover, explicit RD behavior, active-listener self-target rejection for configured and dynamically discovered stub targets, forward/stub AD clearing with `DNSSECIndeterminate`, private DNSKEY trust-anchor authentication with forced upstream CD and downstream CD restoration, root trust anchors, DS/DNSKEY authentication, terminal positive RRset validation, CNAME/DNAME alias chains including signed DNAME coverage of a synthesized CNAME, wildcard-positive no-closer-match validation, wildcard NODATA validation, NSEC/NSEC3 insecure-delegation proof including scoped Opt-Out DS-absence transitions, exact-owner NSEC/NSEC3 NODATA proof, conventional NSEC/NSEC3 NXDOMAIN proof with DNAME conflict checks, RFC 9824 NXNAME compact-denial recognition, validating-resolver CO signaling, and per-client cache-aware Compact Denial response restoration.
+The native foundation currently enforces source-level invariants for DNSSEC validation, DNS rebinding protection, explicit recursion and administration ACLs, no accidental open recursion, bogus-result rejection before cache insertion, bounded cache/scheduler/transport behavior, delegation depth and loop protection, alias-loop protection, request-scoped out-of-bailiwick nameserver discovery, mandatory in-domain glue handling, RFC 9156 QNAME minimisation with a request-scoped 10-probe bound and DNSSEC-authenticated secure minimisation responses, longest-suffix resolver routing, client/subnet split-horizon selection, route-loop and ambiguity rejection, client-identity-plus-address cache partitioning, forward/stub target failover, explicit RD behavior, active-listener self-target rejection for configured and dynamically discovered stub targets, forward/stub AD clearing with `DNSSECIndeterminate`, private DNSKEY trust-anchor authentication with forced upstream CD and downstream CD restoration, private parent-DS to child-DNSKEY trust carry, authenticated private insecure-delegation transitions, root trust anchors, DS/DNSKEY authentication, terminal positive RRset validation, CNAME/DNAME alias chains including signed DNAME coverage of a synthesized CNAME, wildcard-positive no-closer-match validation, wildcard NODATA validation, NSEC/NSEC3 insecure-delegation proof including scoped Opt-Out DS-absence transitions, exact-owner NSEC/NSEC3 NODATA proof, conventional NSEC/NSEC3 NXDOMAIN proof with DNAME conflict checks, RFC 9824 NXNAME compact-denial recognition, validating-resolver CO signaling, and per-client cache-aware Compact Denial response restoration.
 
 These are development controls, not production acceptance evidence.
 
@@ -207,7 +215,7 @@ No production traffic is routed through `internal/gcdns` yet. Existing AdGuard H
 
 ## Next implementation sequence
 
-1. Extend local routed DNSSEC validation through private child delegations and define normal Internet forwarding validation policy without trusting upstream AD.
+1. Define general Internet forwarding validation policy without trusting upstream AD.
 2. Add DNSSEC algorithm/digest policy and trust-anchor lifecycle/rollover automation.
 3. Add persistent cache, prefetch/auto-prefetch, encrypted DNS, authoritative DNS, filtering, DHCP, clustering, APIs, identity, and Glaze UI administration.
 4. Validate the competitive-superset requirement with feature, security, privacy, control, resilience, and operational acceptance matrices.
