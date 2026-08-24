@@ -38,13 +38,13 @@ Referral processing remains conservative: only advertised in-bailiwick glue is a
 
 ## Beacon DNSSEC Foundation
 
-Beacon carries the current root-zone DS trust-anchor set for KSK-2017 and KSK-2024. The validator supports DS-to-DNSKEY authentication, DNSKEY RRset authentication, RRSIG validity-window and cryptographic verification, secure parent-to-child trust carry, terminal positive-RRset validation, wildcard-positive validation, wildcard NODATA validation, authenticated NSEC/NSEC3 denial, and narrowly scoped NSEC3 Opt-Out insecure-delegation validation.
+Beacon carries the current root-zone DS trust-anchor set for KSK-2017 and KSK-2024. The validator supports DS-to-DNSKEY authentication, DNSKEY RRset authentication, RRSIG validity-window and cryptographic verification, secure parent-to-child trust carry, terminal positive-RRset validation, wildcard-positive validation, wildcard NODATA validation, authenticated NSEC/NSEC3 denial, narrowly scoped NSEC3 Opt-Out insecure-delegation validation, and RFC 9824 Compact Denial of Existence recognition through authenticated NXNAME proof.
 
 Iterative queries explicitly request DNSSEC material with EDNS and the DO bit.
 
 ## Beacon NSEC Authenticated Denial
 
-`internal/gcdns/dnssec_nsec.go` provides the conservative unhashed authenticated-denial layer.
+`internal/gcdns/dnssec_nsec.go` provides the conventional unhashed authenticated-denial layer.
 
 Implemented behavior includes:
 
@@ -54,11 +54,13 @@ Implemented behavior includes:
 - skipping child DNSKEY retrieval after an insecure delegation has been authenticated;
 - signed exact-owner NSEC NODATA validation when the bitmap omits the requested type and CNAME;
 - DNSSEC canonical-name interval processing, including NSEC wrap-around intervals;
-- conservative empty-answer NXDOMAIN validation requiring an authenticated exact closest encloser, a covering NSEC for the next-closer name, and a covering NSEC for the corresponding wildcard;
+- conservative empty-answer NXDOMAIN validation requiring authenticated closest-encloser evidence, a covering NSEC for the next-closer name, and a covering NSEC for the corresponding wildcard;
 - authenticated-zone boundary checks for NXDOMAIN proof material;
 - fail-closed behavior for unsigned, invalid, malformed, or unproven denial material.
 
-The NSEC NXDOMAIN proof is deliberately stricter than the minimum layouts DNSSEC permits. If an authority provides a valid compact proof that does not contain the explicit closest-encloser NSEC Beacon currently requires, the result remains indeterminate rather than being trusted optimistically.
+Beacon does not infer that an ancestor fails to exist merely because it lacks an exact NSEC owner. Empty Non-Terminal names can exist without ordinary RRsets, and DNAME or delegation state at ancestors must not be skipped by optimistic closest-encloser inference.
+
+RFC 4470 minimally covering NSEC records remain conventional NSEC material to the validator and do not create a special NXDOMAIN trust shortcut.
 
 ## Beacon NSEC3 Authenticated Denial
 
@@ -80,6 +82,18 @@ Opt-Out support is deliberately restricted to authenticating DS absence at an ac
 
 The terminal validator tries NSEC first and only falls through to NSEC3 when the NSEC path is genuinely indeterminate. Delegation authentication follows the same fail-closed ordering. Bogus NSEC evidence is never bypassed by falling through to NSEC3.
 
+## RFC 9824 Compact Denial of Existence
+
+`internal/gcdns/dnssec_compact_denial.go` implements the first Beacon resolver-side RFC 9824 Compact Denial boundary.
+
+RFC 9824 Compact Answers represent a nonexistent name as a signed NODATA-style response: NOERROR, an empty Answer section, and exact/matching NSEC or NSEC3 proof carrying the NXNAME Meta-TYPE. Beacon recognizes that authenticated signal before ordinary NODATA validation.
+
+For NSEC, the owner must match QNAME and the Type Bit Maps field must contain exactly RRSIG, NSEC, and NXNAME. For NSEC3, the proof must match QNAME and its Type Bit Maps field must contain exactly NXNAME. The proof RRset must validate against authenticated zone DNSKEY material. Malformed NXNAME responses fail closed rather than being treated as ordinary NODATA.
+
+Ordinary NODATA and Empty Non-Terminal responses without NXNAME remain on the existing NODATA path. Explicit NXNAME queries are rejected locally with FORMERR before iterative network work because NXNAME is a Meta-TYPE and is not a normal resolvable RR type.
+
+The optional RFC 9824 Compact Answers OK (CO) EDNS signal and response-code restoration are not implemented yet. Beacon does not reinterpret conventional NXDOMAIN proof as Compact Denial and does not yet preserve CO state in cache metadata.
+
 ## Beacon Wildcard Validation
 
 `internal/gcdns/dnssec_wildcard.go` authenticates wildcard-expanded positive answers and wildcard NODATA responses.
@@ -92,9 +106,13 @@ For empty wildcard NODATA responses, NSEC validation additionally requires the a
 
 A valid wildcard RRset signature or wildcard type bitmap without the required no-closer-match proof is not enough to return `DNSSECSecure`.
 
+## Corrected compact-denial development path
+
+A short-lived branch-only experiment used the phrase "compact NSEC NXDOMAIN" for logic that inferred nonexistent ancestors from NSEC coverage and treated the authenticated DNSKEY zone apex as an implicit closest encloser. Standards review showed that this was not RFC 9824 Compact Denial and was unsafe as a general validator rule because Empty Non-Terminal and DNAME/delegation state could be missed. The experimental source, tests, and unfinished gate were removed before CI integration or acceptance. Branch history was preserved; no force rewrite was performed.
+
 ## Security boundary
 
-The native foundation currently enforces source-level invariants for DNSSEC validation, DNS rebinding protection, explicit recursion and administration ACLs, no accidental open recursion, bogus-result rejection before cache insertion, bounded cache/scheduler/transport behavior, delegation depth and loop protection, in-bailiwick glue acceptance, root trust anchors, DS/DNSKEY authentication, terminal positive RRset validation, wildcard-positive no-closer-match validation, wildcard NODATA validation, NSEC/NSEC3 insecure-delegation proof including scoped Opt-Out DS-absence transitions, exact-owner NSEC/NSEC3 NODATA proof, and NSEC/NSEC3 NXDOMAIN closest-encloser/next-closer/wildcard proof.
+The native foundation currently enforces source-level invariants for DNSSEC validation, DNS rebinding protection, explicit recursion and administration ACLs, no accidental open recursion, bogus-result rejection before cache insertion, bounded cache/scheduler/transport behavior, delegation depth and loop protection, in-bailiwick glue acceptance, root trust anchors, DS/DNSKEY authentication, terminal positive RRset validation, wildcard-positive no-closer-match validation, wildcard NODATA validation, NSEC/NSEC3 insecure-delegation proof including scoped Opt-Out DS-absence transitions, exact-owner NSEC/NSEC3 NODATA proof, conventional NSEC/NSEC3 NXDOMAIN proof, and RFC 9824 NXNAME compact-denial recognition.
 
 These are development controls, not production acceptance evidence.
 
@@ -104,7 +122,7 @@ No production traffic is routed through `internal/gcdns` yet. Existing AdGuard H
 
 ## Next implementation sequence
 
-1. Evaluate remaining standards-backed NSEC3 Opt-Out edge cases separately and broaden supported compact NSEC proof layouts without weakening fail-closed denial semantics.
+1. Add RFC 9824 CO signaling and cache-aware response-code restoration only after hop-by-hop state handling is defined.
 2. Complete signed CNAME/DNAME chain handling and out-of-bailiwick nameserver discovery.
 3. Implement QNAME minimization, forward/conditional/stub routing, and split-horizon routing.
 4. Add persistent cache, prefetch/auto-prefetch, encrypted DNS, authoritative DNS, filtering, DHCP, clustering, APIs, identity, and Glaze UI administration.
