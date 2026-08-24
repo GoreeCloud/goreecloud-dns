@@ -102,11 +102,12 @@ CO is treated as hop-by-hop state. The normalized `Request.CompactAnswersOK` fie
 
 `Pipeline.Resolve` stores that normalized result before client-specific response restoration. On resolver results and cache hits, `prepareCompactDenialForClient` uses a defensive message copy and renders the response for the current downstream request:
 
-- downstream DO=1, CO=0: NOERROR, response CO clear;
-- downstream DO=1, CO=1: NXDOMAIN, response CO set;
-- downstream DO=0: NXDOMAIN restoration, with response CO following only the current downstream query's CO request.
+- downstream DO=1, CO=0: NOERROR with authenticated NXNAME proof, response DO set, and response CO clear;
+- downstream DO=1, CO=1: NXDOMAIN with authenticated NXNAME proof and response CO set;
+- downstream DO=0: NXDOMAIN restoration with Compact-Denial NSEC/NSEC3/RRSIG proof stripped and response CO clear;
+- downstream without EDNS: NXDOMAIN restoration without an unsolicited OPT record.
 
-This prevents one client's EDNS flags from contaminating shared Compact Denial cache state and preserves the RFC 9824 hop-by-hop boundary.
+This prevents one client's EDNS flags from contaminating shared Compact Denial cache state, preserves normal downstream DNSSEC filtering, and maintains the RFC 9824 hop-by-hop boundary.
 
 ## Beacon Wildcard Validation
 
