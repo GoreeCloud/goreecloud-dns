@@ -1,6 +1,7 @@
 package gcdns
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -121,4 +122,26 @@ func TestCompactDenialNXNAMEQueryReturnsFORMERR(t *testing.T) {
 	require.NotNil(t, result)
 	require.Equal(t, dns.RcodeFormatError, result.Message.Rcode)
 	require.Equal(t, query.Id, result.Message.Id)
+}
+
+func TestIterativeResolverRejectsNXNAMEWithoutExchange(t *testing.T) {
+	calls := 0
+	exchanger := exchangeFunc(func(_ context.Context, _ string, _ *dns.Msg) (*dns.Msg, error) {
+		calls++
+		return nil, nil
+	})
+	resolver, err := NewIterativeResolver(exchanger, IterativeResolverConfig{
+		RootServers:    []string{"192.0.2.53:53"},
+		MaxDepth:       4,
+		AttemptTimeout: time.Second,
+		MaxConcurrent:  1,
+	})
+	require.NoError(t, err)
+	query := new(dns.Msg)
+	query.SetQuestion("example.test.", dns.TypeNXNAME)
+	result, err := resolver.Resolve(context.Background(), &Request{Message: query, Transport: TransportDNS})
+	require.NoError(t, err)
+	require.Zero(t, calls)
+	require.NotNil(t, result)
+	require.Equal(t, dns.RcodeFormatError, result.Message.Rcode)
 }
