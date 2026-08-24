@@ -54,7 +54,7 @@ required = {
     ),
     "docs/iterative-dnssec-validation.md": (
         "QNAME minimisation",
-        "secure minimisation",
+        "non-referral minimisation response must authenticate",
     ),
     ".github/workflows/lint.yml": (
         "validate_qname_minimisation.py",
