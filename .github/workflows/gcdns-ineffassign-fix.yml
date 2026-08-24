@@ -1,0 +1,46 @@
+name: GoreeCloud DNS ineffassign cleanup
+
+on:
+  push:
+    branches:
+      - agent/beacon-resolver-foundation
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v6
+        with:
+          ref: agent/beacon-resolver-foundation
+          persist-credentials: true
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version: '1.26.6'
+          cache: true
+          cache-dependency-path: go.sum
+      - name: Remove ineffectual insecure-branch assignment
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('internal/gcdns/iterative_dnssec.go')
+          text = path.read_text()
+          old = '\t\tcase DNSSECInsecure:\n\t\t\tchainSecure = false\n\t\t\tparentKeys = nil\n'
+          new = '\t\tcase DNSSECInsecure:\n\t\t\tchainSecure = false\n'
+          if old not in text:
+              raise SystemExit('expected insecure-transition assignment not found')
+          path.write_text(text.replace(old, new, 1))
+          PY
+          go tool gofumpt --extra -w internal/gcdns/iterative_dnssec.go
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add internal/gcdns/iterative_dnssec.go
+          git commit -m 'Remove ineffectual iterative DNSSEC assignment'
+          git push origin HEAD:agent/beacon-resolver-foundation
