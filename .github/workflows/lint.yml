@@ -38,6 +38,8 @@
         'run': 'python3 scripts/validate_dnssec_optout.py'
       - 'name': 'Validate Beacon RFC 9824 compact denial contract'
         'run': 'python3 scripts/validate_dnssec_compact_denial.py'
+      - 'name': 'Validate Beacon DNSSEC alias-chain contract'
+        'run': 'python3 scripts/validate_dnssec_alias.py'
       - 'name': 'Test native GoreeCloud DNS core'
         'run': 'go test ./internal/gcdns'
 
