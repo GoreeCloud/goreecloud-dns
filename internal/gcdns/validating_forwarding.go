@@ -79,9 +79,9 @@ func (r *ValidatingForwardingResolver) Resolve(ctx context.Context, req *Request
 			if len(priorAnswers) == 0 {
 				return res, nil
 			}
-			merged, err := mergeAliasResult(original, priorAnswers, priorTTL, res)
-			if err != nil {
-				return nil, err
+			merged, mergeErr := mergeAliasResult(original, priorAnswers, priorTTL, res)
+			if mergeErr != nil {
+				return nil, mergeErr
 			}
 			merged.DNSSECStatus = overallStatus
 			return merged, nil
@@ -127,8 +127,8 @@ func (r *ValidatingForwardingResolver) resolveSingle(ctx context.Context, req *R
 	}
 	trustName := q.Name
 	trustQType := q.Qtype
-	if signerZone, present, err := forwardingSignerZone(proofMsg); err != nil {
-		return nil, "", false, err
+	if signerZone, present, signerErr := forwardingSignerZone(proofMsg); signerErr != nil {
+		return nil, "", false, signerErr
 	} else if present {
 		// Signed data identifies the authoritative signer zone directly. Walk
 		// trust only to that zone rather than probing DS at ordinary owner names,
@@ -143,12 +143,12 @@ func (r *ValidatingForwardingResolver) resolveSingle(ctx context.Context, req *R
 
 	if chase {
 		if chainSecure {
-			status, err := r.validator.AuthenticateTerminalAnswer(aliasMsg, keys)
-			if err != nil {
-				return nil, "", false, fmt.Errorf("goreecloud dns: validating forwarding alias DNSSEC authentication failed: %w", err)
+			aliasStatus, aliasErr := r.validator.AuthenticateTerminalAnswer(aliasMsg, keys)
+			if aliasErr != nil {
+				return nil, "", false, fmt.Errorf("goreecloud dns: validating forwarding alias DNSSEC authentication failed: %w", aliasErr)
 			}
-			if status != DNSSECSecure {
-				return nil, "", false, fmt.Errorf("goreecloud dns: validating forwarding alias response for %s is %s", dns.Fqdn(q.Name), status)
+			if aliasStatus != DNSSECSecure {
+				return nil, "", false, fmt.Errorf("goreecloud dns: validating forwarding alias response for %s is %s", dns.Fqdn(q.Name), aliasStatus)
 			}
 			res.DNSSECStatus = DNSSECSecure
 		} else {

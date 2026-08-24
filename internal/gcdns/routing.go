@@ -195,9 +195,9 @@ func (r *RoutingResolver) Resolve(ctx context.Context, req *Request) (*Result, e
 			if len(priorAnswers) == 0 {
 				return res, nil
 			}
-			merged, err := mergeAliasResult(original, priorAnswers, priorTTL, res)
-			if err != nil {
-				return nil, err
+			merged, mergeErr := mergeAliasResult(original, priorAnswers, priorTTL, res)
+			if mergeErr != nil {
+				return nil, mergeErr
 			}
 			merged.DNSSECStatus = overallStatus
 			return merged, nil

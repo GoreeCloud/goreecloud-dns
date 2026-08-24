@@ -79,9 +79,9 @@ func (t *ClassicTransport) Exchange(ctx context.Context, server string, msg *dns
 		t.recordFailure(ctx, err)
 		return nil, err
 	}
-	if err := validateDNSReply(msg, udpReply); err != nil {
+	if validateErr := validateDNSReply(msg, udpReply); validateErr != nil {
 		t.failures.Add(1)
-		return nil, err
+		return nil, validateErr
 	}
 	if !udpReply.Truncated {
 		t.udpSuccesses.Add(1)
@@ -94,9 +94,9 @@ func (t *ClassicTransport) Exchange(ctx context.Context, server string, msg *dns
 		t.recordFailure(ctx, err)
 		return nil, err
 	}
-	if err := validateDNSReply(msg, tcpReply); err != nil {
+	if validateErr := validateDNSReply(msg, tcpReply); validateErr != nil {
 		t.failures.Add(1)
-		return nil, err
+		return nil, validateErr
 	}
 	if tcpReply.Truncated {
 		t.failures.Add(1)

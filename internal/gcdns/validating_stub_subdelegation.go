@@ -84,12 +84,12 @@ func (r *ValidatingDelegatingStubResolver) resolveWithState(ctx context.Context,
 				res.DNSSECStatus = DNSSECInsecure
 				return res, nil
 			}
-			status, err := r.validator.AuthenticateTerminalAnswer(res.Message, parentKeys)
-			if err != nil {
-				return nil, fmt.Errorf("goreecloud dns: validating stub terminal DNSSEC authentication failed: %w", err)
+			terminalStatus, terminalErr := r.validator.AuthenticateTerminalAnswer(res.Message, parentKeys)
+			if terminalErr != nil {
+				return nil, fmt.Errorf("goreecloud dns: validating stub terminal DNSSEC authentication failed: %w", terminalErr)
 			}
-			if status != DNSSECSecure {
-				return nil, fmt.Errorf("goreecloud dns: validating stub terminal response for %s is %s", qname, status)
+			if terminalStatus != DNSSECSecure {
+				return nil, fmt.Errorf("goreecloud dns: validating stub terminal response for %s is %s", qname, terminalStatus)
 			}
 			res.DNSSECStatus = DNSSECSecure
 			present, responseCO := compactDenialMessageMetadata(res.Message)

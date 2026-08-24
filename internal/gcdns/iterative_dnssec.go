@@ -91,9 +91,9 @@ func (r *ValidatingIterativeResolver) resolveWithState(ctx context.Context, req 
 			if len(priorAnswers) == 0 {
 				return res, nil
 			}
-			merged, err := mergeAliasResult(original, priorAnswers, priorTTL, res)
-			if err != nil {
-				return nil, err
+			merged, mergeErr := mergeAliasResult(original, priorAnswers, priorTTL, res)
+			if mergeErr != nil {
+				return nil, mergeErr
 			}
 			merged.DNSSECStatus = overallStatus
 			return merged, nil
@@ -229,17 +229,17 @@ func (r *ValidatingIterativeResolver) resolveSingle(ctx context.Context, req *Re
 				}
 				return res, nil
 			}
-			status, err := r.terminal.AuthenticateTerminalAnswer(res.Message, parentKeys)
-			if err != nil {
-				return nil, fmt.Errorf("goreecloud dns: terminal DNSSEC authentication failed: %w", err)
+			terminalStatus, terminalErr := r.terminal.AuthenticateTerminalAnswer(res.Message, parentKeys)
+			if terminalErr != nil {
+				return nil, fmt.Errorf("goreecloud dns: terminal DNSSEC authentication failed: %w", terminalErr)
 			}
-			res.DNSSECStatus = status
-			if status == DNSSECSecure {
+			res.DNSSECStatus = terminalStatus
+			if terminalStatus == DNSSECSecure {
 				present, responseCO := compactDenialMessageMetadata(res.Message)
 				res.CompactDenial = present
 				res.CompactDenialCO = present && responseCO
 			}
-			if len(res.Message.Answer) > 0 && status != DNSSECSecure {
+			if len(res.Message.Answer) > 0 && terminalStatus != DNSSECSecure {
 				return nil, errors.New("goreecloud dns: positive terminal answer did not establish secure DNSSEC validation")
 			}
 			return res, nil
