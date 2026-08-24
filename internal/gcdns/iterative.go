@@ -118,9 +118,66 @@ func (r *IterativeResolver) resolveWithState(ctx context.Context, req *Request, 
 }
 
 func (r *IterativeResolver) resolveSingle(ctx context.Context, req *Request, state *resolutionState) (*Result, error) {
+	q := req.Message.Question[0]
 	servers := append([]string(nil), r.rootServers...)
 	seenDelegations := map[string]struct{}{}
-	for depth := 0; depth < r.maxDepth; depth++ {
+	cursor := "."
+	minimise := qnameMinimisationEligible(req)
+
+	for delegations := 0; delegations < r.maxDepth; {
+		if minimise {
+			child, more, err := nextMinimisedQNAME(q.Name, cursor)
+			if err != nil {
+				return nil, err
+			}
+			if !more || !consumeQNAMEMinimisationBudget(state) {
+				minimise = false
+			} else {
+				probeReq, err := qnameMinimisationProbe(req, child)
+				if err != nil {
+					return nil, err
+				}
+				probeRes, err := r.resolveAgainst(ctx, probeReq, servers)
+				if err != nil {
+					// Relaxed compatibility fallback: if a server or middlebox rejects a
+					// minimised query, retry the original question without minimisation.
+					minimise = false
+				} else if !terminalDNSResponse(probeRes.Message) {
+					plan, err := buildReferralPlan(probeRes.Message, q.Name)
+					if err != nil {
+						return nil, err
+					}
+					nextServers, err := completeReferralServers(ctx, req, plan, state, r.resolveWithState)
+					if err != nil {
+						return nil, err
+					}
+					key := delegationKey(plan.zone, nextServers)
+					if _, exists := seenDelegations[key]; exists {
+						return nil, fmt.Errorf("goreecloud dns: delegation loop detected at %s", plan.zone)
+					}
+					seenDelegations[key] = struct{}{}
+					servers = nextServers
+					cursor = plan.zone
+					delegations++
+					continue
+				} else if probeRes.Message != nil && probeRes.Message.Rcode == dns.RcodeSuccess && !qnameMinimisationResponseHasDNAME(probeRes.Message) {
+					// RFC 9156 relaxed mode: NOERROR, including NODATA and CNAME,
+					// means no zone cut was learned here. Reveal the next label.
+					cursor = child
+					continue
+				} else if probeRes.Message != nil && probeRes.Message.Rcode == dns.RcodeNameError {
+					// Beacon does not yet use RFC 8020 NXDOMAIN cuts. Continue building
+					// the original QNAME instead of returning the ancestor NXDOMAIN.
+					cursor = child
+					continue
+				} else {
+					// DNAME and non-NOERROR/NXDOMAIN responses use the ordinary full
+					// question path so existing alias and compatibility handling owns them.
+					minimise = false
+				}
+			}
+		}
+
 		res, err := r.resolveAgainst(ctx, req, servers)
 		if err != nil {
 			return nil, err
@@ -130,7 +187,7 @@ func (r *IterativeResolver) resolveSingle(ctx context.Context, req *Request, sta
 			return res, nil
 		}
 
-		plan, err := buildReferralPlan(res.Message, req.Message.Question[0].Name)
+		plan, err := buildReferralPlan(res.Message, q.Name)
 		if err != nil {
 			return nil, err
 		}
@@ -144,6 +201,8 @@ func (r *IterativeResolver) resolveSingle(ctx context.Context, req *Request, sta
 		}
 		seenDelegations[key] = struct{}{}
 		servers = nextServers
+		cursor = plan.zone
+		delegations++
 	}
 	return nil, errors.New("goreecloud dns: iterative resolver delegation depth exceeded")
 }
