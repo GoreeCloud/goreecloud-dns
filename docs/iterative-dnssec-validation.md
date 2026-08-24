@@ -10,17 +10,18 @@ The validating path performs these steps before a secure answer may be returned:
 2. Authenticate the root DNSKEY RRset against the carried GoreeCloud Beacon root DS trust anchors.
 3. Resolve the original question against the currently trusted authority set.
 4. For every signed referral, authenticate the child DS RRset with the currently trusted parent DNSKEY set.
-5. Query the child authority for its DNSKEY RRset.
-6. Authenticate that DNSKEY RRset against the authenticated child DS RRset.
-7. Carry only the resulting authenticated child DNSKEY set into the next secure delegation step.
-8. When DS is absent, accept an insecure child only when signed NSEC, exact-name NSEC3, or the narrowly scoped NSEC3 Opt-Out delegation proof described below authenticates the secure-to-insecure transition.
-9. Once an insecure delegation is authenticated, preserve `DNSSECInsecure` below that boundary instead of attempting to recreate trust without another configured trust anchor.
-10. For a positive terminal response, group the answer into RRsets and validate each RRset against matching RRSIG material using the authenticated DNSKEY set for the answering zone.
-11. If a validated positive RRSIG has fewer `RRSIG Labels` than its expanded owner name, treat the RRset as wildcard synthesized and require authenticated proof that the wildcard was the correct match.
-12. For CNAME or DNAME redirection, validate the alias link, chase unresolved targets with a fresh iterative trust walk, and combine the chain only after every hop reaches a determinate DNSSEC state.
-13. For an empty response carrying NXNAME, validate RFC 9824 Compact Denial before ordinary negative-answer handling.
-14. For an ordinary empty NOERROR response without NXNAME, authenticate exact-owner NODATA and then wildcard NODATA.
-15. For conventional NXDOMAIN without NXNAME, authenticate signed NSEC or NSEC3 closest-encloser, next-closer, and wildcard nonexistence evidence.
+5. Resolve external authoritative nameserver hostnames when the referral does not provide directly acceptable in-domain glue.
+6. Query the child authority for its DNSKEY RRset.
+7. Authenticate that DNSKEY RRset against the authenticated child DS RRset.
+8. Carry only the resulting authenticated child DNSKEY set into the next secure delegation step.
+9. When DS is absent, accept an insecure child only when signed NSEC, exact-name NSEC3, or the narrowly scoped NSEC3 Opt-Out delegation proof described below authenticates the secure-to-insecure transition.
+10. Once an insecure delegation is authenticated, preserve `DNSSECInsecure` below that boundary instead of attempting to recreate trust without another configured trust anchor.
+11. For a positive terminal response, group the answer into RRsets and validate each RRset against matching RRSIG material using the authenticated DNSKEY set for the answering zone.
+12. If a validated positive RRSIG has fewer `RRSIG Labels` than its expanded owner name, treat the RRset as wildcard synthesized and require authenticated proof that the wildcard was the correct match.
+13. For CNAME or DNAME redirection, validate the alias link, chase unresolved targets with a fresh iterative trust walk, and combine the chain only after every hop reaches a determinate DNSSEC state.
+14. For an empty response carrying NXNAME, validate RFC 9824 Compact Denial before ordinary negative-answer handling.
+15. For an ordinary empty NOERROR response without NXNAME, authenticate exact-owner NODATA and then wildcard NODATA.
+16. For conventional NXDOMAIN without NXNAME, authenticate signed NSEC or NSEC3 closest-encloser, next-closer, and wildcard nonexistence evidence.
 
 If a delegation cannot establish either secure DS trust or authenticated denial proving an intentionally unsigned child, the validating path stops before contacting the child authority. Positive terminal RRsets and malformed or cryptographically invalid denial proofs fail closed.
 
@@ -111,6 +112,22 @@ For validating resolution, every externally chased target begins a new root-to-t
 
 RFC 6672 also requires validators to understand DNAME when authenticating negative answers. After an NSEC or NSEC3 NXDOMAIN proof validates securely, Beacon rejects the response if the authenticated closest-encloser bitmap states that an applicable DNAME exists and substitution should have occurred.
 
+## DNSSEC-aware out-of-bailiwick authoritative nameserver discovery
+
+`internal/gcdns/referral_discovery.go` resolves authoritative NS hostnames that are outside the delegated child without trusting their Additional-section addresses.
+
+Beacon accepts direct A/AAAA glue only for an advertised NS hostname inside the delegated child. If an in-domain NS lacks valid glue, that condition is retained as a mandatory-glue failure boundary instead of recursively resolving the same name and creating a circular dependency. Sibling and unrelated NS hostnames are classified for ordinary recursive address discovery; their Additional A/AAAA records are ignored.
+
+External NS A and AAAA lookup runs through the same resolver mode as the original query. Plain resolution uses the plain iterative resolver. DNSSEC-validating resolution uses the validating resolver so auxiliary nameserver-address data is subject to the existing secure/insecure trust path. The parent referral's DS or authenticated DS-absence conclusion is established before Beacon proceeds below the referred child.
+
+The nameserver discovery state is request-scoped. It caches successful NS endpoints only for the current top-level resolution, rejects active hostname-discovery cycles, and allows no more than 32 distinct external NS hostname discoveries per top-level request. A failure resolving one external NS hostname does not stop another advertised external NS from being tried.
+
+Only syntactically valid IPv4 A and 128-bit IPv6 AAAA records become port-53 targets. Alias processing remains active for an NS hostname address lookup, but only A/AAAA data at the terminal alias owner is accepted. Resolved targets are deduplicated and sorted before entering the normal scheduler.
+
+A discovered server address does not authenticate child-zone data. The ordinary DS/DNSKEY and terminal RRset validation still decides the DNSSEC result obtained from that server. This preserves the distinction between discovering where to send a query and proving whether the returned DNS data is authentic.
+
+The detailed design and current limits are in `docs/out-of-bailiwick-nameserver-discovery.md`. External NS hostname lookup is sequential in this first source slice; persistent infrastructure-address caching and parallel auxiliary lookup remain later optimization work.
+
 ## Wildcard-expanded positive answers
 
 `internal/gcdns/dnssec_wildcard.go` closes the positive-answer wildcard validation gap identified by RFC 4035 and RFC 5155.
@@ -137,7 +154,7 @@ An intermediate branch-only experiment attempted to broaden NSEC NXDOMAIN handli
 
 ## Deliberate boundary
 
-Out-of-bailiwick authoritative name-server address discovery, DNSSEC algorithm/key-size policy, authenticated trust-anchor persistence/rollover, QNAME minimization, and end-to-end runtime acceptance remain staged work. Alias-target resolution currently starts a fresh root trust walk rather than reusing cross-zone authority state; this is deliberate correctness-first behavior and can be optimized only after equivalent trust boundaries are proven.
+QNAME minimization, DNSSEC algorithm/key-size policy, authenticated trust-anchor persistence/rollover, parallel/persistent nameserver infrastructure discovery, and end-to-end runtime acceptance remain staged work. Alias-target resolution and external NS hostname resolution currently use fresh validating walks rather than reusing cross-zone authority state; this is deliberate correctness-first behavior and can be optimized only after equivalent trust boundaries are proven.
 
 ## Production status
 
@@ -145,7 +162,7 @@ This code remains isolated from production DNS traffic. Existing production AdGu
 
 ## Next DNSSEC stages
 
-- Complete out-of-bailiwick authoritative name-server discovery and then QNAME minimization.
+- Implement QNAME minimization.
 - Add algorithm and digest policy with explicit unsupported-algorithm behavior.
 - Add trust-anchor lifecycle and rollover automation.
-- Add end-to-end runtime acceptance against controlled signed, unsigned, bogus, wildcard, CNAME, DNAME, NSEC, NSEC3, Opt-Out, NXNAME, CO, and denial-of-existence test zones.
+- Add end-to-end runtime acceptance against controlled signed, unsigned, bogus, wildcard, CNAME, DNAME, out-of-bailiwick-NS, NSEC, NSEC3, Opt-Out, NXNAME, CO, and denial-of-existence test zones.
