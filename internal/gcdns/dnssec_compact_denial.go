@@ -170,6 +170,7 @@ func compactDenialMessageMetadata(msg *dns.Msg) (present bool, responseCO bool) 
 				if nsec3HasType(value, dns.TypeNXNAME) {
 					return true, messageCompactAnswersOK(msg)
 				}
+			}
 		}
 	}
 	return false, messageCompactAnswersOK(msg)
