@@ -57,18 +57,21 @@ required = {
     "docs/resolver-routing.md": (
         "PrivateTrustAnchorResolver",
         "ValidatingDelegatingStubResolver",
-        "Ordinary Internet forwarding remains `DNSSECIndeterminate`",
+        "Raw forward, terminal-only stub, and ordinary delegating-stub transports return `DNSSECIndeterminate`",
+        "ValidatingForwardingResolver",
     ),
     "docs/iterative-dnssec-validation.md": (
         "PrivateTrustAnchorResolver",
-        "configured private or otherwise locally administered signed zone",
-        "Ordinary Internet forwarding remains `DNSSECIndeterminate`",
+        "configured private signed zone",
+        "Raw `ForwardingResolver`, terminal-only `StubResolver`, and ordinary `DelegatingStubResolver` clear AD and return `DNSSECIndeterminate`",
+        "ValidatingForwardingResolver",
     ),
     "docs/beacon.md": (
         "Beacon Routed Private DNSSEC Trust Anchors",
         "PrivateTrustAnchorResolver",
         "ValidatingDelegatingStubResolver",
-        "Ordinary Internet forwarding remains `DNSSECIndeterminate`",
+        "Raw forwarded and ordinary stub responses clear `AD` and remain `DNSSECIndeterminate`",
+        "ValidatingForwardingResolver",
     ),
     ".github/workflows/lint.yml": (
         "validate_routed_dnssec_policy.py",
