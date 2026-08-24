@@ -40,8 +40,8 @@ required = {
         "TestWildcardClosestEncloser",
     ),
     "docs/iterative-dnssec-validation.md": (
-        "wildcard-expanded positive answers",
-        "wildcard NODATA",
+        "Wildcard-expanded positive answers",
+        "Wildcard NODATA",
         "RRSIG Labels",
         "next-closer",
         "NSEC3",
