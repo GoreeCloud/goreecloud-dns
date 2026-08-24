@@ -71,6 +71,47 @@ func (r *IterativeResolver) Resolve(ctx context.Context, req *Request) (*Result,
 		return result, nil
 	}
 
+	original := req
+	current := req
+	seenAliases := map[string]struct{}{dns.CanonicalName(req.Message.Question[0].Name): {}}
+	var priorAnswers []dns.RR
+	var priorTTL time.Duration
+
+	for aliasDepth := 0; aliasDepth < maxAliasTransitions; aliasDepth++ {
+		res, err := r.resolveSingle(ctx, current)
+		if err != nil {
+			return nil, err
+		}
+		q := current.Message.Question[0]
+		target, chase, err := unresolvedAliasTarget(res.Message, q.Name, q.Qtype)
+		if err != nil {
+			return nil, err
+		}
+		if !chase {
+			if len(priorAnswers) == 0 {
+				return res, nil
+			}
+			return mergeAliasResult(original, priorAnswers, priorTTL, res)
+		}
+
+		if len(priorAnswers) == 0 || res.CacheTTL < priorTTL {
+			priorTTL = res.CacheTTL
+		}
+		priorAnswers = append(priorAnswers, res.Message.Answer...)
+		canonical := dns.CanonicalName(target)
+		if _, duplicate := seenAliases[canonical]; duplicate {
+			return nil, fmt.Errorf("goreecloud dns: alias loop detected at %s", dns.Fqdn(target))
+		}
+		seenAliases[canonical] = struct{}{}
+		current, err = aliasFollowupRequest(original, target)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return nil, errors.New("goreecloud dns: alias chain exceeds maximum transition depth")
+}
+
+func (r *IterativeResolver) resolveSingle(ctx context.Context, req *Request) (*Result, error) {
 	servers := append([]string(nil), r.rootServers...)
 	seenDelegations := map[string]struct{}{}
 	for depth := 0; depth < r.maxDepth; depth++ {
