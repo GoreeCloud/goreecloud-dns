@@ -86,8 +86,11 @@ func (r *PrivateTrustAnchorResolver) Resolve(ctx context.Context, req *Request) 
 	if res == nil || res.Message == nil {
 		return nil, errors.New("goreecloud dns: private trust-anchor upstream returned no DNS response")
 	}
-	// AD from the transport or upstream is never local validation evidence.
+	// AD from the transport or upstream is never local validation evidence. CD
+	// was forced only on the upstream validation query, so restore the original
+	// downstream request bit before returning the locally validated message.
 	res.Message.AuthenticatedData = false
+	res.Message.CheckingDisabled = req.Message.CheckingDisabled
 	status, err := r.validator.AuthenticateTerminalAnswer(res.Message, keys)
 	if err != nil {
 		return nil, fmt.Errorf("goreecloud dns: private trust-anchor terminal validation failed for %s: %w", qname, err)
