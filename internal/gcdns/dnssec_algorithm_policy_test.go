@@ -1,6 +1,7 @@
 package gcdns
 
 import (
+	"encoding/base64"
 	"testing"
 	"time"
 
@@ -75,6 +76,7 @@ func TestMatchDSDoesNotDowngradeMixedDelegation(t *testing.T) {
 		Flags:     257,
 		Protocol:  3,
 		Algorithm: dnssecAlgorithmRSASHA256,
+		PublicKey: rsaDNSKEYPublicKey(2048),
 	}}
 
 	status, err := validator.MatchDS(zone, []*dns.DS{
@@ -142,4 +144,54 @@ func TestDNSSECDigestPolicy(t *testing.T) {
 			t.Fatalf("expected DS digest %d to remain unsupported", digestType)
 		}
 	}
+}
+
+func TestDNSSECRSAKeyStrengthPolicy(t *testing.T) {
+	t.Parallel()
+
+	for _, size := range []int{1024, 2048, 4096} {
+		if !dnssecDNSKEYStrengthAccepted(dnssecAlgorithmRSASHA256, rsaDNSKEYPublicKey(size)) {
+			t.Fatalf("expected %d-bit RSA DNSKEY to be accepted for validation", size)
+		}
+	}
+	for _, size := range []int{512, 768, 4097} {
+		if dnssecDNSKEYStrengthAccepted(dnssecAlgorithmRSASHA256, rsaDNSKEYPublicKey(size)) {
+			t.Fatalf("expected %d-bit RSA DNSKEY to be rejected by key-strength policy", size)
+		}
+	}
+}
+
+func TestDNSSECRSAKeyStrengthRejectsMalformedEncoding(t *testing.T) {
+	t.Parallel()
+
+	for _, publicKey := range []string{"", "not-base64", base64.StdEncoding.EncodeToString([]byte{0, 0, 3, 1, 0})} {
+		if dnssecDNSKEYStrengthAccepted(dnssecAlgorithmRSASHA256, publicKey) {
+			t.Fatalf("expected malformed RSA DNSKEY %q to be rejected", publicKey)
+		}
+	}
+}
+
+func TestDNSSECFixedSizeKeyPolicyRequiresMaterial(t *testing.T) {
+	t.Parallel()
+
+	for _, algorithm := range []uint8{dnssecAlgorithmECDSAP256SHA256, dnssecAlgorithmECDSAP384SHA384, dnssecAlgorithmED25519} {
+		if dnssecDNSKEYStrengthAccepted(algorithm, "") {
+			t.Fatalf("algorithm %d accepted empty public key", algorithm)
+		}
+		if !dnssecDNSKEYStrengthAccepted(algorithm, "AQ==") {
+			t.Fatalf("algorithm %d should defer non-empty fixed-size material to cryptographic verification", algorithm)
+		}
+	}
+}
+
+func rsaDNSKEYPublicKey(bitSize int) string {
+	if bitSize < 1 {
+		return ""
+	}
+	modulusBytes := (bitSize + 7) / 8
+	modulus := make([]byte, modulusBytes)
+	leadingBits := bitSize - (modulusBytes-1)*8
+	modulus[0] = byte(1 << (leadingBits - 1))
+	wire := append([]byte{3, 1, 0, 1}, modulus...)
+	return base64.StdEncoding.EncodeToString(wire)
 }
