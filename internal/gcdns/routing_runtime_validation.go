@@ -24,9 +24,8 @@ type routingRuntimeBoundary struct {
 // fail-closed construction checks. Production startup should use this boundary
 // once the native listener runtime supplies its actual endpoint state.
 //
-// Delegating stub resolvers are cloned into the returned router and receive the
-// same immutable listener boundary so dynamically discovered child-authority
-// targets are checked before they can be queried.
+// Resolver wrappers are cloned recursively when needed so a private trust-
+// anchor wrapper cannot hide a delegating stub from dynamic listener checks.
 func NewRuntimeValidatedRoutingResolver(defaultResolver Resolver, routes []ResolverRoute, listeners []string, localAddresses []netip.Addr) (*RoutingResolver, error) {
 	router, err := NewRoutingResolver(defaultResolver, routes)
 	if err != nil {
@@ -40,11 +39,7 @@ func NewRuntimeValidatedRoutingResolver(defaultResolver Resolver, routes []Resol
 		return nil, err
 	}
 	for i := range router.routes {
-		if stub, ok := router.routes[i].Resolver.(*DelegatingStubResolver); ok {
-			clone := *stub
-			clone.runtimeBoundary = boundary
-			router.routes[i].Resolver = &clone
-		}
+		router.routes[i].Resolver = cloneResolverWithRuntimeBoundary(router.routes[i].Resolver, boundary)
 	}
 	return router, nil
 }
@@ -94,9 +89,9 @@ func validateRoutingTargets(boundary *routingRuntimeBoundary, routes []ResolverR
 		if route.Mode == RouteRecursive {
 			continue
 		}
-		endpoints, err := nativeRouteTargetEndpoints(route)
+		endpoints, err := nativeResolverTargetEndpoints(route.Resolver)
 		if err != nil {
-			return err
+			return fmt.Errorf("goreecloud dns: resolver route %q: %w", route.Name, err)
 		}
 		for _, target := range endpoints {
 			if err := boundary.validateTarget(fmt.Sprintf("resolver route %q", route.Name), target); err != nil {
@@ -105,6 +100,21 @@ func validateRoutingTargets(boundary *routingRuntimeBoundary, routes []ResolverR
 		}
 	}
 	return nil
+}
+
+func cloneResolverWithRuntimeBoundary(resolver Resolver, boundary *routingRuntimeBoundary) Resolver {
+	switch value := resolver.(type) {
+	case *DelegatingStubResolver:
+		clone := *value
+		clone.runtimeBoundary = boundary
+		return &clone
+	case *PrivateTrustAnchorResolver:
+		clone := *value
+		clone.resolver = cloneResolverWithRuntimeBoundary(value.resolver, boundary)
+		return &clone
+	default:
+		return resolver
+	}
 }
 
 func (b *routingRuntimeBoundary) validateTarget(subject, target string) error {
@@ -123,16 +133,18 @@ func (b *routingRuntimeBoundary) validateTarget(subject, target string) error {
 	return nil
 }
 
-func nativeRouteTargetEndpoints(route ResolverRoute) ([]string, error) {
-	switch resolver := route.Resolver.(type) {
+func nativeResolverTargetEndpoints(resolver Resolver) ([]string, error) {
+	switch value := resolver.(type) {
 	case *ForwardingResolver:
-		return schedulerTargetNames(resolver.scheduler), nil
+		return schedulerTargetNames(value.scheduler), nil
 	case *StubResolver:
-		return schedulerTargetNames(resolver.scheduler), nil
+		return schedulerTargetNames(value.scheduler), nil
 	case *DelegatingStubResolver:
-		return resolver.routeTargetEndpoints(), nil
+		return value.routeTargetEndpoints(), nil
+	case *PrivateTrustAnchorResolver:
+		return nativeResolverTargetEndpoints(value.resolver)
 	default:
-		return nil, fmt.Errorf("goreecloud dns: resolver route %q does not expose native target endpoints for runtime self-target validation", route.Name)
+		return nil, fmt.Errorf("resolver does not expose native target endpoints for runtime self-target validation")
 	}
 }
 
