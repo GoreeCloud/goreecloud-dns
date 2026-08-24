@@ -12,10 +12,10 @@ import (
 // msg using DNSKEYs already authenticated for the answering zone. A positive
 // RRset whose validated RRSIG Labels value proves wildcard expansion also
 // requires authenticated NSEC or NSEC3 proof that no exact or closer match
-// existed. Empty NOERROR answers first recognize RFC 9824 NXNAME Compact
-// Denial, then ordinary exact-owner or wildcard NODATA through NSEC/NSEC3.
-// Empty NXDOMAIN answers use conventional authenticated NSEC or NSEC3 denial
-// proof; Compact Denial is not inferred from NXDOMAIN proof layouts.
+// existed. Empty answers first recognize RFC 9824 NXNAME Compact Denial,
+// including signaled CO+NXDOMAIN responses. Ordinary NOERROR then uses exact-
+// owner or wildcard NODATA through NSEC/NSEC3, while conventional NXDOMAIN uses
+// the ordinary authenticated NSEC/NSEC3 denial path.
 func (v *DNSSECValidator) AuthenticateTerminalAnswer(msg *dns.Msg, keys []*dns.DNSKEY) (DNSSECStatus, error) {
 	if msg == nil {
 		return DNSSECBogus, errors.New("goreecloud dns: terminal DNSSEC response is nil")
@@ -23,12 +23,12 @@ func (v *DNSSECValidator) AuthenticateTerminalAnswer(msg *dns.Msg, keys []*dns.D
 	if len(msg.Answer) == 0 {
 		if len(msg.Question) == 1 {
 			q := msg.Question[0]
+			status, handled, err := v.AuthenticateCompactDenial(msg, q.Name, keys)
+			if handled || err != nil {
+				return status, err
+			}
 			switch msg.Rcode {
 			case dns.RcodeSuccess:
-				status, handled, err := v.AuthenticateCompactDenial(msg, q.Name, keys)
-				if handled || err != nil {
-					return status, err
-				}
 				status, err = v.AuthenticateNSECNODATA(msg, q.Name, q.Qtype, keys)
 				if err != nil || status != DNSSECIndeterminate {
 					return status, err
@@ -39,7 +39,7 @@ func (v *DNSSECValidator) AuthenticateTerminalAnswer(msg *dns.Msg, keys []*dns.D
 				}
 				return v.AuthenticateWildcardNODATA(msg, q.Name, q.Qtype, keys)
 			case dns.RcodeNameError:
-				status, err := v.AuthenticateNSECNXDOMAIN(msg, q.Name, keys)
+				status, err = v.AuthenticateNSECNXDOMAIN(msg, q.Name, keys)
 				if err != nil || status != DNSSECIndeterminate {
 					return status, err
 				}
