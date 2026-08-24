@@ -24,8 +24,8 @@ type routingRuntimeBoundary struct {
 // fail-closed construction checks. Production startup should use this boundary
 // once the native listener runtime supplies its actual endpoint state.
 //
-// Resolver wrappers are cloned recursively when needed so a private trust-
-// anchor wrapper cannot hide a delegating stub from dynamic listener checks.
+// Resolver wrappers are cloned recursively when needed so DNSSEC validation
+// layers cannot hide delegating stubs from dynamic listener checks.
 func NewRuntimeValidatedRoutingResolver(defaultResolver Resolver, routes []ResolverRoute, listeners []string, localAddresses []netip.Addr) (*RoutingResolver, error) {
 	router, err := NewRoutingResolver(defaultResolver, routes)
 	if err != nil {
@@ -108,6 +108,10 @@ func cloneResolverWithRuntimeBoundary(resolver Resolver, boundary *routingRuntim
 		clone := *value
 		clone.runtimeBoundary = boundary
 		return &clone
+	case *ValidatingDelegatingStubResolver:
+		clone := *value
+		clone.runtimeBoundary = boundary
+		return &clone
 	case *PrivateTrustAnchorResolver:
 		clone := *value
 		clone.resolver = cloneResolverWithRuntimeBoundary(value.resolver, boundary)
@@ -140,6 +144,8 @@ func nativeResolverTargetEndpoints(resolver Resolver) ([]string, error) {
 	case *StubResolver:
 		return schedulerTargetNames(value.scheduler), nil
 	case *DelegatingStubResolver:
+		return value.routeTargetEndpoints(), nil
+	case *ValidatingDelegatingStubResolver:
 		return value.routeTargetEndpoints(), nil
 	case *PrivateTrustAnchorResolver:
 		return nativeResolverTargetEndpoints(value.resolver)
