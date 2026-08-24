@@ -3,7 +3,7 @@
 # specific jobs if needed.  This is a recommended practice for security reasons,
 # and also allows to avoid mistakes with permissions when creating new jobs.
 #
-# See https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#permissions.
+# See https://github.com/actions/reference/workflows-and-actions/workflow-syntax#permissions.
 'permissions': {}
 'env':
   'GO_VERSION': '1.26.6'
@@ -42,6 +42,8 @@
         'run': 'python3 scripts/validate_dnssec_alias.py'
       - 'name': 'Validate Beacon referral discovery contract'
         'run': 'python3 scripts/validate_referral_discovery.py'
+      - 'name': 'Validate Beacon QNAME minimisation contract'
+        'run': 'python3 scripts/validate_qname_minimisation.py'
       - 'name': 'Test native GoreeCloud DNS core'
         'run': 'go test ./internal/gcdns'
 
