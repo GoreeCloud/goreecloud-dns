@@ -33,7 +33,7 @@ required = {
         "TestRoutingResolverRejectsAmbiguousAndInvalidConfiguration",
     ),
     "internal/gcdns/cache_routing_partition_test.go": (
-        "TestMemoryCacheSeparatesSameClientAcrossAddresses",
+        "TestMemoryCachePartitionsSameClientAcrossAddresses",
     ),
     "internal/gcdns/routing_runtime_validation.go": (
         "NewRuntimeValidatedRoutingResolver",
