@@ -262,7 +262,9 @@ func (r *ValidatingIterativeResolver) advanceValidatingReferral(ctx context.Cont
 
 	var childDS []*dns.DS
 	if chainSecure {
-		childDS, status, authErr := r.chain.AuthenticateDelegationDS(plan.zone, response, parentKeys)
+		var status DNSSECStatus
+		var authErr error
+		childDS, status, authErr = r.chain.AuthenticateDelegationDS(plan.zone, response, parentKeys)
 		if authErr != nil {
 			return nil, nil, chainSecure, "", fmt.Errorf("goreecloud dns: DNSSEC delegation authentication failed: %w", authErr)
 		}
