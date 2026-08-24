@@ -117,7 +117,7 @@ func (r *ValidatingForwardingResolver) resolveSingle(ctx context.Context, req *R
 	res.Message.AuthenticatedData = false
 
 	q := req.Message.Question[0]
-	keys, chainSecure, err := r.authenticateName(ctx, req, q.Name)
+	keys, chainSecure, err := r.authenticateName(ctx, req, q.Name, q.Qtype)
 	if err != nil {
 		return nil, "", false, err
 	}
@@ -166,7 +166,7 @@ func (r *ValidatingForwardingResolver) resolveSingle(ctx context.Context, req *R
 	return res, "", false, nil
 }
 
-func (r *ValidatingForwardingResolver) authenticateName(ctx context.Context, original *Request, qname string) ([]*dns.DNSKEY, bool, error) {
+func (r *ValidatingForwardingResolver) authenticateName(ctx context.Context, original *Request, qname string, qtype uint16) ([]*dns.DNSKEY, bool, error) {
 	rootMsg, err := r.queryType(ctx, original, ".", dns.TypeDNSKEY)
 	if err != nil {
 		return nil, true, fmt.Errorf("goreecloud dns: validating forwarding root DNSKEY acquisition failed: %w", err)
@@ -182,6 +182,12 @@ func (r *ValidatingForwardingResolver) authenticateName(ctx context.Context, ori
 	candidates, err := forwardingValidationCandidates(qname)
 	if err != nil {
 		return nil, true, err
+	}
+	// DS is parent-side data. When the client itself asks for DS at QNAME,
+	// validate that terminal RRset with the authenticated parent keys rather
+	// than crossing into the child and then attempting to use child DNSKEYs.
+	if qtype == dns.TypeDS && len(candidates) != 0 && sameDNSName(candidates[len(candidates)-1], qname) {
+		candidates = candidates[:len(candidates)-1]
 	}
 	for _, candidate := range candidates {
 		dsMsg, err := r.queryType(ctx, original, candidate, dns.TypeDS)
