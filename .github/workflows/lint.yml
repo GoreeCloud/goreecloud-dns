@@ -3,7 +3,7 @@
 # specific jobs if needed.  This is a recommended practice for security reasons,
 # and also allows to avoid mistakes with permissions when creating new jobs.
 #
-# See https://github.com/actions/reference/workflows-and-actions/workflow-syntax#permissions.
+# See https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#permissions.
 'permissions': {}
 'env':
   'GO_VERSION': '1.26.6'
