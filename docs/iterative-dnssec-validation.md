@@ -88,12 +88,13 @@ After DNSSEC validation establishes a Compact Denial result, Beacon records `Res
 
 `prepareCompactDenialForClient` performs downstream response presentation after policy/authority/cache/resolver processing:
 
-- a DNSSEC-capable downstream request with DO set and CO clear receives NOERROR with response CO clear;
-- a DNSSEC-capable downstream request with both DO and CO set receives NXDOMAIN with response CO set;
-- a downstream request without DO receives NXDOMAIN restoration and no response CO unless the downstream query itself advertised CO;
+- a DNSSEC-capable downstream request with DO set and CO clear receives NOERROR with the authenticated NXNAME proof, DO set, and response CO clear;
+- a DNSSEC-capable downstream request with both DO and CO set receives NXDOMAIN with the authenticated NXNAME proof and response CO set;
+- a downstream request without DO receives NXDOMAIN with Compact-Denial NSEC/NSEC3/RRSIG proof removed and response CO clear;
+- if the downstream request did not contain EDNS, Beacon does not emit an unsolicited OPT record;
 - cached Compact Denial metadata remains unchanged while the returned DNS message is a defensive copy.
 
-This preserves RFC 9824's hop-by-hop distinction and prevents one downstream request's EDNS flags from changing the cached result seen by another client.
+This preserves RFC 9824's hop-by-hop distinction, normal DNSSEC downstream filtering, and prevents one downstream request's EDNS flags from changing the cached result seen by another client.
 
 ## Wildcard-expanded positive answers
 
