@@ -129,11 +129,70 @@ func (r *ValidatingIterativeResolver) resolveSingle(ctx context.Context, req *Re
 		return nil, fmt.Errorf("goreecloud dns: root DNSSEC authentication failed: %w", err)
 	}
 
+	q := req.Message.Question[0]
 	upstreamReq := requestWithCompactAnswersOK(req)
 	servers := append([]string(nil), r.iterative.rootServers...)
 	seenDelegations := map[string]struct{}{}
 	chainSecure := true
-	for depth := 0; depth < r.iterative.maxDepth; depth++ {
+	cursor := "."
+	minimise := qnameMinimisationEligible(req)
+
+	for delegations := 0; delegations < r.iterative.maxDepth; {
+		if minimise {
+			child, more, err := nextMinimisedQNAME(q.Name, cursor)
+			if err != nil {
+				return nil, err
+			}
+			if !more || !consumeQNAMEMinimisationBudget(state) {
+				minimise = false
+			} else {
+				probeBase, err := qnameMinimisationProbe(req, child)
+				if err != nil {
+					return nil, err
+				}
+				probeReq := requestWithCompactAnswersOK(probeBase)
+				probeRes, err := r.iterative.resolveAgainst(ctx, probeReq, servers)
+				if err != nil {
+					minimise = false
+				} else if !terminalDNSResponse(probeRes.Message) {
+					servers, parentKeys, chainSecure, cursor, err = r.advanceValidatingReferral(ctx, upstreamReq, probeRes.Message, q.Name, parentKeys, chainSecure, state, seenDelegations)
+					if err != nil {
+						return nil, err
+					}
+					delegations++
+					continue
+				} else if probeRes.Message != nil && (probeRes.Message.Rcode == dns.RcodeSuccess || probeRes.Message.Rcode == dns.RcodeNameError) {
+					if chainSecure {
+						if r.terminal == nil {
+							minimise = false
+						} else {
+							probeStatus, authErr := r.terminal.AuthenticateTerminalAnswer(probeRes.Message, parentKeys)
+							if authErr != nil {
+								return nil, fmt.Errorf("goreecloud dns: QNAME minimisation DNSSEC authentication failed: %w", authErr)
+							}
+							if probeStatus != DNSSECSecure {
+								// Do not let unproven minimisation responses influence zone-cut
+								// discovery on a secure branch. Use the full original query instead.
+								minimise = false
+							}
+						}
+					}
+					if minimise || !chainSecure {
+						if probeRes.Message.Rcode == dns.RcodeSuccess && qnameMinimisationResponseHasDNAME(probeRes.Message) {
+							minimise = false
+						} else {
+							// NOERROR (including NODATA/CNAME) and NXDOMAIN continue to
+							// expose the next label. Beacon does not yet apply RFC 8020 cuts.
+							cursor = child
+							continue
+						}
+					}
+				} else {
+					minimise = false
+				}
+			}
+		}
+
 		res, err := r.iterative.resolveAgainst(ctx, upstreamReq, servers)
 		if err != nil {
 			return nil, err
@@ -167,64 +226,67 @@ func (r *ValidatingIterativeResolver) resolveSingle(ctx context.Context, req *Re
 			return res, nil
 		}
 
-		plan, err := buildReferralPlan(res.Message, req.Message.Question[0].Name)
+		servers, parentKeys, chainSecure, cursor, err = r.advanceValidatingReferral(ctx, upstreamReq, res.Message, q.Name, parentKeys, chainSecure, state, seenDelegations)
 		if err != nil {
 			return nil, err
 		}
-
-		var childDS []*dns.DS
-		if chainSecure {
-			childDS, status, err = r.chain.AuthenticateDelegationDS(plan.zone, res.Message, parentKeys)
-			if err != nil {
-				return nil, fmt.Errorf("goreecloud dns: DNSSEC delegation authentication failed: %w", err)
-			}
-			switch status {
-			case DNSSECInsecure:
-				// The parent proved that this child is intentionally unsigned. DNSSEC
-				// cannot become secure again below this point without another configured
-				// trust anchor, so continue resolution while preserving insecure state.
-				chainSecure = false
-				parentKeys = nil
-			case DNSSECSecure:
-				// Continue below and authenticate the child's DNSKEY RRset after
-				// nameserver addresses are available.
-			case DNSSECIndeterminate:
-				return nil, fmt.Errorf("goreecloud dns: DNSSEC delegation authentication failed: delegation for %s lacks authenticated DS or denial proof", dns.Fqdn(plan.zone))
-			default:
-				return nil, fmt.Errorf("goreecloud dns: DNSSEC delegation authentication failed: delegation for %s is %s", dns.Fqdn(plan.zone), status)
-			}
-		}
-
-		nextServers, err := completeReferralServers(ctx, upstreamReq, plan, state, r.resolveWithState)
-		if err != nil {
-			return nil, err
-		}
-		key := delegationKey(plan.zone, nextServers)
-		if _, exists := seenDelegations[key]; exists {
-			return nil, fmt.Errorf("goreecloud dns: delegation loop detected at %s", plan.zone)
-		}
-		seenDelegations[key] = struct{}{}
-
-		if !chainSecure {
-			servers = nextServers
-			continue
-		}
-
-		childDNSKEY, err := r.resolveDNSKEY(ctx, plan.zone, nextServers)
-		if err != nil {
-			return nil, fmt.Errorf("goreecloud dns: DNSKEY acquisition for %s failed: %w", dns.Fqdn(plan.zone), err)
-		}
-		childKeys, status, err := r.chain.AuthenticateDNSKEYResponse(plan.zone, childDNSKEY, childDS)
-		if err != nil || status != DNSSECSecure {
-			if err == nil {
-				err = fmt.Errorf("DNSKEY RRset for %s did not establish secure trust", dns.Fqdn(plan.zone))
-			}
-			return nil, fmt.Errorf("goreecloud dns: child DNSSEC authentication failed: %w", err)
-		}
-		parentKeys = childKeys
-		servers = nextServers
+		delegations++
 	}
 	return nil, errors.New("goreecloud dns: validating iterative resolver delegation depth exceeded")
+}
+
+func (r *ValidatingIterativeResolver) advanceValidatingReferral(ctx context.Context, req *Request, response *dns.Msg, qname string, parentKeys []*dns.DNSKEY, chainSecure bool, state *resolutionState, seenDelegations map[string]struct{}) ([]string, []*dns.DNSKEY, bool, string, error) {
+	plan, err := buildReferralPlan(response, qname)
+	if err != nil {
+		return nil, nil, chainSecure, "", err
+	}
+
+	var childDS []*dns.DS
+	if chainSecure {
+		childDS, status, authErr := r.chain.AuthenticateDelegationDS(plan.zone, response, parentKeys)
+		if authErr != nil {
+			return nil, nil, chainSecure, "", fmt.Errorf("goreecloud dns: DNSSEC delegation authentication failed: %w", authErr)
+		}
+		switch status {
+		case DNSSECInsecure:
+			chainSecure = false
+			parentKeys = nil
+		case DNSSECSecure:
+			// Authenticate the child DNSKEY RRset after authoritative server
+			// addresses are available.
+		case DNSSECIndeterminate:
+			return nil, nil, chainSecure, "", fmt.Errorf("goreecloud dns: DNSSEC delegation authentication failed: delegation for %s lacks authenticated DS or denial proof", dns.Fqdn(plan.zone))
+		default:
+			return nil, nil, chainSecure, "", fmt.Errorf("goreecloud dns: DNSSEC delegation authentication failed: delegation for %s is %s", dns.Fqdn(plan.zone), status)
+		}
+	}
+
+	nextServers, err := completeReferralServers(ctx, req, plan, state, r.resolveWithState)
+	if err != nil {
+		return nil, nil, chainSecure, "", err
+	}
+	key := delegationKey(plan.zone, nextServers)
+	if _, exists := seenDelegations[key]; exists {
+		return nil, nil, chainSecure, "", fmt.Errorf("goreecloud dns: delegation loop detected at %s", plan.zone)
+	}
+	seenDelegations[key] = struct{}{}
+
+	if !chainSecure {
+		return nextServers, nil, false, plan.zone, nil
+	}
+
+	childDNSKEY, err := r.resolveDNSKEY(ctx, plan.zone, nextServers)
+	if err != nil {
+		return nil, nil, chainSecure, "", fmt.Errorf("goreecloud dns: DNSKEY acquisition for %s failed: %w", dns.Fqdn(plan.zone), err)
+	}
+	childKeys, status, err := r.chain.AuthenticateDNSKEYResponse(plan.zone, childDNSKEY, childDS)
+	if err != nil || status != DNSSECSecure {
+		if err == nil {
+			err = fmt.Errorf("DNSKEY RRset for %s did not establish secure trust", dns.Fqdn(plan.zone))
+		}
+		return nil, nil, chainSecure, "", fmt.Errorf("goreecloud dns: child DNSSEC authentication failed: %w", err)
+	}
+	return nextServers, childKeys, true, plan.zone, nil
 }
 
 func (r *ValidatingIterativeResolver) resolveDNSKEY(ctx context.Context, zone string, servers []string) (*dns.Msg, error) {
