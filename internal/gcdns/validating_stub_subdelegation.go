@@ -111,7 +111,9 @@ func (r *ValidatingDelegatingStubResolver) resolveWithState(ctx context.Context,
 
 		var childDS []*dns.DS
 		if chainSecure {
-			childDS, status, authErr := r.validator.AuthenticateDelegationDS(plan.zone, res.Message, parentKeys)
+			var status DNSSECStatus
+			var authErr error
+			childDS, status, authErr = r.validator.AuthenticateDelegationDS(plan.zone, res.Message, parentKeys)
 			if authErr != nil {
 				return nil, fmt.Errorf("goreecloud dns: validating stub delegation authentication failed: %w", authErr)
 			}
