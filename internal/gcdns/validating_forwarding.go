@@ -117,15 +117,30 @@ func (r *ValidatingForwardingResolver) resolveSingle(ctx context.Context, req *R
 	res.Message.AuthenticatedData = false
 
 	q := req.Message.Question[0]
-	keys, chainSecure, err := r.authenticateName(ctx, req, q.Name, q.Qtype)
-	if err != nil {
-		return nil, "", false, err
-	}
-
 	aliasMsg, target, chase, err := forwardingAliasLinkMessage(res.Message, q.Name, q.Qtype)
 	if err != nil {
 		return nil, "", false, fmt.Errorf("goreecloud dns: validating forwarding alias processing failed: %w", err)
 	}
+	proofMsg := res.Message
+	if chase {
+		proofMsg = aliasMsg
+	}
+	trustName := q.Name
+	trustQType := q.Qtype
+	if signerZone, present, err := forwardingSignerZone(proofMsg); err != nil {
+		return nil, "", false, err
+	} else if present {
+		// Signed data identifies the authoritative signer zone directly. Walk
+		// trust only to that zone rather than probing DS at ordinary owner names,
+		// which may themselves be CNAMEs or empty non-terminals.
+		trustName = signerZone
+		trustQType = dns.TypeDNSKEY
+	}
+	keys, chainSecure, err := r.authenticateName(ctx, req, trustName, trustQType)
+	if err != nil {
+		return nil, "", false, err
+	}
+
 	if chase {
 		if chainSecure {
 			status, err := r.validator.AuthenticateTerminalAnswer(aliasMsg, keys)
@@ -261,6 +276,33 @@ func forwardingValidationCandidates(qname string) ([]string, error) {
 		candidates = append(candidates, dns.Fqdn(strings.Join(labels[i:], ".")))
 	}
 	return candidates, nil
+}
+
+func forwardingSignerZone(msg *dns.Msg) (string, bool, error) {
+	if msg == nil {
+		return "", false, nil
+	}
+	var signer string
+	for _, section := range [][]dns.RR{msg.Answer, msg.Ns} {
+		for _, rr := range section {
+			sig, ok := rr.(*dns.RRSIG)
+			if !ok || strings.TrimSpace(sig.SignerName) == "" {
+				continue
+			}
+			candidate := dns.CanonicalName(sig.SignerName)
+			if signer == "" {
+				signer = candidate
+				continue
+			}
+			if signer != candidate {
+				return "", false, fmt.Errorf("goreecloud dns: forwarded response spans multiple DNSSEC signer zones: %s and %s", signer, candidate)
+			}
+		}
+	}
+	if signer == "" {
+		return "", false, nil
+	}
+	return dns.Fqdn(signer), true, nil
 }
 
 func forwardingAliasLinkMessage(msg *dns.Msg, current string, qtype uint16) (*dns.Msg, string, bool, error) {
