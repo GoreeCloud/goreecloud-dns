@@ -73,8 +73,9 @@ required = {
         "ValidatingForwardingResolver",
         "forwarding",
     ),
-    ".github/workflows/lint.yml": (
+    ".github/workflows/beacon-validating-forwarding.yml": (
         "validate_validating_forwarding.py",
+        "go test ./internal/gcdns",
     ),
 }
 
