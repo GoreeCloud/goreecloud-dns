@@ -155,7 +155,7 @@ func messageCompactAnswersOK(msg *dns.Msg) bool {
 	return opt != nil && opt.Co()
 }
 
-func compactDenialMessageMetadata(msg *dns.Msg) (present bool, responseCO bool) {
+func compactDenialMessageMetadata(msg *dns.Msg) (present, responseCO bool) {
 	if msg == nil {
 		return false, false
 	}

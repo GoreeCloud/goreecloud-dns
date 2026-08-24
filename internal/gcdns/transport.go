@@ -32,15 +32,15 @@ type TransportStats struct {
 // replies over TCP. It validates response identity and question echoing before
 // returning a DNS message to the resolver layer.
 type ClassicTransport struct {
-	timeout       time.Duration
-	udp           *dns.Client
-	tcp           *dns.Client
-	exchanges     atomic.Uint64
-	udpSuccesses  atomic.Uint64
-	tcpFallbacks  atomic.Uint64
-	tcpSuccesses  atomic.Uint64
-	failures      atomic.Uint64
-	timeouts      atomic.Uint64
+	timeout      time.Duration
+	udp          *dns.Client
+	tcp          *dns.Client
+	exchanges    atomic.Uint64
+	udpSuccesses atomic.Uint64
+	tcpFallbacks atomic.Uint64
+	tcpSuccesses atomic.Uint64
+	failures     atomic.Uint64
+	timeouts     atomic.Uint64
 }
 
 func NewClassicTransport(cfg ClassicTransportConfig) (*ClassicTransport, error) {

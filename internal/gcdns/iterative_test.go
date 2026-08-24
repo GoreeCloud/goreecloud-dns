@@ -79,12 +79,15 @@ func TestIterativeResolverDetectsDelegationLoop(t *testing.T) {
 		reply.SetReply(query)
 		reply.Ns = []dns.RR{&dns.NS{Hdr: dns.RR_Header{Name: "example.test.", Rrtype: dns.TypeNS}, Ns: "ns1.example.test."}}
 		reply.Extra = []dns.RR{&dns.A{Hdr: dns.RR_Header{Name: "ns1.example.test.", Rrtype: dns.TypeA}, A: []byte{192, 0, 2, 80}}}
-		if server != root && server != child { return nil, errors.New("unexpected target") }
+		if server != root && server != child {
+			return nil, errors.New("unexpected target")
+		}
 		return reply, nil
 	})
 	resolver, err := NewIterativeResolver(exchanger, IterativeResolverConfig{RootServers: []string{root}, MaxDepth: 8, AttemptTimeout: time.Second, MaxConcurrent: 2})
 	require.NoError(t, err)
-	req := testRequest(); req.Message.SetQuestion("www.example.test.", dns.TypeA)
+	req := testRequest()
+	req.Message.SetQuestion("www.example.test.", dns.TypeA)
 	_, err = resolver.Resolve(context.Background(), req)
 	require.ErrorContains(t, err, "delegation loop detected")
 }

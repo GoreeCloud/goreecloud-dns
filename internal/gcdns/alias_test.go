@@ -27,7 +27,7 @@ func signAliasTestRRSet(t *testing.T, rrset []dns.RR, key *dns.DNSKEY, signer cr
 func TestUnresolvedAliasTargetCNAMERequiresFollowup(t *testing.T) {
 	msg := new(dns.Msg)
 	msg.Answer = []dns.RR{&dns.CNAME{
-		Hdr: dns.RR_Header{Name: "alias.example.test.", Rrtype: dns.TypeCNAME, Class: dns.ClassINET, Ttl: 120},
+		Hdr:    dns.RR_Header{Name: "alias.example.test.", Rrtype: dns.TypeCNAME, Class: dns.ClassINET, Ttl: 120},
 		Target: "target.example.test.",
 	}}
 	target, chase, err := unresolvedAliasTarget(msg, "alias.example.test.", dns.TypeA)

@@ -481,6 +481,8 @@ func sortedRouteNames(routes []ResolverRoute) []string {
 	return names
 }
 
-var _ Resolver = (*RoutingResolver)(nil)
-var _ Resolver = (*ForwardingResolver)(nil)
-var _ Resolver = (*StubResolver)(nil)
+var (
+	_ Resolver = (*RoutingResolver)(nil)
+	_ Resolver = (*ForwardingResolver)(nil)
+	_ Resolver = (*StubResolver)(nil)
+)

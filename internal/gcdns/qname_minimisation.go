@@ -9,8 +9,8 @@ import (
 )
 
 const (
-	qnameMinimisationQType       = dns.TypeA
-	maxQNAMEMinimisationQueries  = 10
+	qnameMinimisationQType      = dns.TypeA
+	maxQNAMEMinimisationQueries = 10
 )
 
 // qnameMinimisationEligible keeps the first implementation on ordinary

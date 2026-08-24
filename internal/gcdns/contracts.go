@@ -50,13 +50,13 @@ type Request struct {
 // response flag so cache state retains the hop-by-hop protocol evidence even
 // though downstream response presentation is decided per request.
 type Result struct {
-	Message          *dns.Msg
-	Source           string
-	CacheTTL         time.Duration
-	Stale            bool
-	DNSSECStatus     DNSSECStatus
-	CompactDenial    bool
-	CompactDenialCO  bool
+	Message         *dns.Msg
+	Source          string
+	CacheTTL        time.Duration
+	Stale           bool
+	DNSSECStatus    DNSSECStatus
+	CompactDenial   bool
+	CompactDenialCO bool
 }
 
 // Policy applies request policy before DNS data is resolved.

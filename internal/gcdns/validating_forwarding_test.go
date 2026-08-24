@@ -34,8 +34,8 @@ func forwardingNSECReply(t *testing.T, query *dns.Msg, owner string, bitmap []ui
 	reply.SetReply(query)
 	reply.AuthenticatedData = true
 	nsec := &dns.NSEC{
-		Hdr:         dns.RR_Header{Name: dns.Fqdn(owner), Rrtype: dns.TypeNSEC, Class: dns.ClassINET, Ttl: 300},
-		NextDomain:  "zzz." + dns.Fqdn(parentDNSName(owner)),
+		Hdr:        dns.RR_Header{Name: dns.Fqdn(owner), Rrtype: dns.TypeNSEC, Class: dns.ClassINET, Ttl: 300},
+		NextDomain: "zzz." + dns.Fqdn(parentDNSName(owner)),
 		TypeBitMap: append([]uint16(nil), bitmap...),
 	}
 	sig := signRoutedTrustAnchorRRSet(t, []dns.RR{nsec}, key, signer)

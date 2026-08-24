@@ -10,22 +10,35 @@ import (
 )
 
 type policyFunc func(context.Context, *Request) (*Result, bool, error)
-func (f policyFunc) Evaluate(ctx context.Context, req *Request) (*Result, bool, error) { return f(ctx, req) }
+
+func (f policyFunc) Evaluate(ctx context.Context, req *Request) (*Result, bool, error) {
+	return f(ctx, req)
+}
 
 type authorityFunc func(context.Context, *Request) (*Result, bool, error)
-func (f authorityFunc) ResolveAuthoritative(ctx context.Context, req *Request) (*Result, bool, error) { return f(ctx, req) }
+
+func (f authorityFunc) ResolveAuthoritative(ctx context.Context, req *Request) (*Result, bool, error) {
+	return f(ctx, req)
+}
 
 type resolverFunc func(context.Context, *Request) (*Result, error)
+
 func (f resolverFunc) Resolve(ctx context.Context, req *Request) (*Result, error) { return f(ctx, req) }
 
 type cacheStub struct {
 	result *Result
-	ok bool
-	puts int
-	ttl time.Duration
+	ok     bool
+	puts   int
+	ttl    time.Duration
 }
+
 func (c *cacheStub) Get(context.Context, *Request) (*Result, bool, error) { return c.result, c.ok, nil }
-func (c *cacheStub) Put(_ context.Context, _ *Request, _ *Result, ttl time.Duration) error { c.puts++; c.ttl = ttl; return nil }
+
+func (c *cacheStub) Put(_ context.Context, _ *Request, _ *Result, ttl time.Duration) error {
+	c.puts++
+	c.ttl = ttl
+	return nil
+}
 func (c *cacheStub) Flush(context.Context) error { return nil }
 
 func testRequest() *Request {
@@ -34,8 +47,13 @@ func testRequest() *Request {
 	return &Request{Message: m, Transport: TransportDNS}
 }
 
-func passPolicy() Policy { return policyFunc(func(context.Context, *Request) (*Result, bool, error) { return nil, false, nil }) }
-func passAuthority() Authority { return authorityFunc(func(context.Context, *Request) (*Result, bool, error) { return nil, false, nil }) }
+func passPolicy() Policy {
+	return policyFunc(func(context.Context, *Request) (*Result, bool, error) { return nil, false, nil })
+}
+
+func passAuthority() Authority {
+	return authorityFunc(func(context.Context, *Request) (*Result, bool, error) { return nil, false, nil })
+}
 
 func TestPipelineCacheHitSkipsResolver(t *testing.T) {
 	cached := &Result{Message: new(dns.Msg), Source: "cache"}
@@ -85,7 +103,7 @@ func TestPipelinePolicyShortCircuits(t *testing.T) {
 	want := &Result{Message: new(dns.Msg), Source: "policy"}
 	calls := 0
 	p := &Pipeline{
-		Policy: policyFunc(func(context.Context, *Request) (*Result, bool, error) { return want, true, nil }),
+		Policy:    policyFunc(func(context.Context, *Request) (*Result, bool, error) { return want, true, nil }),
 		Authority: passAuthority(), Cache: &cacheStub{},
 		Resolver: resolverFunc(func(context.Context, *Request) (*Result, error) { calls++; return nil, nil }),
 	}

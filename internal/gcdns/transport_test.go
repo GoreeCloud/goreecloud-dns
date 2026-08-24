@@ -17,11 +17,14 @@ func TestValidateDNSReply(t *testing.T) {
 	reply.SetReply(req)
 	require.NoError(t, validateDNSReply(req, reply))
 
-	badID := reply.Copy(); badID.Id++
+	badID := reply.Copy()
+	badID.Id++
 	require.Error(t, validateDNSReply(req, badID))
-	badQuestion := reply.Copy(); badQuestion.Question[0].Name = "other.example."
+	badQuestion := reply.Copy()
+	badQuestion.Question[0].Name = "other.example."
 	require.Error(t, validateDNSReply(req, badQuestion))
-	badOpcode := reply.Copy(); badOpcode.Opcode = dns.OpcodeUpdate
+	badOpcode := reply.Copy()
+	badOpcode.Opcode = dns.OpcodeUpdate
 	require.Error(t, validateDNSReply(req, badOpcode))
 }
 
@@ -30,7 +33,8 @@ func TestClassicTransportUDP(t *testing.T) {
 	defer shutdown()
 	tr, err := NewClassicTransport(ClassicTransportConfig{Timeout: time.Second, MaxResponseSize: 1232})
 	require.NoError(t, err)
-	req := new(dns.Msg); req.SetQuestion("example.test.", dns.TypeA)
+	req := new(dns.Msg)
+	req.SetQuestion("example.test.", dns.TypeA)
 	reply, err := tr.Exchange(context.Background(), addr, req)
 	require.NoError(t, err)
 	require.False(t, reply.Truncated)
@@ -44,7 +48,8 @@ func TestClassicTransportTCPFallback(t *testing.T) {
 	defer shutdown()
 	tr, err := NewClassicTransport(ClassicTransportConfig{Timeout: time.Second, MaxResponseSize: 1232})
 	require.NoError(t, err)
-	req := new(dns.Msg); req.SetQuestion("fallback.test.", dns.TypeA)
+	req := new(dns.Msg)
+	req.SetQuestion("fallback.test.", dns.TypeA)
 	reply, err := tr.Exchange(context.Background(), addr, req)
 	require.NoError(t, err)
 	require.False(t, reply.Truncated)
@@ -71,7 +76,10 @@ func startDNSServer(t *testing.T, truncated bool) (string, func()) {
 	pc, err := net.ListenPacket("udp", "127.0.0.1:0")
 	require.NoError(t, err)
 	server := &dns.Server{PacketConn: pc, Handler: dns.HandlerFunc(func(w dns.ResponseWriter, r *dns.Msg) {
-		m := new(dns.Msg); m.SetReply(r); m.Truncated = truncated; _ = w.WriteMsg(m)
+		m := new(dns.Msg)
+		m.SetReply(r)
+		m.Truncated = truncated
+		_ = w.WriteMsg(m)
 	})}
 	go func() { _ = server.ActivateAndServe() }()
 	return pc.LocalAddr().String(), func() { _ = server.Shutdown() }
@@ -88,10 +96,15 @@ func startDualDNSServer(t *testing.T) (string, func()) {
 	require.NoError(t, err)
 
 	udpServer := &dns.Server{PacketConn: pc, Handler: dns.HandlerFunc(func(w dns.ResponseWriter, r *dns.Msg) {
-		m := new(dns.Msg); m.SetReply(r); m.Truncated = true; _ = w.WriteMsg(m)
+		m := new(dns.Msg)
+		m.SetReply(r)
+		m.Truncated = true
+		_ = w.WriteMsg(m)
 	})}
 	tcpServer := &dns.Server{Listener: ln, Handler: dns.HandlerFunc(func(w dns.ResponseWriter, r *dns.Msg) {
-		m := new(dns.Msg); m.SetReply(r); _ = w.WriteMsg(m)
+		m := new(dns.Msg)
+		m.SetReply(r)
+		_ = w.WriteMsg(m)
 	})}
 	go func() { _ = udpServer.ActivateAndServe() }()
 	go func() { _ = tcpServer.ActivateAndServe() }()

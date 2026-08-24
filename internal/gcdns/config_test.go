@@ -9,10 +9,10 @@ import (
 
 func validSecurityConfig() SecurityConfig {
 	return SecurityConfig{
-		DNSSECValidation: true,
+		DNSSECValidation:    true,
 		RebindingProtection: true,
-		RecursionACLs: []netip.Prefix{netip.MustParsePrefix("127.0.0.0/8"), netip.MustParsePrefix("::1/128")},
-		AdminACLs: []netip.Prefix{netip.MustParsePrefix("127.0.0.0/8")},
+		RecursionACLs:       []netip.Prefix{netip.MustParsePrefix("127.0.0.0/8"), netip.MustParsePrefix("::1/128")},
+		AdminACLs:           []netip.Prefix{netip.MustParsePrefix("127.0.0.0/8")},
 	}
 }
 

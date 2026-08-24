@@ -21,7 +21,10 @@ func TestTargetSchedulerFailsOver(t *testing.T) {
 	var first, second atomic.Int64
 	s, err := NewTargetScheduler([]ResolverTarget{
 		{Name: "broken", Resolver: resolverFunc(func(context.Context, *Request) (*Result, error) { first.Add(1); return nil, errors.New("broken") })},
-		{Name: "healthy", Resolver: resolverFunc(func(context.Context, *Request) (*Result, error) { second.Add(1); return schedulerResult("healthy"), nil })},
+		{Name: "healthy", Resolver: resolverFunc(func(context.Context, *Request) (*Result, error) {
+			second.Add(1)
+			return schedulerResult("healthy"), nil
+		})},
 	}, SchedulerConfig{AttemptTimeout: time.Second, MaxConcurrent: 4})
 	require.NoError(t, err)
 
@@ -50,7 +53,10 @@ func TestTargetSchedulerHonorsAttemptTimeout(t *testing.T) {
 func TestTargetSchedulerPrefersSuccessfulTarget(t *testing.T) {
 	var badCalls, goodCalls atomic.Int64
 	bad := resolverFunc(func(context.Context, *Request) (*Result, error) { badCalls.Add(1); return nil, errors.New("bad") })
-	good := resolverFunc(func(context.Context, *Request) (*Result, error) { goodCalls.Add(1); return schedulerResult("good"), nil })
+	good := resolverFunc(func(context.Context, *Request) (*Result, error) {
+		goodCalls.Add(1)
+		return schedulerResult("good"), nil
+	})
 	s, err := NewTargetScheduler([]ResolverTarget{{Name: "bad", Resolver: bad}, {Name: "good", Resolver: good}}, SchedulerConfig{AttemptTimeout: time.Second, MaxConcurrent: 2})
 	require.NoError(t, err)
 

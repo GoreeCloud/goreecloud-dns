@@ -25,7 +25,7 @@ func TestAuthenticateInsecureDelegationNSECRejectsUnsignedProof(t *testing.T) {
 	v := NewDNSSECValidator(time.Now)
 	msg := new(dns.Msg)
 	msg.Ns = []dns.RR{&dns.NSEC{
-		Hdr: dns.RR_Header{Name: "unsigned.test.", Rrtype: dns.TypeNSEC, Class: dns.ClassINET, Ttl: 60},
+		Hdr:        dns.RR_Header{Name: "unsigned.test.", Rrtype: dns.TypeNSEC, Class: dns.ClassINET, Ttl: 60},
 		NextDomain: "zzz.unsigned.test.",
 		TypeBitMap: []uint16{dns.TypeNS, dns.TypeRRSIG, dns.TypeNSEC},
 	}}
@@ -38,7 +38,7 @@ func TestAuthenticateInsecureDelegationNSECRejectsDSBitmap(t *testing.T) {
 	v := NewDNSSECValidator(time.Now)
 	msg := new(dns.Msg)
 	msg.Ns = []dns.RR{&dns.NSEC{
-		Hdr: dns.RR_Header{Name: "signed.test.", Rrtype: dns.TypeNSEC, Class: dns.ClassINET, Ttl: 60},
+		Hdr:        dns.RR_Header{Name: "signed.test.", Rrtype: dns.TypeNSEC, Class: dns.ClassINET, Ttl: 60},
 		NextDomain: "zzz.signed.test.",
 		TypeBitMap: []uint16{dns.TypeNS, dns.TypeDS, dns.TypeRRSIG, dns.TypeNSEC},
 	}}
@@ -52,7 +52,7 @@ func TestAuthenticateNSECNODATARequiresExactSignedProof(t *testing.T) {
 	msg := new(dns.Msg)
 	msg.Rcode = dns.RcodeSuccess
 	msg.Ns = []dns.RR{&dns.NSEC{
-		Hdr: dns.RR_Header{Name: "example.test.", Rrtype: dns.TypeNSEC, Class: dns.ClassINET, Ttl: 60},
+		Hdr:        dns.RR_Header{Name: "example.test.", Rrtype: dns.TypeNSEC, Class: dns.ClassINET, Ttl: 60},
 		NextDomain: "zzz.example.test.",
 		TypeBitMap: []uint16{dns.TypeA, dns.TypeRRSIG, dns.TypeNSEC},
 	}}
@@ -69,7 +69,7 @@ func TestCanonicalDNSNameCompareUsesRightmostLabelsFirst(t *testing.T) {
 
 func TestNSECCoversOrdinaryInterval(t *testing.T) {
 	nsec := &dns.NSEC{
-		Hdr: dns.RR_Header{Name: "alpha.example.test.", Rrtype: dns.TypeNSEC, Class: dns.ClassINET},
+		Hdr:        dns.RR_Header{Name: "alpha.example.test.", Rrtype: dns.TypeNSEC, Class: dns.ClassINET},
 		NextDomain: "omega.example.test.",
 	}
 	require.True(t, nsecCoversName(nsec, "mid.example.test."))
@@ -80,7 +80,7 @@ func TestNSECCoversOrdinaryInterval(t *testing.T) {
 
 func TestNSECCoversWrapAroundInterval(t *testing.T) {
 	nsec := &dns.NSEC{
-		Hdr: dns.RR_Header{Name: "zulu.example.test.", Rrtype: dns.TypeNSEC, Class: dns.ClassINET},
+		Hdr:        dns.RR_Header{Name: "zulu.example.test.", Rrtype: dns.TypeNSEC, Class: dns.ClassINET},
 		NextDomain: "alpha.example.test.",
 	}
 	require.True(t, nsecCoversName(nsec, "zzzz.example.test."))

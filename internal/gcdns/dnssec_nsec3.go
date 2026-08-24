@@ -240,7 +240,7 @@ func validateNSEC3SetMode(records []*dns.NSEC3, zone string, allowOptOut bool) e
 		if record == nil {
 			return errors.New("goreecloud dns: nil NSEC3 record")
 		}
-		if record.Flags &^ nsec3OptOutFlag != 0 {
+		if record.Flags&^nsec3OptOutFlag != 0 {
 			return fmt.Errorf("goreecloud dns: unsupported NSEC3 flags %d", record.Flags)
 		}
 		if !allowOptOut && record.Flags&nsec3OptOutFlag != 0 {

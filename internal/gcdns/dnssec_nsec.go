@@ -82,9 +82,9 @@ func (v *DNSSECValidator) AuthenticateNSECNODATA(msg *dns.Msg, qname string, qty
 // AuthenticateNSECNXDOMAIN proves an empty-answer NXDOMAIN using a conservative
 // NSEC proof set. Beacon requires all three of the following authenticated facts:
 //
-//   1. an exact-owner NSEC proving the closest encloser exists;
-//   2. an NSEC interval covering the next-closer name; and
-//   3. an NSEC interval covering the wildcard below the closest encloser.
+//  1. an exact-owner NSEC proving the closest encloser exists;
+//  2. an NSEC interval covering the next-closer name; and
+//  3. an NSEC interval covering the wildcard below the closest encloser.
 //
 // Requiring an explicit closest-encloser NSEC is stricter than the minimum proof
 // layout some authorities can return, but it avoids inferring existence from
