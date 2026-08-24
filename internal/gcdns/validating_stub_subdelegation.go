@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/miekg/dns"
 )
@@ -231,4 +230,3 @@ func (r *ValidatingDelegatingStubResolver) routeTargetEndpoints() []string {
 }
 
 var _ Resolver = (*ValidatingDelegatingStubResolver)(nil)
-var _ = time.Duration(0)
