@@ -90,9 +90,11 @@ Deterministic source tests cover:
 - runtime listener-boundary attachment; and
 - rejection of a dynamically discovered child authority that points back into an active GoreeCloud DNS listener.
 
-## Remaining routed validation work
+## Internet-forwarding boundary
 
-General Internet forwarding remains `DNSSECIndeterminate`. A recursive forwarder cannot become secure because an upstream server sets AD; Beacon still requires a locally established root-to-zone validation chain for that case.
+Raw `ForwardingResolver` remains `DNSSECIndeterminate` and never becomes trusted because an upstream recursive resolver sets AD. `ValidatingForwardingResolver` is the separate Internet-forwarding path that establishes the normal root-to-signer DNSSEC chain locally with RD=1, DO, and CD while ignoring upstream AD.
+
+Private stub trust anchors remain namespace-specific and are not reused to authenticate arbitrary Internet forwarding. The validating forwarder begins from Beacon's root DS trust anchors instead.
 
 Trust-anchor provisioning, persistence, authorized updates, rollover, backup/recovery, DNSSEC algorithm and key-size policy, target-environment runtime execution, and production acceptance remain separate stages.
 
