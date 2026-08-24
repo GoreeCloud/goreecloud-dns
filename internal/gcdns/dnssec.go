@@ -57,15 +57,25 @@ func (v *DNSSECValidator) MatchDS(zone string, dsRecords []*dns.DS, keys []*dns.
 		return DNSSECBogus, fmt.Errorf("goreecloud dns: DNSSEC delegation for %s has DS records but no DNSKEY", zone)
 	}
 
-	supported := false
+	digestSupported := false
+	acceptedDelegation := false
+	sha1Delegation := false
 	for _, ds := range dsRecords {
 		if ds == nil || !sameDNSName(ds.Hdr.Name, zone) {
 			continue
 		}
-		if ds.DigestType != dns.SHA1 && ds.DigestType != dns.SHA256 && ds.DigestType != dns.SHA384 {
+		if !dnssecDSDigestSupported(ds.DigestType) {
 			continue
 		}
-		supported = true
+		digestSupported = true
+		if dnssecSHA1DelegationAlgorithm(ds.Algorithm) {
+			sha1Delegation = true
+			continue
+		}
+		if !dnssecDelegationAlgorithmAccepted(ds.Algorithm) {
+			continue
+		}
+		acceptedDelegation = true
 		for _, key := range keys {
 			if key == nil || key.Protocol != 3 || !sameDNSName(key.Hdr.Name, zone) || key.KeyTag() != ds.KeyTag || key.Algorithm != ds.Algorithm {
 				continue
@@ -76,8 +86,17 @@ func (v *DNSSECValidator) MatchDS(zone string, dsRecords []*dns.DS, keys []*dns.
 			}
 		}
 	}
-	if !supported {
+	if !digestSupported {
 		return DNSSECIndeterminate, fmt.Errorf("goreecloud dns: DNSSEC delegation for %s has no supported DS digest", zone)
+	}
+	if !acceptedDelegation && sha1Delegation {
+		// RFC 9905 requires validators to treat RSASHA1 and
+		// RSASHA1-NSEC3-SHA1 DS delegations as insecure when no other
+		// accepted cryptographic DS algorithm is available.
+		return DNSSECInsecure, nil
+	}
+	if !acceptedDelegation {
+		return DNSSECIndeterminate, fmt.Errorf("goreecloud dns: DNSSEC delegation for %s has no accepted validation algorithm", zone)
 	}
 	return DNSSECBogus, fmt.Errorf("goreecloud dns: DNSSEC DS/DNSKEY mismatch for %s", zone)
 }
@@ -106,16 +125,21 @@ func (v *DNSSECValidator) ValidateRRSet(rrset []dns.RR, signatures []*dns.RRSIG,
 	now := uint32(v.now().Unix())
 	var lastErr error
 	matched := false
+	supportedSignatureSeen := false
 	for _, sig := range signatures {
 		if sig == nil || !sameDNSName(sig.Hdr.Name, owner) || sig.TypeCovered != rrtype {
 			continue
 		}
+		if !dnssecSignatureAlgorithmSupported(sig.Algorithm) {
+			continue
+		}
+		supportedSignatureSeen = true
 		if !serialTimeLE(sig.Inception, now) || !serialTimeLE(now, sig.Expiration) {
 			lastErr = fmt.Errorf("signature outside validity window for %s", owner)
 			continue
 		}
 		for _, key := range keys {
-			if key == nil || key.Protocol != 3 || key.KeyTag() != sig.KeyTag || key.Algorithm != sig.Algorithm || !sameDNSName(key.Hdr.Name, sig.SignerName) {
+			if key == nil || key.Protocol != 3 || !dnssecSignatureAlgorithmSupported(key.Algorithm) || key.KeyTag() != sig.KeyTag || key.Algorithm != sig.Algorithm || !sameDNSName(key.Hdr.Name, sig.SignerName) {
 				continue
 			}
 			matched = true
@@ -125,6 +149,9 @@ func (v *DNSSECValidator) ValidateRRSet(rrset []dns.RR, signatures []*dns.RRSIG,
 				lastErr = err
 			}
 		}
+	}
+	if !supportedSignatureSeen {
+		return DNSSECIndeterminate, errors.New("goreecloud dns: DNSSEC RRset has no supported signature algorithm")
 	}
 	if lastErr != nil {
 		return DNSSECBogus, fmt.Errorf("goreecloud dns: DNSSEC RRset validation failed: %w", lastErr)
