@@ -20,6 +20,7 @@ type DelegatingStubResolver struct {
 	exchanger       DNSExchanger
 	rootServers     []string
 	schedulerConfig SchedulerConfig
+	runtimeBoundary *routingRuntimeBoundary
 }
 
 func NewDelegatingStubResolver(exchanger DNSExchanger, zone string, servers []string, cfg SchedulerConfig) (*DelegatingStubResolver, error) {
@@ -92,6 +93,13 @@ func (r *DelegatingStubResolver) resolveWithState(ctx context.Context, req *Requ
 		nextServers, err := completeReferralServers(ctx, req, plan, state, r.resolveAddressWithinStub)
 		if err != nil {
 			return nil, err
+		}
+		if r.runtimeBoundary != nil {
+			for _, server := range nextServers {
+				if err := r.runtimeBoundary.validateTarget(fmt.Sprintf("stub referral %s", plan.zone), server); err != nil {
+					return nil, err
+				}
+			}
 		}
 		key := delegationKey(plan.zone, nextServers)
 		if _, exists := seenDelegations[key]; exists {
