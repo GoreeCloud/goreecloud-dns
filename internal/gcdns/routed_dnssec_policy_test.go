@@ -30,7 +30,9 @@ func routedTrustAnchorKey(t *testing.T, zone string, flags uint16) (*dns.DNSKEY,
 func signRoutedTrustAnchorRRSet(t *testing.T, rrset []dns.RR, key *dns.DNSKEY, signer crypto.Signer) *dns.RRSIG {
 	t.Helper()
 	require.NotEmpty(t, rrset)
+	covered := rrset[0].Header()
 	sig := &dns.RRSIG{
+		Hdr:        dns.RR_Header{Name: covered.Name, Rrtype: dns.TypeRRSIG, Class: covered.Class, Ttl: covered.Ttl},
 		Algorithm:  key.Algorithm,
 		Inception:  uint32(nsec3TestNow.Add(-time.Hour).Unix()),
 		Expiration: uint32(nsec3TestNow.Add(time.Hour).Unix()),
