@@ -170,7 +170,6 @@ func compactDenialMessageMetadata(msg *dns.Msg) (present bool, responseCO bool) 
 				if nsec3HasType(value, dns.TypeNXNAME) {
 					return true, messageCompactAnswersOK(msg)
 				}
-			}
 		}
 	}
 	return false, messageCompactAnswersOK(msg)
@@ -187,26 +186,73 @@ func prepareCompactDenialForClient(req *Request, res *Result) *Result {
 	out := cloneResult(res)
 	requestOPT := req.Message.IsEdns0()
 	do := requestOPT != nil && requestOPT.Do()
-	co := requestOPT != nil && requestOPT.Co()
+	co := do && requestOPT.Co()
 
-	// RFC 9824 recommends preserving NXDOMAIN when possible. A DNSSEC-enabled
-	// client without CO cannot accept NXDOMAIN with a Compact Answer and must see
-	// NOERROR. Non-DO clients and CO-capable DNSSEC clients can receive NXDOMAIN.
+	// RFC 9824 preserves NXDOMAIN whenever possible. DNSSEC-enabled clients that
+	// do not advertise CO must receive NOERROR with the authenticated NXNAME
+	// proof. CO-capable DNSSEC clients and non-DO clients receive NXDOMAIN.
 	if do && !co {
 		out.Message.Rcode = dns.RcodeSuccess
 	} else {
 		out.Message.Rcode = dns.RcodeNameError
 	}
 
+	if !do {
+		stripCompactDenialDNSSEC(out.Message)
+	}
+
 	responseOPT := out.Message.IsEdns0()
-	if requestOPT != nil && responseOPT == nil {
-		out.Message.SetEdns0(requestOPT.UDPSize(), requestOPT.Do())
+	if requestOPT == nil {
+		stripOPT(out.Message)
+		return out
+	}
+	if responseOPT == nil {
+		out.Message.SetEdns0(requestOPT.UDPSize(), do)
 		responseOPT = out.Message.IsEdns0()
 	}
-	if responseOPT != nil {
-		responseOPT.SetCo(co)
-	}
+	responseOPT.SetUDPSize(requestOPT.UDPSize())
+	responseOPT.SetDo(do)
+	responseOPT.SetCo(co)
 	return out
+}
+
+func stripCompactDenialDNSSEC(msg *dns.Msg) {
+	if msg == nil {
+		return
+	}
+	msg.Answer = stripDNSSECRRs(msg.Answer)
+	msg.Ns = stripDNSSECRRs(msg.Ns)
+	msg.Extra = stripDNSSECRRs(msg.Extra)
+}
+
+func stripDNSSECRRs(records []dns.RR) []dns.RR {
+	filtered := records[:0]
+	for _, rr := range records {
+		if rr == nil {
+			continue
+		}
+		switch rr.Header().Rrtype {
+		case dns.TypeNSEC, dns.TypeNSEC3, dns.TypeRRSIG:
+			continue
+		default:
+			filtered = append(filtered, rr)
+		}
+	}
+	return filtered
+}
+
+func stripOPT(msg *dns.Msg) {
+	if msg == nil {
+		return
+	}
+	filtered := msg.Extra[:0]
+	for _, rr := range msg.Extra {
+		if rr != nil && rr.Header().Rrtype == dns.TypeOPT {
+			continue
+		}
+		filtered = append(filtered, rr)
+	}
+	msg.Extra = filtered
 }
 
 // compactDenialQueryResponse implements RFC 9824's rule that NXNAME is a
