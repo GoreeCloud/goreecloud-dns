@@ -81,8 +81,6 @@ func TestValidatingForwardingResolverAuthenticatesSecureAnswer(t *testing.T) {
 			return forwardingSignedReply(t, query, []dns.RR{testDS}, rootKey, rootSigner), nil
 		case q.Qtype == dns.TypeDNSKEY && sameDNSName(q.Name, "test."):
 			return forwardingSignedReply(t, query, []dns.RR{testKey}, testKey, testSigner), nil
-		case q.Qtype == dns.TypeDS && sameDNSName(q.Name, "host.test."):
-			return forwardingNSECReply(t, query, "host.test.", []uint16{dns.TypeA, dns.TypeRRSIG, dns.TypeNSEC}, testKey, testSigner), nil
 		default:
 			return nil, errors.New("unexpected validating forwarding query")
 		}
@@ -93,7 +91,7 @@ func TestValidatingForwardingResolverAuthenticatesSecureAnswer(t *testing.T) {
 	req.Message.SetQuestion("host.test.", dns.TypeA)
 	res, err := resolver.Resolve(context.Background(), req)
 	require.NoError(t, err)
-	require.Equal(t, 5, calls)
+	require.Equal(t, 4, calls)
 	require.Equal(t, DNSSECSecure, res.DNSSECStatus)
 	require.False(t, res.Message.AuthenticatedData)
 	require.False(t, res.Message.CheckingDisabled)
@@ -142,25 +140,26 @@ func TestValidatingForwardingResolverCarriesAuthenticatedInsecureDelegation(t *t
 	require.False(t, res.Message.AuthenticatedData)
 }
 
-func TestValidatingForwardingResolverRejectsUnclassifiedDSState(t *testing.T) {
+func TestValidatingForwardingResolverRejectsUnclassifiedIntermediateDSState(t *testing.T) {
 	rootKey, rootSigner := forwardingTestKey(t, ".")
 	rootAnchor := rootKey.ToDS(dns.SHA256)
 	testKey, testSigner := forwardingTestKey(t, "test.")
 	testDS := testKey.ToDS(dns.SHA256)
-	answer := &dns.A{Hdr: dns.RR_Header{Name: "host.test.", Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: 60}, A: []byte{192, 0, 2, 82}}
+	childKey, childSigner := forwardingTestKey(t, "child.deep.test.")
+	answer := &dns.A{Hdr: dns.RR_Header{Name: "host.child.deep.test.", Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: 60}, A: []byte{192, 0, 2, 82}}
 
 	exchanger := exchangeFunc(func(_ context.Context, _ string, query *dns.Msg) (*dns.Msg, error) {
 		q := query.Question[0]
 		switch {
-		case q.Qtype == dns.TypeA && sameDNSName(q.Name, "host.test."):
-			return forwardingSignedReply(t, query, []dns.RR{answer}, testKey, testSigner), nil
+		case q.Qtype == dns.TypeA && sameDNSName(q.Name, "host.child.deep.test."):
+			return forwardingSignedReply(t, query, []dns.RR{answer}, childKey, childSigner), nil
 		case q.Qtype == dns.TypeDNSKEY && sameDNSName(q.Name, "."):
 			return forwardingSignedReply(t, query, []dns.RR{rootKey}, rootKey, rootSigner), nil
 		case q.Qtype == dns.TypeDS && sameDNSName(q.Name, "test."):
 			return forwardingSignedReply(t, query, []dns.RR{testDS}, rootKey, rootSigner), nil
 		case q.Qtype == dns.TypeDNSKEY && sameDNSName(q.Name, "test."):
 			return forwardingSignedReply(t, query, []dns.RR{testKey}, testKey, testSigner), nil
-		case q.Qtype == dns.TypeDS && sameDNSName(q.Name, "host.test."):
+		case q.Qtype == dns.TypeDS && sameDNSName(q.Name, "deep.test."):
 			reply := new(dns.Msg)
 			reply.SetReply(query)
 			return reply, nil
@@ -171,9 +170,9 @@ func TestValidatingForwardingResolverRejectsUnclassifiedDSState(t *testing.T) {
 
 	resolver := newTestValidatingForwarder(t, exchanger, rootAnchor)
 	req := testRequest()
-	req.Message.SetQuestion("host.test.", dns.TypeA)
+	req.Message.SetQuestion("host.child.deep.test.", dns.TypeA)
 	_, err := resolver.Resolve(context.Background(), req)
-	require.ErrorContains(t, err, "cannot classify DS state for host.test.")
+	require.ErrorContains(t, err, "cannot classify DS state for deep.test.")
 }
 
 func TestValidatingForwardingResolverRejectsInvalidConstruction(t *testing.T) {
