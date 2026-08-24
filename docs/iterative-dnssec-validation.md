@@ -17,9 +17,10 @@ The validating path performs these steps before a secure answer may be returned:
 9. Once an insecure delegation is authenticated, preserve `DNSSECInsecure` below that boundary instead of attempting to recreate trust without another configured trust anchor.
 10. For a positive terminal response, group the answer into RRsets and validate each RRset against matching RRSIG material using the authenticated DNSKEY set for the answering zone.
 11. If a validated positive RRSIG has fewer `RRSIG Labels` than its expanded owner name, treat the RRset as wildcard synthesized and require authenticated proof that the wildcard was the correct match.
-12. For an empty response carrying NXNAME, validate RFC 9824 Compact Denial before ordinary negative-answer handling.
-13. For an ordinary empty NOERROR response without NXNAME, authenticate exact-owner NODATA and then wildcard NODATA.
-14. For conventional NXDOMAIN without NXNAME, authenticate signed NSEC or NSEC3 closest-encloser, next-closer, and wildcard nonexistence evidence.
+12. For CNAME or DNAME redirection, validate the alias link, chase unresolved targets with a fresh iterative trust walk, and combine the chain only after every hop reaches a determinate DNSSEC state.
+13. For an empty response carrying NXNAME, validate RFC 9824 Compact Denial before ordinary negative-answer handling.
+14. For an ordinary empty NOERROR response without NXNAME, authenticate exact-owner NODATA and then wildcard NODATA.
+15. For conventional NXDOMAIN without NXNAME, authenticate signed NSEC or NSEC3 closest-encloser, next-closer, and wildcard nonexistence evidence.
 
 If a delegation cannot establish either secure DS trust or authenticated denial proving an intentionally unsigned child, the validating path stops before contacting the child authority. Positive terminal RRsets and malformed or cryptographically invalid denial proofs fail closed.
 
@@ -96,6 +97,20 @@ After DNSSEC validation establishes a Compact Denial result, Beacon records `Res
 
 This preserves RFC 9824's hop-by-hop distinction, normal DNSSEC downstream filtering, and prevents one downstream request's EDNS flags from changing the cached result seen by another client.
 
+## Signed CNAME and DNAME chains
+
+`internal/gcdns/alias.go`, `internal/gcdns/iterative.go`, and `internal/gcdns/iterative_dnssec.go` implement the first bounded alias-chain execution path.
+
+Ordinary CNAME data is treated as a normal signed RRset. In a secure zone, a CNAME link must validate with an authenticated RRSIG before the validating resolver may follow it. A response that already contains a complete in-zone CNAME chain and the requested terminal RR type can be validated and returned without an extra query. If the response ends on an alias, Beacon performs a fresh iterative resolution for the alias target instead of trusting unrelated target data under the previous zone's DNSKEY state.
+
+DNAME follows RFC 6672. Beacon selects the closest applicable DNAME only for names strictly below its owner, performs deterministic suffix substitution, enforces the DNS name-length limit, and accepts an accompanying synthesized CNAME only when its target is exactly the DNAME-derived target and its TTL is either zero or equal to the DNAME TTL. The synthesized CNAME itself must be unsigned. DNSSEC trust comes from the signed DNAME RRset; an ordinary signed CNAME is not reclassified as synthesized merely because a DNAME also appears in the message.
+
+Alias processing is bounded to 16 transitions and rejects CNAME/DNAME cycles, conflicting DNAME data, multiple CNAME records at one owner, mismatched DNAME synthesis, and malformed alias state. A zero-TTL synthesized CNAME prevents the merged result from becoming cacheable as a fresh combined chain.
+
+For validating resolution, every externally chased target begins a new root-to-target trust walk. The combined chain is only `DNSSECSecure` when all hops are secure. An insecure hop makes the completed chain insecure, while a bogus or indeterminate hop fails closed rather than being hidden by another hop. This follows the DNSSEC principle that a CNAME/DNAME chain is no stronger than its weakest determinate link.
+
+RFC 6672 also requires validators to understand DNAME when authenticating negative answers. After an NSEC or NSEC3 NXDOMAIN proof validates securely, Beacon rejects the response if the authenticated closest-encloser bitmap states that an applicable DNAME exists and substitution should have occurred.
+
 ## Wildcard-expanded positive answers
 
 `internal/gcdns/dnssec_wildcard.go` closes the positive-answer wildcard validation gap identified by RFC 4035 and RFC 5155.
@@ -122,7 +137,7 @@ An intermediate branch-only experiment attempted to broaden NSEC NXDOMAIN handli
 
 ## Deliberate boundary
 
-Complete signed CNAME/DNAME chain resolution across additional authority transitions, DNSSEC algorithm/key-size policy, authenticated trust-anchor persistence/rollover, and end-to-end runtime acceptance remain staged work.
+Out-of-bailiwick authoritative name-server address discovery, DNSSEC algorithm/key-size policy, authenticated trust-anchor persistence/rollover, QNAME minimization, and end-to-end runtime acceptance remain staged work. Alias-target resolution currently starts a fresh root trust walk rather than reusing cross-zone authority state; this is deliberate correctness-first behavior and can be optimized only after equivalent trust boundaries are proven.
 
 ## Production status
 
@@ -130,7 +145,7 @@ This code remains isolated from production DNS traffic. Existing production AdGu
 
 ## Next DNSSEC stages
 
-- Complete signed CNAME/DNAME chain validation across zone transitions.
+- Complete out-of-bailiwick authoritative name-server discovery and then QNAME minimization.
 - Add algorithm and digest policy with explicit unsupported-algorithm behavior.
 - Add trust-anchor lifecycle and rollover automation.
-- Add end-to-end runtime acceptance against controlled signed, unsigned, bogus, wildcard, NSEC, NSEC3, Opt-Out, NXNAME, CO, and denial-of-existence test zones.
+- Add end-to-end runtime acceptance against controlled signed, unsigned, bogus, wildcard, CNAME, DNAME, NSEC, NSEC3, Opt-Out, NXNAME, CO, and denial-of-existence test zones.
