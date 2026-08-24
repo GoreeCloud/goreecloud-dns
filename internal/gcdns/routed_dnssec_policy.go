@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/miekg/dns"
 )
@@ -36,7 +37,10 @@ func NewPrivateTrustAnchorResolver(resolver Resolver, anchor PrivateDNSKEYTrustA
 	if validator == nil {
 		return nil, errors.New("goreecloud dns: private trust-anchor resolver requires a DNSSEC validator")
 	}
-	anchor.Zone = dns.Fqdn(anchor.Zone)
+	if strings.TrimSpace(anchor.Zone) == "" {
+		return nil, errors.New("goreecloud dns: private trust-anchor zone must not be blank")
+	}
+	anchor.Zone = dns.Fqdn(strings.TrimSpace(anchor.Zone))
 	if _, ok := dns.IsDomainName(anchor.Zone); !ok {
 		return nil, fmt.Errorf("goreecloud dns: private trust-anchor zone %q is invalid", anchor.Zone)
 	}
