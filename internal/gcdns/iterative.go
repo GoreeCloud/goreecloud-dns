@@ -121,6 +121,9 @@ func (r *exchangeResolver) Resolve(ctx context.Context, req *Request) (*Result, 
 	query := req.Message.Copy()
 	query.RecursionDesired = false
 	requestDNSSECMaterial(query)
+	if req.CompactAnswersOK {
+		query.IsEdns0().SetCo()
+	}
 	msg, err := r.exchanger.Exchange(ctx, r.server, query)
 	if err != nil {
 		return nil, err
