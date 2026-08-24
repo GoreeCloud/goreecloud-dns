@@ -63,6 +63,16 @@ required = {
         "child DNSKEY",
         "Ordinary Internet forwarding remains `DNSSECIndeterminate`",
     ),
+    "docs/iterative-dnssec-validation.md": (
+        "ValidatingDelegatingStubResolver",
+        "authenticated DS-absence proof",
+        "Ordinary Internet forwarding remains `DNSSECIndeterminate`",
+    ),
+    "docs/beacon.md": (
+        "ValidatingDelegatingStubResolver",
+        "authenticated insecure transition",
+        "Ordinary Internet forwarding remains `DNSSECIndeterminate`",
+    ),
     ".github/workflows/lint.yml": (
         "validate_private_stub_dnssec.py",
     ),
