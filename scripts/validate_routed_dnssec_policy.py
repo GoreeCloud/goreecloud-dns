@@ -67,7 +67,8 @@ required = {
     "docs/beacon.md": (
         "Beacon Routed Private DNSSEC Trust Anchors",
         "PrivateTrustAnchorResolver",
-        "Ordinary Internet forwarding therefore remains `DNSSECIndeterminate`",
+        "ValidatingDelegatingStubResolver",
+        "Ordinary Internet forwarding remains `DNSSECIndeterminate`",
     ),
     ".github/workflows/lint.yml": (
         "validate_routed_dnssec_policy.py",
