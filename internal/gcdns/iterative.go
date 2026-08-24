@@ -67,6 +67,9 @@ func (r *IterativeResolver) Resolve(ctx context.Context, req *Request) (*Result,
 	if len(req.Message.Question) != 1 {
 		return nil, errors.New("goreecloud dns: iterative resolver requires exactly one question")
 	}
+	if result, handled := compactDenialQueryResponse(req); handled {
+		return result, nil
+	}
 
 	servers := append([]string(nil), r.rootServers...)
 	seenDelegations := map[string]struct{}{}
@@ -112,6 +115,9 @@ type exchangeResolver struct {
 }
 
 func (r *exchangeResolver) Resolve(ctx context.Context, req *Request) (*Result, error) {
+	if result, handled := compactDenialQueryResponse(req); handled {
+		return result, nil
+	}
 	query := req.Message.Copy()
 	query.RecursionDesired = false
 	requestDNSSECMaterial(query)
