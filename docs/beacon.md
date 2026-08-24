@@ -106,7 +106,7 @@ Iterative, validating-forwarding, and validating-private-stub paths request DNSS
 
 ### DNSSEC algorithm and digest policy
 
-`internal/gcdns/dnssec_algorithm_policy.go` makes validation policy explicit rather than inheriting every algorithm exposed by the underlying DNS library.
+`internal/gcdns/dnssec_algorithm_policy.go` makes validation policy explicit rather than inheriting every algorithm exposed by the underlying DNS library. `scripts/validate_dnssec_algorithm_policy.py` is the focused fail-closed source gate, and the `beacon-native-core` CI job runs it before `go test ./internal/gcdns`.
 
 Beacon currently accepts RSASHA1, RSASHA1-NSEC3-SHA1, RSASHA256, RSASHA512, ECDSAP256SHA256, ECDSAP384SHA384, and ED25519 for legacy/current RRSIG and DNSKEY validation where the implementation exists. RSASHA1 and RSASHA1-NSEC3-SHA1 are not accepted to establish a DS delegation; a delegation containing only those SHA-1 signing algorithms is classified `DNSSECInsecure` in accordance with the current transition policy. If an accepted modern DS is also present, its cryptographic result remains authoritative and cannot be silently downgraded to insecure by the SHA-1 record.
 
@@ -227,7 +227,7 @@ No production traffic is routed through `internal/gcdns` yet. Existing AdGuard H
 
 ## Next implementation sequence
 
-1. Complete DNSSEC key-size policy and add a focused source-validation gate for the explicit algorithm/digest/key policy.
+1. Complete DNSSEC key-size policy; algorithm/digest source policy and its CI gate are now present.
 2. Add authenticated trust-anchor persistence, update approval, rollover automation, and reusable validation-state/cache lifecycle.
 3. Broaden locally validating forwarding only where additional standards-backed non-delegation or Empty Non-Terminal denial forms can be authenticated safely, and add approved encrypted forwarding transports.
 4. Add persistent cache, prefetch/auto-prefetch, encrypted DNS listeners, authoritative DNS, filtering, DHCP, clustering, APIs, identity, and Glaze UI administration.
