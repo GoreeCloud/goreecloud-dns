@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/miekg/dns"
 )
@@ -50,6 +51,65 @@ func (r *ValidatingIterativeResolver) Resolve(ctx context.Context, req *Request)
 		return result, nil
 	}
 
+	original := req
+	current := req
+	seenAliases := map[string]struct{}{dns.CanonicalName(req.Message.Question[0].Name): {}}
+	var priorAnswers []dns.RR
+	var priorTTL time.Duration
+	overallStatus := DNSSECSecure
+	haveStatus := false
+
+	for aliasDepth := 0; aliasDepth < maxAliasTransitions; aliasDepth++ {
+		res, err := r.resolveSingle(ctx, current)
+		if err != nil {
+			return nil, err
+		}
+		if !haveStatus {
+			overallStatus = res.DNSSECStatus
+			haveStatus = true
+		} else {
+			overallStatus = combineAliasDNSSEC(overallStatus, res.DNSSECStatus)
+		}
+
+		q := current.Message.Question[0]
+		target, chase, err := unresolvedAliasTarget(res.Message, q.Name, q.Qtype)
+		if err != nil {
+			return nil, fmt.Errorf("goreecloud dns: alias-chain processing failed: %w", err)
+		}
+		if !chase {
+			if len(priorAnswers) != 0 && overallStatus == DNSSECIndeterminate {
+				return nil, errors.New("goreecloud dns: alias chain ended without a determinate DNSSEC trust state")
+			}
+			res.DNSSECStatus = overallStatus
+			if len(priorAnswers) == 0 {
+				return res, nil
+			}
+			merged, err := mergeAliasResult(original, priorAnswers, priorTTL, res)
+			if err != nil {
+				return nil, err
+			}
+			merged.DNSSECStatus = overallStatus
+			return merged, nil
+		}
+
+		if len(priorAnswers) == 0 || res.CacheTTL < priorTTL {
+			priorTTL = res.CacheTTL
+		}
+		priorAnswers = append(priorAnswers, res.Message.Answer...)
+		canonical := dns.CanonicalName(target)
+		if _, duplicate := seenAliases[canonical]; duplicate {
+			return nil, fmt.Errorf("goreecloud dns: alias loop detected at %s", dns.Fqdn(target))
+		}
+		seenAliases[canonical] = struct{}{}
+		current, err = aliasFollowupRequest(original, target)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return nil, errors.New("goreecloud dns: alias chain exceeds maximum transition depth")
+}
+
+func (r *ValidatingIterativeResolver) resolveSingle(ctx context.Context, req *Request) (*Result, error) {
 	rootDNSKEY, err := r.resolveDNSKEY(ctx, ".", r.iterative.rootServers)
 	if err != nil {
 		return nil, fmt.Errorf("goreecloud dns: root DNSKEY acquisition failed: %w", err)
@@ -79,6 +139,9 @@ func (r *ValidatingIterativeResolver) Resolve(ctx context.Context, req *Request)
 			}
 			if r.terminal == nil {
 				res.DNSSECStatus = DNSSECIndeterminate
+				if len(res.Message.Answer) > 0 {
+					return nil, errors.New("goreecloud dns: positive terminal answer cannot be accepted without a DNSSEC terminal authenticator")
+				}
 				return res, nil
 			}
 			status, err := r.terminal.AuthenticateTerminalAnswer(res.Message, parentKeys)
