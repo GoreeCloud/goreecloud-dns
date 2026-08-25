@@ -58,7 +58,7 @@ required = {
     "docs/beacon.md": (
         "CNAME/DNAME alias chains",
         "synthesized CNAME",
-        "CNAME/DNAME cycles",
+        "alias cycles",
     ),
 }
 
