@@ -26,10 +26,10 @@ type TrustAnchorRecord struct {
 }
 
 type TrustAnchorUpdate struct {
-	ProposedAt string              `json:"proposed_at"`
-	Source     string              `json:"source"`
-	Fingerprint string            `json:"fingerprint"`
-	Anchors    []TrustAnchorRecord `json:"anchors"`
+	ProposedAt  string              `json:"proposed_at"`
+	Source      string              `json:"source"`
+	Fingerprint string              `json:"fingerprint"`
+	Anchors     []TrustAnchorRecord `json:"anchors"`
 }
 
 type TrustAnchorState struct {
@@ -150,10 +150,10 @@ func (s *TrustAnchorStore) StageUpdate(state TrustAnchorState, anchors []*dns.DS
 		return TrustAnchorState{}, err
 	}
 	state.Pending = &TrustAnchorUpdate{
-		ProposedAt: s.now().UTC().Format(time.RFC3339Nano),
-		Source:     source,
+		ProposedAt:  s.now().UTC().Format(time.RFC3339Nano),
+		Source:      source,
 		Fingerprint: fingerprint,
-		Anchors:    records,
+		Anchors:     records,
 	}
 	state.UpdatedAt = s.now().UTC().Format(time.RFC3339Nano)
 	return state, nil
