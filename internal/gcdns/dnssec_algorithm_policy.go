@@ -28,9 +28,9 @@ const (
 	dnssecAlgorithmED25519          uint8 = 15
 	dnssecMinRSAModulusBits               = 1024
 	dnssecMaxRSAModulusBits               = 4096
-	dnssecECDSAP256PublicKeyBytes          = 64
-	dnssecECDSAP384PublicKeyBytes          = 96
-	dnssecED25519PublicKeyBytes            = 32
+	dnssecECDSAP256PublicKeyBytes         = 64
+	dnssecECDSAP384PublicKeyBytes         = 96
+	dnssecED25519PublicKeyBytes           = 32
 )
 
 func dnssecSignatureAlgorithmSupported(algorithm uint8) bool {
