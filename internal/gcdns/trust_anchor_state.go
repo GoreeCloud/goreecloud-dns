@@ -71,11 +71,11 @@ func (s *TrustAnchorStore) Load() (TrustAnchorState, error) {
 		return TrustAnchorState{}, err
 	}
 	var state TrustAnchorState
-	if err := json.Unmarshal(data, &state); err != nil {
-		return TrustAnchorState{}, fmt.Errorf("goreecloud dns: decode trust-anchor state: %w", err)
+	if decodeErr := json.Unmarshal(data, &state); decodeErr != nil {
+		return TrustAnchorState{}, fmt.Errorf("goreecloud dns: decode trust-anchor state: %w", decodeErr)
 	}
-	if err := validateTrustAnchorState(state); err != nil {
-		return TrustAnchorState{}, err
+	if validateErr := validateTrustAnchorState(state); validateErr != nil {
+		return TrustAnchorState{}, validateErr
 	}
 	return state, nil
 }
@@ -84,52 +84,52 @@ func (s *TrustAnchorStore) Save(state TrustAnchorState) error {
 	if s == nil || strings.TrimSpace(s.path) == "" {
 		return errors.New("goreecloud dns: trust-anchor store is not initialized")
 	}
-	if err := validateTrustAnchorState(state); err != nil {
-		return err
+	if validateErr := validateTrustAnchorState(state); validateErr != nil {
+		return validateErr
 	}
-	data, err := json.MarshalIndent(state, "", "  ")
-	if err != nil {
-		return fmt.Errorf("goreecloud dns: encode trust-anchor state: %w", err)
+	data, encodeErr := json.MarshalIndent(state, "", "  ")
+	if encodeErr != nil {
+		return fmt.Errorf("goreecloud dns: encode trust-anchor state: %w", encodeErr)
 	}
 	data = append(data, '\n')
 
 	dir := filepath.Dir(s.path)
-	if err := os.MkdirAll(dir, 0o700); err != nil {
-		return fmt.Errorf("goreecloud dns: create trust-anchor state directory: %w", err)
+	if mkdirErr := os.MkdirAll(dir, 0o700); mkdirErr != nil {
+		return fmt.Errorf("goreecloud dns: create trust-anchor state directory: %w", mkdirErr)
 	}
-	tmp, err := os.CreateTemp(dir, ".trust-anchor-state-*")
-	if err != nil {
-		return fmt.Errorf("goreecloud dns: create temporary trust-anchor state: %w", err)
+	tmp, createErr := os.CreateTemp(dir, ".trust-anchor-state-*")
+	if createErr != nil {
+		return fmt.Errorf("goreecloud dns: create temporary trust-anchor state: %w", createErr)
 	}
 	tmpName := tmp.Name()
 	defer os.Remove(tmpName)
-	if err := tmp.Chmod(0o600); err != nil {
-		tmp.Close()
-		return fmt.Errorf("goreecloud dns: protect temporary trust-anchor state: %w", err)
+	if chmodErr := tmp.Chmod(0o600); chmodErr != nil {
+		_ = tmp.Close()
+		return fmt.Errorf("goreecloud dns: protect temporary trust-anchor state: %w", chmodErr)
 	}
-	if _, err := tmp.Write(data); err != nil {
-		tmp.Close()
-		return fmt.Errorf("goreecloud dns: write temporary trust-anchor state: %w", err)
+	if _, writeErr := tmp.Write(data); writeErr != nil {
+		_ = tmp.Close()
+		return fmt.Errorf("goreecloud dns: write temporary trust-anchor state: %w", writeErr)
 	}
-	if err := tmp.Sync(); err != nil {
-		tmp.Close()
-		return fmt.Errorf("goreecloud dns: sync temporary trust-anchor state: %w", err)
+	if syncErr := tmp.Sync(); syncErr != nil {
+		_ = tmp.Close()
+		return fmt.Errorf("goreecloud dns: sync temporary trust-anchor state: %w", syncErr)
 	}
-	if err := tmp.Close(); err != nil {
-		return fmt.Errorf("goreecloud dns: close temporary trust-anchor state: %w", err)
+	if closeErr := tmp.Close(); closeErr != nil {
+		return fmt.Errorf("goreecloud dns: close temporary trust-anchor state: %w", closeErr)
 	}
-	if err := os.Rename(tmpName, s.path); err != nil {
-		return fmt.Errorf("goreecloud dns: replace trust-anchor state: %w", err)
+	if renameErr := os.Rename(tmpName, s.path); renameErr != nil {
+		return fmt.Errorf("goreecloud dns: replace trust-anchor state: %w", renameErr)
 	}
-	if err := os.Chmod(s.path, 0o600); err != nil {
-		return fmt.Errorf("goreecloud dns: protect trust-anchor state: %w", err)
+	if chmodErr := os.Chmod(s.path, 0o600); chmodErr != nil {
+		return fmt.Errorf("goreecloud dns: protect trust-anchor state: %w", chmodErr)
 	}
 	return nil
 }
 
 func (s *TrustAnchorStore) StageUpdate(state TrustAnchorState, anchors []*dns.DS, source string) (TrustAnchorState, error) {
-	if err := validateTrustAnchorState(state); err != nil {
-		return TrustAnchorState{}, err
+	if validateErr := validateTrustAnchorState(state); validateErr != nil {
+		return TrustAnchorState{}, validateErr
 	}
 	if state.Pending != nil {
 		return TrustAnchorState{}, errors.New("goreecloud dns: a trust-anchor update is already pending")
@@ -139,15 +139,15 @@ func (s *TrustAnchorStore) StageUpdate(state TrustAnchorState, anchors []*dns.DS
 		return TrustAnchorState{}, errors.New("goreecloud dns: trust-anchor update source is required")
 	}
 	records := trustAnchorRecordsFromDS(anchors)
-	if err := validateTrustAnchorRecords(records); err != nil {
-		return TrustAnchorState{}, err
+	if validateErr := validateTrustAnchorRecords(records); validateErr != nil {
+		return TrustAnchorState{}, validateErr
 	}
 	if sameTrustAnchorSet(state.Active, records) {
 		return TrustAnchorState{}, errors.New("goreecloud dns: proposed trust-anchor set is unchanged")
 	}
-	fingerprint, err := trustAnchorFingerprint(records)
-	if err != nil {
-		return TrustAnchorState{}, err
+	fingerprint, fingerprintErr := trustAnchorFingerprint(records)
+	if fingerprintErr != nil {
+		return TrustAnchorState{}, fingerprintErr
 	}
 	state.Pending = &TrustAnchorUpdate{
 		ProposedAt:  s.now().UTC().Format(time.RFC3339Nano),
@@ -160,8 +160,8 @@ func (s *TrustAnchorStore) StageUpdate(state TrustAnchorState, anchors []*dns.DS
 }
 
 func (s *TrustAnchorStore) ApprovePending(state TrustAnchorState, expectedFingerprint string) (TrustAnchorState, error) {
-	if err := validateTrustAnchorState(state); err != nil {
-		return TrustAnchorState{}, err
+	if validateErr := validateTrustAnchorState(state); validateErr != nil {
+		return TrustAnchorState{}, validateErr
 	}
 	if state.Pending == nil {
 		return TrustAnchorState{}, errors.New("goreecloud dns: no trust-anchor update is pending")
@@ -177,8 +177,8 @@ func (s *TrustAnchorStore) ApprovePending(state TrustAnchorState, expectedFinger
 }
 
 func (s *TrustAnchorStore) RejectPending(state TrustAnchorState) (TrustAnchorState, error) {
-	if err := validateTrustAnchorState(state); err != nil {
-		return TrustAnchorState{}, err
+	if validateErr := validateTrustAnchorState(state); validateErr != nil {
+		return TrustAnchorState{}, validateErr
 	}
 	if state.Pending == nil {
 		return TrustAnchorState{}, errors.New("goreecloud dns: no trust-anchor update is pending")
@@ -189,8 +189,8 @@ func (s *TrustAnchorStore) RejectPending(state TrustAnchorState) (TrustAnchorSta
 }
 
 func (s TrustAnchorState) ActiveDS() ([]*dns.DS, error) {
-	if err := validateTrustAnchorState(s); err != nil {
-		return nil, err
+	if validateErr := validateTrustAnchorState(s); validateErr != nil {
+		return nil, validateErr
 	}
 	return trustAnchorRecordsToDS(s.Active), nil
 }
@@ -199,25 +199,25 @@ func validateTrustAnchorState(state TrustAnchorState) error {
 	if state.Schema != trustAnchorStateSchema {
 		return fmt.Errorf("goreecloud dns: unsupported trust-anchor state schema %q", state.Schema)
 	}
-	if _, err := time.Parse(time.RFC3339Nano, state.UpdatedAt); err != nil {
+	if _, parseErr := time.Parse(time.RFC3339Nano, state.UpdatedAt); parseErr != nil {
 		return errors.New("goreecloud dns: trust-anchor state updated_at must be RFC3339Nano")
 	}
-	if err := validateTrustAnchorRecords(state.Active); err != nil {
-		return err
+	if validateErr := validateTrustAnchorRecords(state.Active); validateErr != nil {
+		return validateErr
 	}
 	if state.Pending != nil {
-		if _, err := time.Parse(time.RFC3339Nano, state.Pending.ProposedAt); err != nil {
+		if _, parseErr := time.Parse(time.RFC3339Nano, state.Pending.ProposedAt); parseErr != nil {
 			return errors.New("goreecloud dns: pending trust-anchor proposed_at must be RFC3339Nano")
 		}
 		if strings.TrimSpace(state.Pending.Source) == "" {
 			return errors.New("goreecloud dns: pending trust-anchor source is required")
 		}
-		if err := validateTrustAnchorRecords(state.Pending.Anchors); err != nil {
-			return err
+		if validateErr := validateTrustAnchorRecords(state.Pending.Anchors); validateErr != nil {
+			return validateErr
 		}
-		fingerprint, err := trustAnchorFingerprint(state.Pending.Anchors)
-		if err != nil {
-			return err
+		fingerprint, fingerprintErr := trustAnchorFingerprint(state.Pending.Anchors)
+		if fingerprintErr != nil {
+			return fingerprintErr
 		}
 		if fingerprint != strings.ToLower(state.Pending.Fingerprint) {
 			return errors.New("goreecloud dns: pending trust-anchor fingerprint mismatch")
@@ -245,7 +245,7 @@ func validateTrustAnchorRecords(records []TrustAnchorRecord) error {
 		if digest == "" {
 			return errors.New("goreecloud dns: trust-anchor digest is required")
 		}
-		if _, err := hex.DecodeString(digest); err != nil {
+		if _, decodeErr := hex.DecodeString(digest); decodeErr != nil {
 			return errors.New("goreecloud dns: trust-anchor digest must be hexadecimal")
 		}
 		key := fmt.Sprintf("%s|%d|%d|%d|%s", strings.ToLower(dns.Fqdn(record.Name)), record.KeyTag, record.Algorithm, record.DigestType, digest)
@@ -289,8 +289,8 @@ func trustAnchorRecordsToDS(records []TrustAnchorRecord) []*dns.DS {
 }
 
 func trustAnchorFingerprint(records []TrustAnchorRecord) (string, error) {
-	if err := validateTrustAnchorRecords(records); err != nil {
-		return "", err
+	if validateErr := validateTrustAnchorRecords(records); validateErr != nil {
+		return "", validateErr
 	}
 	canonical := append([]TrustAnchorRecord(nil), records...)
 	sort.Slice(canonical, func(i, j int) bool {
@@ -305,9 +305,9 @@ func trustAnchorFingerprint(records []TrustAnchorRecord) (string, error) {
 		}
 		return strings.ToUpper(canonical[i].Digest) < strings.ToUpper(canonical[j].Digest)
 	})
-	encoded, err := json.Marshal(canonical)
-	if err != nil {
-		return "", err
+	encoded, marshalErr := json.Marshal(canonical)
+	if marshalErr != nil {
+		return "", marshalErr
 	}
 	digest := sha256.Sum256(encoded)
 	return hex.EncodeToString(digest[:]), nil
