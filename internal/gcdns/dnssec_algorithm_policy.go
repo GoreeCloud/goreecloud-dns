@@ -29,6 +29,10 @@ const (
 
 	dnssecMinRSAModulusBits = 1024
 	dnssecMaxRSAModulusBits = 4096
+
+	dnssecECDSAP256PublicKeyBytes = 64
+	dnssecECDSAP384PublicKeyBytes = 96
+	dnssecED25519PublicKeyBytes    = 32
 )
 
 func dnssecSignatureAlgorithmSupported(algorithm uint8) bool {
@@ -80,11 +84,10 @@ func dnssecDSDigestSupported(digestType uint8) bool {
 // floor before a DNSKEY can authenticate a DS transition or an RRset.
 //
 // RSA DNSKEYs use the RFC 3110/RFC 5702 exponent+modulus encoding. Beacon
-// accepts 1024-4096-bit RSA moduli for validation. The 1024-bit floor avoids
-// treating weaker legacy RSA material as valid while retaining compatibility
-// with still-valid legacy DNSSEC signatures. Fixed-size ECDSA and Ed25519 keys
-// are accepted when their algorithms are already enabled by policy; malformed
-// key material is still rejected by cryptographic verification.
+// accepts 1024-4096-bit RSA moduli for validation. Fixed-size algorithms are
+// accepted only when the DNSKEY public-key field decodes to the exact wire
+// length required by that algorithm; this rejects truncated, oversized, and
+// malformed material before cryptographic verification.
 func dnssecDNSKEYStrengthAccepted(algorithm uint8, publicKey string) bool {
 	switch algorithm {
 	case dnssecAlgorithmRSASHA1,
@@ -93,13 +96,23 @@ func dnssecDNSKEYStrengthAccepted(algorithm uint8, publicKey string) bool {
 		dnssecAlgorithmRSASHA512:
 		modulusBits, ok := dnssecRSAModulusBits(publicKey)
 		return ok && modulusBits >= dnssecMinRSAModulusBits && modulusBits <= dnssecMaxRSAModulusBits
-	case dnssecAlgorithmECDSAP256SHA256,
-		dnssecAlgorithmECDSAP384SHA384,
-		dnssecAlgorithmED25519:
-		return publicKey != ""
+	case dnssecAlgorithmECDSAP256SHA256:
+		return dnssecFixedKeyLengthAccepted(publicKey, dnssecECDSAP256PublicKeyBytes)
+	case dnssecAlgorithmECDSAP384SHA384:
+		return dnssecFixedKeyLengthAccepted(publicKey, dnssecECDSAP384PublicKeyBytes)
+	case dnssecAlgorithmED25519:
+		return dnssecFixedKeyLengthAccepted(publicKey, dnssecED25519PublicKeyBytes)
 	default:
 		return false
 	}
+}
+
+func dnssecFixedKeyLengthAccepted(publicKey string, expectedBytes int) bool {
+	if publicKey == "" || expectedBytes <= 0 {
+		return false
+	}
+	wire, err := base64.StdEncoding.DecodeString(publicKey)
+	return err == nil && len(wire) == expectedBytes
 }
 
 func dnssecRSAModulusBits(publicKey string) (int, bool) {
