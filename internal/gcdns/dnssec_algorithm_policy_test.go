@@ -171,15 +171,30 @@ func TestDNSSECRSAKeyStrengthRejectsMalformedEncoding(t *testing.T) {
 	}
 }
 
-func TestDNSSECFixedSizeKeyPolicyRequiresMaterial(t *testing.T) {
+func TestDNSSECFixedSizeKeyPolicyRequiresExactWireLength(t *testing.T) {
 	t.Parallel()
 
-	for _, algorithm := range []uint8{dnssecAlgorithmECDSAP256SHA256, dnssecAlgorithmECDSAP384SHA384, dnssecAlgorithmED25519} {
-		if dnssecDNSKEYStrengthAccepted(algorithm, "") {
-			t.Fatalf("algorithm %d accepted empty public key", algorithm)
+	tests := []struct {
+		algorithm uint8
+		length    int
+	}{
+		{dnssecAlgorithmECDSAP256SHA256, dnssecECDSAP256PublicKeyBytes},
+		{dnssecAlgorithmECDSAP384SHA384, dnssecECDSAP384PublicKeyBytes},
+		{dnssecAlgorithmED25519, dnssecED25519PublicKeyBytes},
+	}
+	for _, test := range tests {
+		valid := base64.StdEncoding.EncodeToString(make([]byte, test.length))
+		if !dnssecDNSKEYStrengthAccepted(test.algorithm, valid) {
+			t.Fatalf("algorithm %d rejected exact %d-byte public key", test.algorithm, test.length)
 		}
-		if !dnssecDNSKEYStrengthAccepted(algorithm, "AQ==") {
-			t.Fatalf("algorithm %d should defer non-empty fixed-size material to cryptographic verification", algorithm)
+		for _, length := range []int{test.length - 1, test.length + 1} {
+			invalid := base64.StdEncoding.EncodeToString(make([]byte, length))
+			if dnssecDNSKEYStrengthAccepted(test.algorithm, invalid) {
+				t.Fatalf("algorithm %d accepted %d-byte public key, want exactly %d", test.algorithm, length, test.length)
+			}
+		}
+		if dnssecDNSKEYStrengthAccepted(test.algorithm, "not-base64") {
+			t.Fatalf("algorithm %d accepted malformed base64", test.algorithm)
 		}
 	}
 }
