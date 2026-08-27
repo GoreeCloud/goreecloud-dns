@@ -2,6 +2,7 @@ package gcdns
 
 import (
 	"errors"
+	"strings"
 	"time"
 )
 
@@ -23,8 +24,11 @@ func BuildTrustAnchorTransitionReview(plan TrustAnchorChangePlan, evidence DNSKE
 	if plan.CandidateFingerprint != holdDown.Fingerprint {
 		return TrustAnchorTransitionReview{}, errors.New("goreecloud dns: hold-down fingerprint does not match candidate change plan")
 	}
-	if evidence.Source == "" || evidence.ObservedAt == "" {
+	if strings.TrimSpace(evidence.Source) == "" || strings.TrimSpace(evidence.ObservedAt) == "" {
 		return TrustAnchorTransitionReview{}, errors.New("goreecloud dns: DNSKEY rollover evidence is incomplete")
+	}
+	if now.IsZero() {
+		return TrustAnchorTransitionReview{}, errors.New("goreecloud dns: trust-anchor transition review time is required")
 	}
 	if len(plan.Additions) == 0 && len(plan.Removals) == 0 {
 		return TrustAnchorTransitionReview{}, errors.New("goreecloud dns: trust-anchor change plan contains no changes")
@@ -35,7 +39,7 @@ func BuildTrustAnchorTransitionReview(plan TrustAnchorChangePlan, evidence DNSKE
 	}
 	return TrustAnchorTransitionReview{
 		CandidateFingerprint: plan.CandidateFingerprint,
-		EvidenceSource:       evidence.Source,
+		EvidenceSource:       strings.TrimSpace(evidence.Source),
 		ReviewedAt:           now.UTC().Format(time.RFC3339Nano),
 		HoldDownComplete:     complete,
 		ManualApprovalReady:  complete,
