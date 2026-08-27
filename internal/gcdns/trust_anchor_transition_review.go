@@ -33,6 +33,9 @@ func BuildTrustAnchorTransitionReview(plan TrustAnchorChangePlan, evidence DNSKE
 	if len(plan.Additions) == 0 && len(plan.Removals) == 0 {
 		return TrustAnchorTransitionReview{}, errors.New("goreecloud dns: trust-anchor change plan contains no changes")
 	}
+	if err := ValidateTrustAnchorDNSKEYChangeEvidence(plan, evidence); err != nil {
+		return TrustAnchorTransitionReview{}, err
+	}
 	complete, err := TrustAnchorCandidateHoldDownComplete(holdDown, now)
 	if err != nil {
 		return TrustAnchorTransitionReview{}, err
