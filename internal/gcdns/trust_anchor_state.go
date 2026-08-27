@@ -102,7 +102,9 @@ func (s *TrustAnchorStore) Save(state TrustAnchorState) error {
 		return fmt.Errorf("goreecloud dns: create temporary trust-anchor state: %w", createErr)
 	}
 	tmpName := tmp.Name()
-	defer os.Remove(tmpName)
+	defer func() {
+		_ = os.Remove(tmpName)
+	}()
 	if chmodErr := tmp.Chmod(0o600); chmodErr != nil {
 		_ = tmp.Close()
 		return fmt.Errorf("goreecloud dns: protect temporary trust-anchor state: %w", chmodErr)
