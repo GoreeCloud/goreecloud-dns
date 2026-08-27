@@ -13,10 +13,10 @@ import (
 // root DNSKEY RRset. It identifies SEP keys and RFC 5011 REVOKE observations
 // without mutating DS trust-anchor state or granting activation authority.
 type DNSKEYRolloverEvidence struct {
-	ObservedAt   string   `json:"observed_at"`
-	Source       string   `json:"source"`
-	SEPKeyTags   []uint16 `json:"sep_key_tags"`
-	RevokedTags  []uint16 `json:"revoked_key_tags,omitempty"`
+	ObservedAt  string   `json:"observed_at"`
+	Source      string   `json:"source"`
+	SEPKeyTags  []uint16 `json:"sep_key_tags"`
+	RevokedTags []uint16 `json:"revoked_key_tags,omitempty"`
 }
 
 func BuildDNSKEYRolloverEvidence(keys []*dns.DNSKEY, source string, observedAt time.Time) (DNSKEYRolloverEvidence, error) {
@@ -50,9 +50,9 @@ func BuildDNSKEYRolloverEvidence(keys []*dns.DNSKEY, source string, observedAt t
 	}
 
 	evidence := DNSKEYRolloverEvidence{
-		ObservedAt: observedAt.UTC().Format(time.RFC3339Nano),
-		Source: strings.TrimSpace(source),
-		SEPKeyTags: sortedKeyTags(sep),
+		ObservedAt:  observedAt.UTC().Format(time.RFC3339Nano),
+		Source:      strings.TrimSpace(source),
+		SEPKeyTags:  sortedKeyTags(sep),
 		RevokedTags: sortedKeyTags(revoked),
 	}
 	return evidence, nil
