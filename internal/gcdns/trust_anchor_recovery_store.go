@@ -65,15 +65,24 @@ func (s *TrustAnchorRecoveryStore) Save(recovery TrustAnchorRecoveryPoint) (stri
 		}
 		return "", fmt.Errorf("goreecloud dns: create trust-anchor recovery point: %w", err)
 	}
-	defer func() { _ = file.Close() }()
 	if chmodErr := file.Chmod(0o600); chmodErr != nil {
+		_ = file.Close()
+		_ = os.Remove(path)
 		return "", fmt.Errorf("goreecloud dns: protect trust-anchor recovery point: %w", chmodErr)
 	}
 	if _, err := file.Write(encoded); err != nil {
+		_ = file.Close()
+		_ = os.Remove(path)
 		return "", fmt.Errorf("goreecloud dns: write trust-anchor recovery point: %w", err)
 	}
 	if err := file.Sync(); err != nil {
+		_ = file.Close()
+		_ = os.Remove(path)
 		return "", fmt.Errorf("goreecloud dns: sync trust-anchor recovery point: %w", err)
+	}
+	if err := file.Close(); err != nil {
+		_ = os.Remove(path)
+		return "", fmt.Errorf("goreecloud dns: close trust-anchor recovery point: %w", err)
 	}
 	return path, nil
 }
