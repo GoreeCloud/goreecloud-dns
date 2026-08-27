@@ -3,6 +3,7 @@ package gcdns
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
@@ -46,8 +47,10 @@ func TestTrustAnchorStoreRoundTripAndPermissions(t *testing.T) {
 	if statErr != nil {
 		t.Fatal(statErr)
 	}
-	if got := info.Mode().Perm(); got != 0o600 {
-		t.Fatalf("mode = %o, want 600", got)
+	if runtime.GOOS != "windows" {
+		if got := info.Mode().Perm(); got != 0o600 {
+			t.Fatalf("mode = %o, want 600", got)
+		}
 	}
 	loaded, loadErr := store.Load()
 	if loadErr != nil {
