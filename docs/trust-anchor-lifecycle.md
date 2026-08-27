@@ -6,9 +6,9 @@ This document defines the current source-level lifecycle boundary for persistent
 
 The built-in `RootTrustAnchors()` set is a bootstrap source, not a permanent lifecycle mechanism. Beacon needs durable, recoverable trust-anchor state so a future production resolver can survive restarts, preserve approved rollover state, reject tampering, and avoid silently changing its DNSSEC trust basis because a network source or dependency changed.
 
-The current lifecycle implementation lives in `internal/gcdns/trust_anchor_state.go`. It remains isolated from production DNS traffic and does not yet implement unattended RFC 5011 network-driven rollover.
+The current lifecycle implementation lives in `internal/gcdns/trust_anchor_state.go` and `internal/gcdns/trust_anchor_rollover.go`. It remains isolated from production DNS traffic and does not yet implement unattended RFC 5011 network-driven rollover.
 
-## State model
+## Persistent trust-anchor state
 
 The persisted schema is `goreecloud-beacon-trust-anchor-state/v1`.
 
@@ -49,15 +49,36 @@ Only one pending update may exist at a time. This prevents overlapping proposals
 
 This is an explicit GoreeCloud approval boundary. Merely observing a new root key or downloading a new anchor file must not silently activate a new trust anchor through this source implementation.
 
+## Restart-safe rollover timing foundation
+
+`TrustAnchorRolloverState` introduces a separate timing-evidence schema, `goreecloud-beacon-trust-anchor-rollover/v1`, for an already authenticated candidate root trust-anchor set.
+
+The rollover record binds:
+
+- the deterministic fingerprint of the complete candidate set;
+- the first observation time;
+- the most recent observation time; and
+- the hold-down deadline.
+
+`NewTrustAnchorRolloverState` requires a positive hold-down duration and a valid root trust-anchor candidate set. `ObserveTrustAnchorCandidate` continues an existing observation window only when the complete candidate fingerprint remains unchanged. A candidate change fails closed instead of inheriting elapsed time from a different trust basis.
+
+Persisted clock state is also fail-closed. An observation or eligibility check earlier than the persisted `last_seen_at` is rejected as a clock rollback. This prevents backwards wall-clock movement from silently satisfying or corrupting the timing boundary.
+
+`TrustAnchorCandidateHoldDownComplete` reports timing eligibility only. A `true` result does not stage, approve, activate, save, or otherwise change the active trust-anchor set. Explicit GoreeCloud approval remains a separate mandatory boundary.
+
+This timing model is a foundation for future RFC 5011-style lifecycle work; it is not represented as a complete RFC 5011 implementation.
+
 ## Tamper evidence
 
 The pending proposal fingerprint covers the canonical full anchor set. If any pending key tag, algorithm, digest type, or digest is modified without recomputing the fingerprint through the controlled staging path, state validation fails.
 
-This fingerprint is an integrity binding for workflow/state review; it is not a substitute for authenticating the external source that supplied a candidate root trust-anchor set.
+The rollover timing record is likewise bound to the full candidate-set fingerprint and will not continue its hold-down when the candidate changes.
+
+These fingerprints are integrity bindings for workflow/state review; they are not substitutes for authenticating the external source that supplied a candidate root trust-anchor set.
 
 ## Current cryptographic policy interaction
 
-Persistent anchors are validated against Beacon's explicit DNSSEC cryptographic policy. The lifecycle store does not accept SHA-1 DNSSEC signing algorithms as DS delegation/trust-anchor algorithms, unsupported digest families, non-root lifecycle anchors, or empty trust sets.
+Persistent anchors and rollover candidates are validated against Beacon's explicit DNSSEC cryptographic policy. The lifecycle code does not accept SHA-1 DNSSEC signing algorithms as DS delegation/trust-anchor algorithms, unsupported digest families, non-root lifecycle anchors, or empty trust sets.
 
 The built-in KSK-2017 and KSK-2024 root DS records remain the current bootstrap set until a separately authenticated and explicitly approved lifecycle update is performed.
 
@@ -73,7 +94,10 @@ This milestone provides:
 - one-pending-update enforcement;
 - fingerprint-bound explicit approval;
 - rejection without active-set mutation;
-- tamper-evident pending state; and
+- tamper-evident pending state;
+- restart-serializable candidate hold-down timing state;
+- candidate-change rejection during hold-down;
+- backwards-clock detection for persisted rollover timing; and
 - deterministic source tests.
 
 It does not yet provide:
@@ -81,15 +105,15 @@ It does not yet provide:
 - production runtime integration;
 - automatic retrieval of root-anchor updates;
 - authenticated HTTPS/XML trust-anchor distribution processing;
-- RFC 5011 hold-down timers or automated add/revoke state transitions;
-- monotonic-clock persistence for rollover timers;
+- complete RFC 5011 add/revoke/remove state transitions;
+- monotonic-clock persistence across restarts;
 - operator UI/API workflows;
 - rollback/recovery acceptance on a target host; or
 - production cutover authorization.
 
 ## Next lifecycle work
 
-The next slice is to define authenticated candidate acquisition and RFC 5011-style rollover timing/state without allowing remote data to bypass explicit GoreeCloud policy. That work must include restart-safe timing state, recovery semantics, clock-anomaly handling, source authentication, negative tests, and a controlled transition from source-level state management to isolated runtime acceptance.
+The next slice is authenticated candidate acquisition and a complete controlled rollover state machine without allowing remote data to bypass explicit GoreeCloud policy. That work must include source authentication, add/revoke/remove semantics, restart and recovery behavior, clock-anomaly handling, negative tests, and a controlled transition from source-level state management to isolated runtime acceptance.
 
 ## Production boundary
 
