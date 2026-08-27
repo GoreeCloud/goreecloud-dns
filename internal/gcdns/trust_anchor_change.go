@@ -2,6 +2,7 @@ package gcdns
 
 import (
 	"errors"
+	"fmt"
 	"sort"
 )
 
@@ -62,7 +63,7 @@ func PlanTrustAnchorChange(state TrustAnchorState, candidate AuthenticatedTrustA
 }
 
 func trustAnchorRecordIdentity(record TrustAnchorRecord) string {
-	return record.Name + "|" + record.Digest + "|" + string(rune(record.KeyTag)) + "|" + string(rune(record.Algorithm)) + "|" + string(rune(record.DigestType))
+	return fmt.Sprintf("%s|%d|%d|%d|%s", record.Name, record.KeyTag, record.Algorithm, record.DigestType, record.Digest)
 }
 
 func sortTrustAnchorRecords(records []TrustAnchorRecord) {
