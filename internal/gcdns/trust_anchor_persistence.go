@@ -37,8 +37,8 @@ func PersistReviewedTrustAnchorActivation(store *TrustAnchorStore, lifecycle *Tr
 		return TrustAnchorActivationPersistenceResult{}, err
 	}
 	result := TrustAnchorActivationPersistenceResult{State: activated, Recovery: recovery, Receipt: receipt}
-	if err := store.Save(activated); err != nil {
-		return TrustAnchorActivationPersistenceResult{}, err
+	if saveErr := store.Save(activated); saveErr != nil {
+		return TrustAnchorActivationPersistenceResult{}, saveErr
 	}
 	event, err := AppendOrReconcileTrustAnchorActivation(lifecycle, receipt)
 	if err != nil {
