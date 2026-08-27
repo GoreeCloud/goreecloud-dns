@@ -3,6 +3,8 @@ package gcdns
 import (
 	"testing"
 	"time"
+
+	"github.com/miekg/dns"
 )
 
 func TestActivateReviewedPendingTrustAnchorRequiresExactReviewBinding(t *testing.T) {
