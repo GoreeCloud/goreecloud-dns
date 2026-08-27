@@ -56,6 +56,9 @@ func AppendOrReconcileTrustAnchorActivation(lifecycle *TrustAnchorLifecycleLog, 
 	if lifecycle == nil {
 		return TrustAnchorLifecycleEvent{}, errors.New("goreecloud dns: trust-anchor lifecycle log is required")
 	}
+	if err := validateTrustAnchorActivationAuditReceipt(receipt); err != nil {
+		return TrustAnchorLifecycleEvent{}, err
+	}
 	events, err := loadLifecycleIfPresent(lifecycle)
 	if err != nil {
 		return TrustAnchorLifecycleEvent{}, err
@@ -70,6 +73,38 @@ func AppendOrReconcileTrustAnchorActivation(lifecycle *TrustAnchorLifecycleLog, 
 		}
 	}
 	return lifecycle.AppendActivation(receipt)
+}
+
+func validateTrustAnchorActivationAuditReceipt(receipt TrustAnchorActivationReceipt) error {
+	if receipt.Schema != TrustAnchorActivationReceiptSchemaV1 {
+		return errors.New("goreecloud dns: unsupported trust-anchor activation receipt schema")
+	}
+	activatedAt, err := time.Parse(time.RFC3339Nano, receipt.ActivatedAt)
+	if err != nil {
+		return errors.New("goreecloud dns: trust-anchor activation receipt activated_at is invalid")
+	}
+	reviewedAt, err := time.Parse(time.RFC3339Nano, receipt.ReviewedAt)
+	if err != nil {
+		return errors.New("goreecloud dns: trust-anchor activation receipt reviewed_at is invalid")
+	}
+	if reviewedAt.After(activatedAt) {
+		return errors.New("goreecloud dns: trust-anchor activation receipt review occurs after activation")
+	}
+	if strings.TrimSpace(receipt.EvidenceSource) == "" {
+		return errors.New("goreecloud dns: trust-anchor activation receipt evidence source is required")
+	}
+	previous := strings.ToLower(strings.TrimSpace(receipt.PreviousFingerprint))
+	activated := strings.ToLower(strings.TrimSpace(receipt.ActivatedFingerprint))
+	if err := validateTrustAnchorLifecycleFingerprint(previous); err != nil {
+		return err
+	}
+	if err := validateTrustAnchorLifecycleFingerprint(activated); err != nil {
+		return err
+	}
+	if previous == activated {
+		return errors.New("goreecloud dns: trust-anchor activation receipt does not change fingerprints")
+	}
+	return nil
 }
 
 func validateLifecyclePredecessor(lifecycle *TrustAnchorLifecycleLog, state TrustAnchorState) error {
