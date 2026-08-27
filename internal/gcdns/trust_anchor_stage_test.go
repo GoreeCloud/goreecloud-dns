@@ -29,7 +29,7 @@ func TestStageApprovedTrustAnchorCandidateRequiresExplicitFingerprint(t *testing
 	}
 	review := TrustAnchorTransitionReview{CandidateFingerprint: fingerprint, EvidenceSource: candidate.Source, ReviewedAt: now.Format(time.RFC3339Nano), HoldDownComplete: true, ManualApprovalReady: true}
 
-	if _, err := StageApprovedTrustAnchorCandidate(store, state, candidate, review, "wrong"); err == nil {
+	if _, stageErr := StageApprovedTrustAnchorCandidate(store, state, candidate, review, "wrong"); stageErr == nil {
 		t.Fatal("mismatched explicit fingerprint unexpectedly staged candidate")
 	}
 	staged, err := StageApprovedTrustAnchorCandidate(store, state, candidate, review, fingerprint)
@@ -56,7 +56,7 @@ func TestStageApprovedTrustAnchorCandidateRejectsUnreadyReview(t *testing.T) {
 		t.Fatal(err)
 	}
 	review := TrustAnchorTransitionReview{CandidateFingerprint: fingerprint}
-	if _, err := StageApprovedTrustAnchorCandidate(store, BootstrapTrustAnchorState(now), candidate, review, fingerprint); err == nil {
+	if _, stageErr := StageApprovedTrustAnchorCandidate(store, BootstrapTrustAnchorState(now), candidate, review, fingerprint); stageErr == nil {
 		t.Fatal("unready review unexpectedly staged candidate")
 	}
 }
