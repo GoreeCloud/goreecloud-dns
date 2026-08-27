@@ -13,14 +13,14 @@ type TrustAnchorChangePlan struct {
 	ActiveFingerprint    string              `json:"active_fingerprint"`
 	CandidateFingerprint string              `json:"candidate_fingerprint"`
 	Additions            []TrustAnchorRecord `json:"additions,omitempty"`
-	Removals              []TrustAnchorRecord `json:"removals,omitempty"`
+	Removals             []TrustAnchorRecord `json:"removals,omitempty"`
 }
 
 func PlanTrustAnchorChange(state TrustAnchorState, candidate AuthenticatedTrustAnchorCandidate) (TrustAnchorChangePlan, error) {
 	if err := validateTrustAnchorState(state); err != nil {
 		return TrustAnchorChangePlan{}, err
 	}
-	if err := validateAuthenticatedTrustAnchorCandidate(candidate); err != nil {
+	if err := ValidateAuthenticatedTrustAnchorCandidate(candidate); err != nil {
 		return TrustAnchorChangePlan{}, err
 	}
 
