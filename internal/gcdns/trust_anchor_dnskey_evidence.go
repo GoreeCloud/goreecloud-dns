@@ -10,13 +10,15 @@ import (
 )
 
 // DNSKEYRolloverEvidence is review-only evidence derived from an authenticated
-// root DNSKEY RRset. It identifies SEP keys and RFC 5011 REVOKE observations
-// without mutating DS trust-anchor state or granting activation authority.
+// root DNSKEY RRset. RevokedTags contains the key tag calculated with the
+// RFC 5011 REVOKE bit cleared so it can be compared to the pre-revocation key
+// identity represented by active DS trust anchors. This evidence never mutates
+// DS trust-anchor state or grants activation/removal authority.
 type DNSKEYRolloverEvidence struct {
 	ObservedAt  string   `json:"observed_at"`
 	Source      string   `json:"source"`
 	SEPKeyTags  []uint16 `json:"sep_key_tags"`
-	RevokedTags []uint16 `json:"revoked_key_tags,omitempty"`
+	RevokedTags []uint16 `json:"revoked_pre_revoke_key_tags,omitempty"`
 }
 
 func BuildDNSKEYRolloverEvidence(keys []*dns.DNSKEY, source string, observedAt time.Time) (DNSKEYRolloverEvidence, error) {
@@ -39,11 +41,15 @@ func BuildDNSKEYRolloverEvidence(keys []*dns.DNSKEY, source string, observedAt t
 		if key.Flags&dns.SEP == 0 {
 			continue
 		}
-		tag := key.KeyTag()
-		sep[tag] = struct{}{}
 		if key.Flags&dns.REVOKE != 0 {
-			revoked[tag] = struct{}{}
+			preRevoke := *key
+			preRevoke.Flags &^= dns.REVOKE
+			preRevokeTag := preRevoke.KeyTag()
+			sep[preRevokeTag] = struct{}{}
+			revoked[preRevokeTag] = struct{}{}
+			continue
 		}
+		sep[key.KeyTag()] = struct{}{}
 	}
 	if len(sep) == 0 {
 		return DNSKEYRolloverEvidence{}, errors.New("goreecloud dns: authenticated DNSKEY RRset contains no SEP keys")
