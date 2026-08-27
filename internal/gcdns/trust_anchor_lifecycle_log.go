@@ -121,8 +121,8 @@ func (l *TrustAnchorLifecycleLog) append(event TrustAnchorLifecycleEvent) (Trust
 		return TrustAnchorLifecycleEvent{}, fmt.Errorf("goreecloud dns: open trust-anchor lifecycle log: %w", err)
 	}
 	defer func() { _ = file.Close() }()
-	if err := file.Chmod(0o600); err != nil {
-		return TrustAnchorLifecycleEvent{}, fmt.Errorf("goreecloud dns: protect trust-anchor lifecycle log: %w", err)
+	if chmodErr := file.Chmod(0o600); chmodErr != nil {
+		return TrustAnchorLifecycleEvent{}, fmt.Errorf("goreecloud dns: protect trust-anchor lifecycle log: %w", chmodErr)
 	}
 
 	existing, err := readTrustAnchorLifecycleEvents(file)
