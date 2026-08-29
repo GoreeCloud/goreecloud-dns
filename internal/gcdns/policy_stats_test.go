@@ -50,10 +50,10 @@ func TestPolicyDecisionStatsConcurrentRecording(t *testing.T) {
 	const perGoroutine = 100
 	var wg sync.WaitGroup
 	wg.Add(goroutines)
-	for range goroutines {
+	for i := 0; i < goroutines; i++ {
 		go func() {
 			defer wg.Done()
-			for range perGoroutine {
+			for j := 0; j < perGoroutine; j++ {
 				stats.RecordPolicyDecision(context.Background(), decision)
 			}
 		}()
