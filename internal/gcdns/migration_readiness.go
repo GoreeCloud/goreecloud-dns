@@ -13,25 +13,25 @@ const MigrationEvidenceSchemaV1 = "goreecloud-beacon-migration-evidence/v1"
 // DNS queries, client identifiers, domain names, trust-anchor material,
 // credentials, policy contents, private zones, or raw diagnostics.
 type MigrationEvidence struct {
-	Schema                              string `json:"schema"`
-	RecordedAt                          string `json:"recorded_at"`
-	SourceRevision                      string `json:"source_revision"`
-	RuntimeArtifactSHA256               string `json:"runtime_artifact_sha256"`
-	ResolverParityValidated             bool   `json:"resolver_parity_validated"`
-	PrivateRecursionValidated           bool   `json:"private_recursion_validated"`
-	DNSSECValidated                     bool   `json:"dnssec_validated"`
-	TrustAnchorRecoveryRehearsalPassed  bool   `json:"trust_anchor_recovery_rehearsal_passed"`
-	RestartFailureValidated             bool   `json:"restart_failure_validated"`
-	CacheBehaviorValidated              bool   `json:"cache_behavior_validated"`
-	EncryptedDNSValidated               bool   `json:"encrypted_dns_validated"`
-	BackupRestoreProven                 bool   `json:"backup_restore_proven"`
-	RollbackRehearsed                   bool   `json:"rollback_rehearsed"`
-	ObservabilityValidated              bool   `json:"observability_validated"`
-	PrivacyShieldValidated              bool   `json:"privacy_shield_validated"`
-	WardveilSecurityValidated           bool   `json:"wardveil_security_validated"`
-	EverkeepValidated                   bool   `json:"everkeep_validated"`
-	GlazeUIStableValidated              bool   `json:"glaze_ui_stable_validated"`
-	ProductionCutoverAuthorized         bool   `json:"production_cutover_authorized"`
+	Schema                             string `json:"schema"`
+	RecordedAt                         string `json:"recorded_at"`
+	SourceRevision                     string `json:"source_revision"`
+	RuntimeArtifactSHA256              string `json:"runtime_artifact_sha256"`
+	ResolverParityValidated            bool   `json:"resolver_parity_validated"`
+	PrivateRecursionValidated          bool   `json:"private_recursion_validated"`
+	DNSSECValidated                    bool   `json:"dnssec_validated"`
+	TrustAnchorRecoveryRehearsalPassed bool   `json:"trust_anchor_recovery_rehearsal_passed"`
+	RestartFailureValidated            bool   `json:"restart_failure_validated"`
+	CacheBehaviorValidated             bool   `json:"cache_behavior_validated"`
+	EncryptedDNSValidated              bool   `json:"encrypted_dns_validated"`
+	BackupRestoreProven                bool   `json:"backup_restore_proven"`
+	RollbackRehearsed                  bool   `json:"rollback_rehearsed"`
+	ObservabilityValidated             bool   `json:"observability_validated"`
+	PrivacyShieldValidated             bool   `json:"privacy_shield_validated"`
+	WardveilSecurityValidated          bool   `json:"wardveil_security_validated"`
+	EverkeepValidated                  bool   `json:"everkeep_validated"`
+	GlazeUIStableValidated             bool   `json:"glaze_ui_stable_validated"`
+	ProductionCutoverAuthorized        bool   `json:"production_cutover_authorized"`
 }
 
 // MigrationDecision reports whether Beacon has complete evidence for an
