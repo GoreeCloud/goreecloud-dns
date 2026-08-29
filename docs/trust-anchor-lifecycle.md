@@ -4,117 +4,80 @@ This document defines the current source-level lifecycle boundary for persistent
 
 ## Purpose
 
-The built-in `RootTrustAnchors()` set is a bootstrap source, not a permanent lifecycle mechanism. Beacon needs durable, recoverable trust-anchor state so a future production resolver can survive restarts, preserve approved rollover state, reject tampering, and avoid silently changing its DNSSEC trust basis because a network source or dependency changed.
+The built-in `RootTrustAnchors()` set is a bootstrap source, not a permanent lifecycle mechanism. Beacon needs durable, recoverable trust-anchor state so a future production resolver can survive restarts, preserve reviewed rollover state, reject tampering, and avoid silently changing its DNSSEC trust basis because a network source or dependency changed.
 
-The current lifecycle implementation lives in `internal/gcdns/trust_anchor_state.go` and `internal/gcdns/trust_anchor_rollover.go`. It remains isolated from production DNS traffic and does not yet implement unattended RFC 5011 network-driven rollover.
+The current implementation remains isolated from production DNS traffic. It provides controlled candidate staging, restart-serializable hold-down evidence, explicit review and activation, immutable recovery evidence, hash-chained lifecycle audit history, deterministic audit reconciliation, and an isolated activation/recovery rehearsal. It does not authorize unattended production rollover.
 
 ## Persistent trust-anchor state
 
 The persisted schema is `goreecloud-beacon-trust-anchor-state/v1`.
 
-State contains:
+State contains the active root DS trust-anchor set, the last update timestamp, and at most one pending candidate with its source, deterministic SHA-256 fingerprint, proposal time, and full anchor set. Only root (`.`) DS anchors are supported in this lifecycle store. Private routing trust anchors remain separate and are not mixed into root lifecycle state.
 
-- the active root DS trust-anchor set;
-- the last state-update timestamp;
-- at most one pending proposed replacement set;
-- the pending proposal source;
-- a deterministic SHA-256 fingerprint of the complete proposed set; and
-- the proposal timestamp.
+`TrustAnchorStore.Save` writes versioned JSON through an owner-only temporary file, syncs it, atomically replaces the destination, and enforces mode `0600`. `TrustAnchorStore.Load` validates schema, timestamps, anchor policy, uniqueness, digests, and pending fingerprints before accepting state.
 
-Only root (`.`) DS anchors are supported by this lifecycle store. Private DNSKEY trust anchors remain a separate explicitly configured routing capability and are not mixed into the root trust-anchor lifecycle file.
+## Candidate and review lifecycle
 
-## Bootstrap
+Candidate acquisition, DNSKEY-backed evidence, change planning, RFC 5011 revoke normalization, hold-down timing, staging, review, and activation are separate boundaries. A remotely observed candidate cannot directly replace the active set.
 
-`BootstrapTrustAnchorState` converts the current built-in root DS bootstrap set into the persisted lifecycle schema. This creates a controlled initial state without treating later source-code changes as automatic trust-anchor activation.
+Activation requires the exact pending fingerprint, matching evidence source, completed hold-down state, and explicit manual-approval-ready review. The activation receipt contains review provenance and before/after fingerprints only; it contains no resolver query or client information.
 
-## Persistent storage
+## Recovery evidence
 
-`TrustAnchorStore.Save` writes versioned JSON through an owner-only temporary file, syncs the temporary file, atomically replaces the destination, and enforces mode `0600` on the resulting state file. The parent directory is created with owner-only permissions when needed.
+Before reviewed activation, Beacon can build a `goreecloud-beacon-trust-anchor-recovery/v1` recovery point containing the prior active set plus the exact pending fingerprint. `TrustAnchorRecoveryStore` persists that record separately as immutable owner-only evidence keyed by the candidate fingerprint.
 
-`TrustAnchorStore.Load` rejects malformed JSON, unsupported schema versions, invalid timestamps, empty anchor sets, non-root names, duplicate records, unaccepted DS algorithms, unsupported DS digest types, malformed hexadecimal digests, and pending-update fingerprint mismatches.
+Persisting a recovery point never activates or restores trust anchors. `RestoreTrustAnchorRecoveryPoint` is an explicit operator-controlled action and refuses recovery when a newer transition is pending, when the current set no longer matches the candidate named by the recovery record, or when the caller's expected current fingerprint differs.
 
-The state file is runtime security state. It must not be committed to the repository and must be included in future GoreeCloud backup, restore, recovery, permission, and Everkeep acceptance work before production use.
+## Lifecycle audit and reconciliation
 
-## Update staging
+`TrustAnchorLifecycleLog` stores owner-only JSONL lifecycle events with contiguous sequence numbers and a SHA-256 hash chain. Activation events bind review evidence, previous fingerprint, and activated fingerprint. Recovery events bind the explicitly recovered candidate fingerprint back to the restored previous fingerprint.
 
-`StageUpdate` does not replace the active trust set. It validates a complete candidate anchor set, requires a non-empty authenticated source description, rejects an unchanged proposal, creates a deterministic fingerprint, and records the candidate as pending.
+`PersistReviewedTrustAnchorActivation` validates that persisted lifecycle history ends at the state's current active fingerprint, persists the reviewed activation, then appends or idempotently reconciles the activation event. State and audit files are intentionally not represented as one atomic transaction. If state persistence succeeds but audit persistence fails, reconciliation is surfaced explicitly; rollback is never triggered automatically.
 
-Only one pending update may exist at a time. This prevents overlapping proposals from obscuring which exact trust basis is being reviewed.
+## Isolated activation/recovery rehearsal
 
-## Explicit approval
+`RunIsolatedTrustAnchorRecoveryRehearsal` provides a bounded exercise of the complete reviewed activation and explicit recovery path without touching production DNS state.
 
-`ApprovePending` requires the caller to provide the exact pending-set fingerprint. A mismatched or missing fingerprint is rejected. Successful approval atomically changes the in-memory lifecycle state from the prior active set to the exact reviewed pending set and clears the pending proposal.
+The caller must supply one existing rehearsal root. The trust-anchor state file, lifecycle log, and recovery-evidence directory must all be strict descendants of that root. Existing symbolic links anywhere along those store paths are rejected before persistence, preventing an apparently isolated path from redirecting writes outside the rehearsal boundary.
 
-`RejectPending` clears the proposal without changing the active set.
+The rehearsal then:
 
-This is an explicit GoreeCloud approval boundary. Merely observing a new root key or downloading a new anchor file must not silently activate a new trust anchor through this source implementation.
+1. validates the staged state and exact reviewed candidate;
+2. creates, persists, and reloads the immutable recovery record;
+3. performs the normal reviewed activation persistence and activation audit;
+4. stops and returns reconciliation evidence if activation auditing is incomplete, without automatically recovering;
+5. reloads the exact persisted recovery record;
+6. explicitly restores and persists the previous anchor set;
+7. appends a separate recovery lifecycle event;
+8. reloads and verifies the hash-chained lifecycle history ends at the restored fingerprint; and
+9. emits `goreecloud-beacon-trust-anchor-recovery-rehearsal-receipt/v1` with `production_cutover_authorized=false`.
 
-## Restart-safe rollover timing foundation
+The recovery leg is intentional because the function is specifically an activation-and-recovery rehearsal. It is not an automatic failure rollback policy and must not be reused to hide unresolved production activation or audit state.
 
-`TrustAnchorRolloverState` introduces a separate timing-evidence schema, `goreecloud-beacon-trust-anchor-rollover/v1`, for an already authenticated candidate root trust-anchor set.
+## Security and privacy boundary
 
-The rollover record binds:
+Lifecycle files are security-sensitive state and must remain owner-protected. Recovery and audit records do not contain DNS queries, client identifiers, resolver traffic, or unrestricted diagnostics. Fingerprints are integrity bindings for reviewed workflow state; they do not replace authentication of an external trust-anchor source.
 
-- the deterministic fingerprint of the complete candidate set;
-- the first observation time;
-- the most recent observation time; and
-- the hold-down deadline.
-
-`NewTrustAnchorRolloverState` requires a positive hold-down duration and a valid root trust-anchor candidate set. `ObserveTrustAnchorCandidate` continues an existing observation window only when the complete candidate fingerprint remains unchanged. A candidate change fails closed instead of inheriting elapsed time from a different trust basis.
-
-Persisted clock state is also fail-closed. An observation or eligibility check earlier than the persisted `last_seen_at` is rejected as a clock rollback. This prevents backwards wall-clock movement from silently satisfying or corrupting the timing boundary.
-
-`TrustAnchorCandidateHoldDownComplete` reports timing eligibility only. A `true` result does not stage, approve, activate, save, or otherwise change the active trust-anchor set. Explicit GoreeCloud approval remains a separate mandatory boundary.
-
-This timing model is a foundation for future RFC 5011-style lifecycle work; it is not represented as a complete RFC 5011 implementation.
-
-## Tamper evidence
-
-The pending proposal fingerprint covers the canonical full anchor set. If any pending key tag, algorithm, digest type, or digest is modified without recomputing the fingerprint through the controlled staging path, state validation fails.
-
-The rollover timing record is likewise bound to the full candidate-set fingerprint and will not continue its hold-down when the candidate changes.
-
-These fingerprints are integrity bindings for workflow/state review; they are not substitutes for authenticating the external source that supplied a candidate root trust-anchor set.
-
-## Current cryptographic policy interaction
-
-Persistent anchors and rollover candidates are validated against Beacon's explicit DNSSEC cryptographic policy. The lifecycle code does not accept SHA-1 DNSSEC signing algorithms as DS delegation/trust-anchor algorithms, unsupported digest families, non-root lifecycle anchors, or empty trust sets.
-
-The built-in KSK-2017 and KSK-2024 root DS records remain the current bootstrap set until a separately authenticated and explicitly approved lifecycle update is performed.
+Persistent lifecycle state must be included in future Everkeep backup/recovery acceptance and Wardveil Security evidence before any production use. Central status consumers should receive minimized evidence rather than raw anchor material or unrestricted lifecycle files.
 
 ## Current acceptance boundary
 
-This milestone provides:
+The current source milestone provides:
 
-- a versioned persistent state schema;
-- owner-only atomic state-file writes;
-- validated state loading;
-- bootstrap conversion;
-- complete-set update staging;
-- one-pending-update enforcement;
-- fingerprint-bound explicit approval;
-- rejection without active-set mutation;
-- tamper-evident pending state;
-- restart-serializable candidate hold-down timing state;
-- candidate-change rejection during hold-down;
-- backwards-clock detection for persisted rollover timing; and
-- deterministic source tests.
+- versioned persistent root trust-anchor state;
+- owner-only atomic state writes;
+- authenticated-candidate and DNSKEY evidence boundaries;
+- deterministic change planning and revoke normalization;
+- restart-serializable hold-down timing;
+- fingerprint- and source-bound staging/review/activation;
+- immutable owner-only recovery evidence;
+- explicit recovery with exact-current-state checks;
+- hash-chained activation and recovery audit events;
+- deterministic activation audit reconciliation; and
+- an isolated, path-bounded activation/recovery rehearsal with no automatic rollback.
 
-It does not yet provide:
-
-- production runtime integration;
-- automatic retrieval of root-anchor updates;
-- authenticated HTTPS/XML trust-anchor distribution processing;
-- complete RFC 5011 add/revoke/remove state transitions;
-- monotonic-clock persistence across restarts;
-- operator UI/API workflows;
-- rollback/recovery acceptance on a target host; or
-- production cutover authorization.
-
-## Next lifecycle work
-
-The next slice is authenticated candidate acquisition and a complete controlled rollover state machine without allowing remote data to bypass explicit GoreeCloud policy. That work must include source authentication, add/revoke/remove semantics, restart and recovery behavior, clock-anomaly handling, negative tests, and a controlled transition from source-level state management to isolated runtime acceptance.
+It does not yet provide production runtime integration, unattended network-driven rollover, production source credentials, production recovery acceptance, production Everkeep/Wardveil evidence, operator UI/API workflows, or production cutover authorization.
 
 ## Production boundary
 
-No production DNS service reads this state yet. Existing AdGuard Home, Unbound, GoreeCloud Network/NetBird DNS assignment, DNS rewrites, filtering, DHCP, Caddy, firewall state, authoritative DNS, encrypted DNS listeners, private trust anchors, client DNS behavior, credentials, and production cutover state remain unchanged.
+No production DNS service reads the rehearsal stores or uses the rehearsal transaction. Existing AdGuard Home, Unbound, GoreeCloud Network/NetBird DNS assignment, DNS rewrites, filtering, DHCP, Caddy, firewall state, authoritative DNS, encrypted DNS listeners, private trust anchors, client DNS behavior, credentials, and production trust-anchor state remain unchanged.
