@@ -148,13 +148,14 @@ type PolicyProfileEngine struct {
 
 // NewPolicyProfileEngine validates and compiles a deterministic policy model.
 func NewPolicyProfileEngine(cfg PolicyProfileEngineConfig) (*PolicyProfileEngine, error) {
-	if strings.TrimSpace(cfg.DefaultProfileID) == "" {
+	defaultProfileID := strings.TrimSpace(cfg.DefaultProfileID)
+	if defaultProfileID == "" {
 		return nil, errors.New("goreecloud dns: default policy profile is required")
 	}
 
 	engine := &PolicyProfileEngine{
 		profiles:         make(map[string]compiledPolicyProfile, len(cfg.Profiles)),
-		defaultProfileID: cfg.DefaultProfileID,
+		defaultProfileID: defaultProfileID,
 		categories:       make(map[string][]string),
 		services:         make(map[string][]string),
 		recorder:         cfg.DecisionRecorder,
@@ -207,14 +208,15 @@ func NewPolicyProfileEngine(cfg PolicyProfileEngineConfig) (*PolicyProfileEngine
 		engine.profiles[id] = compiled
 	}
 
-	if _, ok := engine.profiles[cfg.DefaultProfileID]; !ok {
-		return nil, fmt.Errorf("goreecloud dns: default policy profile %q does not exist", cfg.DefaultProfileID)
+	if _, ok := engine.profiles[defaultProfileID]; !ok {
+		return nil, fmt.Errorf("goreecloud dns: default policy profile %q does not exist", defaultProfileID)
 	}
 
 	seenClient := make(map[string]string)
 	seenPrefix := make(map[netip.Prefix]string)
 	for _, assignment := range cfg.Assignments {
-		if _, ok := engine.profiles[assignment.ProfileID]; !ok {
+		profileID := strings.TrimSpace(assignment.ProfileID)
+		if _, ok := engine.profiles[profileID]; !ok {
 			return nil, fmt.Errorf("goreecloud dns: assignment references unknown profile %q", assignment.ProfileID)
 		}
 		clientID := strings.TrimSpace(assignment.ClientID)
@@ -223,18 +225,18 @@ func NewPolicyProfileEngine(cfg PolicyProfileEngineConfig) (*PolicyProfileEngine
 			return nil, errors.New("goreecloud dns: policy assignment must select exactly one client ID or network prefix")
 		}
 
-		ca := compiledAssignment{profileID: assignment.ProfileID, clientID: clientID}
+		ca := compiledAssignment{profileID: profileID, clientID: clientID}
 		if clientID != "" {
-			if prior, exists := seenClient[clientID]; exists && prior != assignment.ProfileID {
+			if prior, exists := seenClient[clientID]; exists && prior != profileID {
 				return nil, fmt.Errorf("goreecloud dns: conflicting client policy assignment for %q", clientID)
 			}
-			seenClient[clientID] = assignment.ProfileID
+			seenClient[clientID] = profileID
 		} else {
 			ca.prefix = assignment.Prefix.Masked()
-			if prior, exists := seenPrefix[ca.prefix]; exists && prior != assignment.ProfileID {
+			if prior, exists := seenPrefix[ca.prefix]; exists && prior != profileID {
 				return nil, fmt.Errorf("goreecloud dns: conflicting network policy assignment for %s", ca.prefix)
 			}
-			seenPrefix[ca.prefix] = assignment.ProfileID
+			seenPrefix[ca.prefix] = profileID
 		}
 		engine.assignments = append(engine.assignments, ca)
 	}
@@ -262,6 +264,9 @@ func compilePolicyCatalog(input map[string][]string) (map[string][]string, error
 		name := strings.ToLower(strings.TrimSpace(key))
 		if name == "" {
 			return nil, errors.New("catalog entry name is required")
+		}
+		if _, exists := out[name]; exists {
+			return nil, fmt.Errorf("duplicate normalized catalog entry %q", name)
 		}
 		if len(values) == 0 {
 			return nil, fmt.Errorf("catalog entry %q has no DNS suffixes", key)
@@ -434,13 +439,13 @@ func (e *PolicyProfileEngine) Evaluate(ctx context.Context, req *Request) (*Resu
 		case PolicyActionBlock:
 			msg := new(dns.Msg)
 			msg.SetRcode(req.Message, rule.rule.BlockRcode)
-			return &Result{Message: msg, Source: "policy:" + rule.rule.ID}, true, nil
+			return &Result{Message: msg, Source: "policy:" + rule.rule.ID, DNSSECStatus: DNSSECIndeterminate}, true, nil
 		case PolicyActionRewrite:
 			msg, err := buildPolicyRewriteResponse(req.Message, rule.rule.Rewrite)
 			if err != nil {
 				return nil, false, fmt.Errorf("goreecloud dns: policy rewrite %q: %w", rule.rule.ID, err)
 			}
-			return &Result{Message: msg, Source: "policy:" + rule.rule.ID}, true, nil
+			return &Result{Message: msg, Source: "policy:" + rule.rule.ID, DNSSECStatus: DNSSECIndeterminate}, true, nil
 		}
 	}
 
