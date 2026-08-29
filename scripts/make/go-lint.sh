@@ -192,7 +192,9 @@ run_linter -e method_const
 
 run_linter -e underscores
 
-run_linter -e "$go" tool gofumpt --extra -e -l .
+# Emit the exact formatting patch when gofumpt fails so native-code formatting
+# regressions remain directly actionable in CI rather than reporting only a path.
+run_linter -e "$go" tool gofumpt --extra -e -d .
 
 run_linter "${GO:-go}" vet work
 
