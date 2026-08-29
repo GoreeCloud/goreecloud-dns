@@ -19,11 +19,13 @@ func (f downstreamResolverFunc) Resolve(ctx context.Context, req *Request) (*Res
 func TestDownstreamHandlerServesUDPAndTCP(t *testing.T) {
 	for _, network := range []string{"udp", "tcp"} {
 		t.Run(network, func(t *testing.T) {
-			var seenTransport Transport
-			var seenClient netip.Addr
+			type observation struct {
+				transport Transport
+				client    netip.Addr
+			}
+			observed := make(chan observation, 1)
 			resolver := downstreamResolverFunc(func(_ context.Context, req *Request) (*Result, error) {
-				seenTransport = req.Transport
-				seenClient = req.ClientIP
+				observed <- observation{transport: req.Transport, client: req.ClientIP}
 				response := new(dns.Msg)
 				response.SetReply(req.Message)
 				response.Answer = []dns.RR{&dns.A{
@@ -51,11 +53,12 @@ func TestDownstreamHandlerServesUDPAndTCP(t *testing.T) {
 			if !ok || answer.A.String() != "192.0.2.10" {
 				t.Fatalf("unexpected answer: %v", response.Answer)
 			}
-			if seenTransport != TransportDNS {
-				t.Fatalf("transport = %q, want %q", seenTransport, TransportDNS)
+			seen := <-observed
+			if seen.transport != TransportDNS {
+				t.Fatalf("transport = %q, want %q", seen.transport, TransportDNS)
 			}
-			if !seenClient.IsLoopback() {
-				t.Fatalf("client IP = %v, want loopback", seenClient)
+			if !seen.client.IsLoopback() {
+				t.Fatalf("client IP = %v, want loopback", seen.client)
 			}
 		})
 	}
