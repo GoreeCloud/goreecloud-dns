@@ -137,6 +137,16 @@ func TestBuildPolicyFilterListRulesRejectsUnsupportedSyntax(t *testing.T) {
 	require.Error(t, err)
 }
 
+func TestBuildPolicyFilterListRulesRejectsBrowserOnlyOptions(t *testing.T) {
+	content := []byte("||example.com^$third-party\n")
+	_, err := BuildPolicyFilterListRules(PolicyFilterListConfig{
+		ID:             "reviewed",
+		ExpectedSHA256: policyFilterListDigest(content),
+		Content:        content,
+	})
+	require.ErrorContains(t, err, "unsupported filter-list domain syntax")
+}
+
 func TestBuildPolicyFilterListRulesDeduplicatesEquivalentEntries(t *testing.T) {
 	content := []byte("example.com\nEXAMPLE.COM.\n||example.com^\n")
 	rules, err := BuildPolicyFilterListRules(PolicyFilterListConfig{
