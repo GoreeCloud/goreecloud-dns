@@ -4,41 +4,15 @@ Beacon Policy Profiles are the first-party GoreeCloud DNS policy-control layer f
 
 ## Current source foundation
 
-`internal/gcdns/policy_profiles.go` implements the native `Policy` interface already used by the Beacon request pipeline. The source foundation provides:
-
-- reusable named policy profiles;
-- exact client-ID assignment;
-- longest-prefix network assignment;
-- a required default profile;
-- explicit custom exact-domain and DNS-suffix rules;
-- local first-party category and service catalogs represented by DNS suffix membership;
-- schedule-aware rule activation with IANA timezone support, selected weekdays, ordinary daytime windows, overnight windows, and deterministic clock injection for testing;
-- explicit allow, block, and DNS-rewrite actions;
-- NXDOMAIN or REFUSED block responses;
-- A, AAAA, ANY, and CNAME rewrite behavior with bounded explicit TTLs;
-- deterministic rule precedence independent of configuration-array ordering;
-- normalization hardening for profile references and category/service catalog identifiers; and
-- privacy-minimized decision recording that does not include the queried domain, client IP address, client identifier, or matched catalog/domain value.
+`internal/gcdns/policy_profiles.go` implements the native `Policy` interface already used by the Beacon request pipeline. The source foundation provides reusable named policy profiles; exact client-ID assignment; longest-prefix network assignment; a required default profile; explicit exact-domain and DNS-suffix rules; local first-party category and service catalogs; timezone-aware schedules; allow, block, and DNS-rewrite actions; NXDOMAIN or REFUSED blocking; A, AAAA, ANY, and CNAME rewrites; deterministic rule precedence; normalization hardening; and privacy-minimized decision recording.
 
 ## Assignment precedence
 
-Profile assignment is deterministic:
-
-1. an exact `ClientID` assignment wins;
-2. otherwise the longest matching client network prefix wins;
-3. otherwise the configured default profile applies.
-
-Conflicting duplicate client or network assignments fail closed at engine construction.
+Profile assignment is deterministic: exact `ClientID` assignment wins, otherwise the longest matching network prefix wins, otherwise the configured default profile applies. Conflicting duplicate client or network assignments fail closed.
 
 ## Rule precedence
 
-Rules are compiled into a deterministic order:
-
-1. higher numeric priority first;
-2. for equal priority, exact-domain rules precede suffix rules, service rules, and category rules;
-3. equal-priority/equal-kind ties are ordered by stable rule ID.
-
-An explicit allow rule therefore functions as a bypass/exception when it has higher precedence than a broader block. This makes policy behavior explainable and prevents input-array order from becoming an undocumented security boundary.
+Rules are compiled in deterministic order: higher numeric priority first; then exact-domain, suffix, service, and category specificity; then stable rule ID. Explicit higher-precedence allow rules therefore provide auditable exceptions to broader blocks without making configuration-array order a security boundary.
 
 ## Schedules
 
@@ -46,35 +20,25 @@ Schedules use local wall-clock time in an explicit IANA timezone. An empty weekd
 
 ## Categories and services
 
-The current category/service layer is intentionally local and deterministic. `PolicyCatalog` maps first-party category or service identifiers to DNS suffixes. Rules reference those identifiers instead of embedding a proprietary remote classification dependency.
-
-Normalized category/service identifiers must be unique. Case or surrounding whitespace cannot create two different entries that normalize to the same identifier; such configuration fails closed rather than depending on Go map iteration order.
-
-Future catalog work may add signed catalog packages, catalog revision identities, controlled update channels, richer domain intelligence, and policy-admin tooling. Any such work must preserve reviewability, provenance, rollback, privacy, and offline/local operation requirements.
+`PolicyCatalog` maps first-party category or service identifiers to DNS suffixes. Normalized category/service identifiers must be unique. Case or surrounding whitespace cannot create two entries that normalize to the same identifier. Future managed catalogs must preserve provenance, reviewability, integrity, rollback, privacy, and local/offline operation requirements.
 
 ## Privacy-safe decision trace
 
-`PolicyDecision` records only:
-
-- selected profile ID;
-- selected rule ID;
-- action;
-- assignment scope (`client`, `network`, or `default`); and
-- match kind.
-
-It intentionally omits raw queried names, source addresses, client identifiers, and matched rule/catalog values. Raw query logging is a separate explicitly governed DNS observability concern and must not be enabled merely to support policy decision tracing.
+`PolicyDecision` contains only selected profile ID, selected rule ID, action, assignment scope, and match kind. It intentionally omits raw queried names, source addresses, client identifiers, and matched rule/catalog values. Raw query logging remains a separately governed observability capability.
 
 ## Privacy-safe aggregate policy statistics
 
-`internal/gcdns/policy_stats.go` implements a local `PolicyDecisionRecorder` that aggregates counters by profile, rule, action, assignment scope, and match kind. Snapshots are deterministic and contain no queried domain, client address, client identifier, or matched domain/catalog value.
-
-The recorder is concurrency-safe and supports explicit counter reset without modifying profiles, assignments, DNS cache state, or other DNS configuration. This provides an initial Beacon Insights policy-metrics source without requiring raw query retention or a vendor-hosted analytics service.
-
-These aggregate counters are not a complete analytics product. Retention policy, persistence, export, deletion, per-user visibility, dashboards, and any raw-query analytics remain separate governed capabilities subject to Privacy Shield and production acceptance.
+`internal/gcdns/policy_stats.go` aggregates counters by profile, rule, action, assignment scope, and match kind. The recorder is concurrency-safe, produces deterministic snapshots, supports explicit reset, and contains no queried domain, client address, client identifier, or matched domain/catalog value. This is an initial Beacon Insights policy-metrics source without raw-query retention or a vendor-hosted analytics dependency.
 
 ## GoreeCloud platform boundaries
 
-Beacon Shield owns DNS filtering and DNS-policy enforcement inside GoreeCloud DNS. Wardveil Security remains responsible for broader protection, detection, trust, verification, and response and is not replaced by DNS policy labels. Privacy Shield governs consent, minimization, retention, data control, and privacy behavior for policy-related data. GoreeCloud Identity will supply approved user, administrator, device, credential, session, and delegated-authority context where identity-aware policy is implemented; a DNS response is not itself an authorization grant. Everkeep governs backup, recovery, preservation, portability, and continuity for policy state and managed catalogs. Glaze UI governs accessible and responsive policy administration surfaces. GoreeCloud Mesh may coordinate supported cross-platform capability and event integration without becoming the DNS resolver or policy authority.
+Beacon Shield owns DNS filtering and DNS-policy enforcement inside GoreeCloud DNS. Wardveil Security remains responsible for broader protection, detection, trust, verification, and response. Privacy Shield governs consent, minimization, retention, data control, and privacy behavior for policy-related data. GoreeCloud Identity will supply approved identity, credential, session, device, and delegated-authority context where identity-aware policy is implemented; DNS resolution is not itself an authorization grant. Everkeep governs backup, recovery, preservation, portability, and continuity. Glaze UI governs accessible and responsive policy administration. GoreeCloud Mesh may coordinate supported cross-platform capabilities and events without becoming DNS resolver or policy authority.
+
+## Source-validation boundary
+
+`internal/gcdns/policy_profiles_test.go`, `internal/gcdns/policy_profiles_hardening_test.go`, and `internal/gcdns/policy_stats_test.go` define deterministic behavioral and privacy regression tests. `scripts/validate_policy_profiles.py` is wired into the `beacon-native-core` lint job before `go test ./internal/gcdns` and fails closed if the required engine, tests, statistics, identity documentation, or platform-boundary markers disappear.
+
+A committed test or validator is not evidence that it passed. Exact-head GitHub Actions or equivalent executable evidence remains required before source acceptance is promoted.
 
 ## Current boundary
 
