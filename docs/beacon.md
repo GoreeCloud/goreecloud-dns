@@ -38,6 +38,18 @@ Beacon Resolver implements RFC 9824 Compact Denial of Existence using authentica
 
 Beacon Resolver implements bounded CNAME/DNAME alias chains with validation of each ordinary CNAME RRset, signed DNAME handling, and RFC 6672 synthesized CNAME checks. A synthesized CNAME is accepted only when the securely validated DNAME derives the same target and the synthesis obeys the expected signature and TTL boundary. Alias cycles, conflicting alias data, malformed substitutions, or an indeterminate/bogus DNSSEC hop fail closed. Unresolved alias targets are resolved through a fresh applicable resolver/trust path instead of inheriting unrelated zone trust across the alias boundary.
 
+### Out-of-bailiwick authoritative nameserver discovery
+
+Out-of-bailiwick authoritative nameserver discovery is request-scoped and bounded. Beacon trusts direct A/AAAA glue only when it is in-bailiwick for the delegated child; external advertised nameserver hostnames are resolved through the same applicable resolver mode and successful discovered addresses are cached only inside the current top-level resolution. Active discovery cycles, missing mandatory in-domain glue, malformed address data, and discovery-budget exhaustion fail closed.
+
+### Beacon Resolver Routing
+
+Beacon Resolver Routing uses longest-suffix namespace selection for recursive, forward, and stub behavior, with explicit client/network split-horizon selection where configured. Runtime validation prevents configured or dynamically discovered resolver targets from pointing back to active GoreeCloud DNS listeners. Forwarding sets RD as required by the forward path, while stub authority processing preserves its separate terminal-authoritative boundary; routed aliases reselect the applicable route rather than inheriting an unrelated route indefinitely.
+
+### Beacon Routed Private DNSSEC Trust Anchors
+
+Beacon Routed Private DNSSEC Trust Anchors allow an explicitly configured private signed namespace to establish local DNSSEC trust without relying on an upstream AD bit. `PrivateTrustAnchorResolver` authenticates the configured apex DNSKEY trust anchor and terminal data locally. `ValidatingDelegatingStubResolver` carries authenticated parent trust through signed private child delegations and can perform an authenticated insecure transition only when signed NSEC/NSEC3 evidence proves DS absence; unproven children fail closed before trust is inferred. Raw forwarded and ordinary stub responses clear `AD` and remain `DNSSECIndeterminate`. `ValidatingForwardingResolver` is the separate root-anchored locally validating forwarding path for recursive forwarders.
+
 ## Beacon Policy Profiles
 
 `internal/gcdns/policy_profiles.go` provides the first executable Beacon Shield profile engine through the native `Policy` boundary. Exact client identity assignments take precedence over network assignments; network assignments use longest-prefix matching; all other requests use the explicit default profile. Rule evaluation is deterministic and independent of input-array ordering.
