@@ -4,6 +4,7 @@ permissions: {}
 
 env:
   GO_VERSION: '1.26.6'
+  GOREECLOUD_BEACON_SOURCE_REVISION: ${{ github.event.pull_request.head.sha || github.sha }}
 
 on:
   workflow_dispatch:
@@ -18,9 +19,13 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v6
+      - name: Check out exact source
+        uses: actions/checkout@v6
         with:
+          ref: ${{ env.GOREECLOUD_BEACON_SOURCE_REVISION }}
           persist-credentials: false
+      - name: Verify exact source
+        run: test "$(git rev-parse HEAD)" = "$GOREECLOUD_BEACON_SOURCE_REVISION"
       - name: Set up Go
         uses: actions/setup-go@v7
         with:
