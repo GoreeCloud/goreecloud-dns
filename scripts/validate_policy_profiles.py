@@ -40,6 +40,27 @@ required = {
         "TestPolicyProfileEngineRejectsNormalizedCatalogCollision",
         "TestPolicyProfileEngineSyntheticResultIsDNSSECIndeterminate",
     ),
+    "internal/gcdns/policy_family.go": (
+        "type PolicySafeSearchEnforcement struct",
+        "type PolicyFamilyConfig struct",
+        "func BuildFamilyPolicyRules",
+        "PolicyMatchCategory",
+        "PolicyMatchService",
+        "PolicyActionRewrite",
+        "PolicyActionAllow",
+        "target must differ from protected domain",
+        "overlapping protected domains with different targets",
+        "clonePolicySchedule",
+    ),
+    "internal/gcdns/policy_family_test.go": (
+        "TestBuildFamilyPolicyRulesBlocksCategoryAndService",
+        "TestBuildFamilyPolicyRulesSafeSearchRewriteAndTargetExemption",
+        "TestBuildFamilyPolicyRulesScheduleCarriesToGeneratedRules",
+        "TestBuildFamilyPolicyRulesDeterministicOrdering",
+        "TestBuildFamilyPolicyRulesRejectsOverlappingSafeSearchTargets",
+        "TestBuildFamilyPolicyRulesRejectsTargetEqualProtectedDomain",
+        "TestBuildFamilyPolicyRulesRejectsTargetInsideDifferentMapping",
+    ),
     "internal/gcdns/policy_stats.go": (
         "type PolicyDecisionStat struct",
         "type PolicyDecisionStats struct",
@@ -61,6 +82,8 @@ required = {
         "Rule precedence",
         "Schedules",
         "Categories and services",
+        "Family controls and SafeSearch",
+        "same-priority exact target exemption",
         "Privacy-safe decision trace",
         "Privacy-safe aggregate policy statistics",
         "GoreeCloud platform boundaries",
@@ -100,4 +123,4 @@ for rel, markers in required.items():
         if marker not in text:
             raise SystemExit(f"Beacon policy-profile validation failed: {rel} missing {marker!r}")
 
-print("GoreeCloud Beacon policy profiles, assignments, schedules, categories/services, rewrites, normalization hardening, privacy-safe aggregate decision statistics, Beacon identity, durable source-validation, and GoreeCloud platform-boundary contract: PASS")
+print("GoreeCloud Beacon policy profiles, assignments, schedules, categories/services, family controls, SafeSearch enforcement, rewrites, normalization hardening, privacy-safe aggregate decision statistics, Beacon identity, durable source-validation, and GoreeCloud platform-boundary contract: PASS")
