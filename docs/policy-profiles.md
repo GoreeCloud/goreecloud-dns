@@ -38,7 +38,7 @@ Beacon Shield owns DNS filtering and DNS-policy enforcement inside GoreeCloud DN
 
 `internal/gcdns/policy_profiles_test.go`, `internal/gcdns/policy_profiles_hardening_test.go`, and `internal/gcdns/policy_stats_test.go` define deterministic behavioral and privacy regression tests. `scripts/validate_policy_profiles.py` is wired into the `beacon-native-core` lint job before `go test ./internal/gcdns` and fails closed if the required engine, tests, statistics, identity documentation, or platform-boundary markers disappear.
 
-A committed test or validator is not evidence that it passed. Exact-head GitHub Actions or equivalent executable evidence remains required before source acceptance is promoted.
+A committed test or validator is not evidence that it passed. Exact-head GitHub Actions or equivalent executable evidence remains required before source acceptance is promoted. The policy foundation remains development-only until exact-head lint/build/runtime evidence is successful and the wider GoreeCloud DNS migration gates are satisfied.
 
 ## Current boundary
 
