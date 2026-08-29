@@ -32,7 +32,7 @@ required = {
     "internal/gcdns/pipeline_test.go": ("TestPipelineCacheHitSkipsResolver", "TestPipelineStoresCacheableResolverResult", "TestPipelineRejectsBogusDNSSECBeforeCache", "TestPipelinePolicyShortCircuits"),
     "internal/gcdns/config_test.go": ("TestSecurityConfigValid", "TestSecurityConfigRequiresDNSSEC", "TestSecurityConfigRejectsUnrestrictedRecursionByDefault", "TestSecurityConfigRejectsUnrestrictedAdministration"),
     "docs/beacon.md": ("GoreeCloud Beacon", "internal/gcdns", "Beacon NSEC3 Authenticated Denial", "Existing AdGuard Home and Unbound runtime behavior remains unchanged"),
-    "docs/competitive-superset-requirement.md": ("Technitium DNS Server, Pi-hole, and AdGuard Home", "Security", "Privacy", "Control", "Reliability and performance", "Current implementation boundary"),
+    "docs/competitive-superset-requirement.md": ("Technitium DNS Server, Pi-hole, and AdGuard Home", "Security", "Privacy", "Control", "Reliability, continuity, and performance", "Current implementation boundary"),
 }
 
 for rel, markers in required.items():
