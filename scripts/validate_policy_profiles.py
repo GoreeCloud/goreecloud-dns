@@ -63,6 +63,13 @@ required = {
         "Categories and services",
         "Privacy-safe decision trace",
         "Privacy-safe aggregate policy statistics",
+        "GoreeCloud platform boundaries",
+        "Privacy Shield",
+        "Wardveil Security",
+        "Everkeep",
+        "Glaze UI",
+        "GoreeCloud Identity",
+        "GoreeCloud Mesh",
         "Production boundary",
         "NextDNS",
         "Control D",
@@ -91,4 +98,4 @@ for rel, markers in required.items():
         if marker not in text:
             raise SystemExit(f"Beacon policy-profile validation failed: {rel} missing {marker!r}")
 
-print("GoreeCloud Beacon policy profiles, assignments, schedules, categories/services, rewrites, normalization hardening, privacy-safe aggregate decision statistics, and Beacon identity contract: PASS")
+print("GoreeCloud Beacon policy profiles, assignments, schedules, categories/services, rewrites, normalization hardening, privacy-safe aggregate decision statistics, Beacon identity, and GoreeCloud platform-boundary contract: PASS")
