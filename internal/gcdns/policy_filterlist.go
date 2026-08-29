@@ -181,6 +181,10 @@ func parsePolicyFilterListLine(raw string) (PolicyAction, string, error) {
 }
 
 func normalizePolicyFilterDomain(action PolicyAction, value string) (PolicyAction, string, error) {
+	value = strings.TrimSpace(value)
+	if strings.ContainsAny(value, "/$*|^?#[]{}()\\=") {
+		return "", "", fmt.Errorf("unsupported filter-list domain syntax %q", value)
+	}
 	domain, err := normalizePolicyDomain(value)
 	if err != nil {
 		return "", "", err
