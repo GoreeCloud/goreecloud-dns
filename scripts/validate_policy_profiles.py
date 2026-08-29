@@ -61,6 +61,33 @@ required = {
         "TestBuildFamilyPolicyRulesRejectsTargetEqualProtectedDomain",
         "TestBuildFamilyPolicyRulesRejectsTargetInsideDifferentMapping",
     ),
+    "internal/gcdns/policy_filterlist.go": (
+        "type PolicyFilterListConfig struct",
+        "func BuildPolicyFilterListRules",
+        "ExpectedSHA256",
+        "maxPolicyFilterListBytes = 8 << 20",
+        "maxPolicyFilterListLines = 500000",
+        "maxPolicyFilterLineBytes = 4096",
+        "verifyPolicyFilterListDigest",
+        "SHA-256 mismatch",
+        "strings.HasPrefix(raw, \"||\")",
+        "strings.HasPrefix(raw, \"@@\")",
+        "isSupportedPolicySinkholeAddress",
+        "conflicting allow/block entries",
+        "priority is too high to reserve allow-exception precedence",
+    ),
+    "internal/gcdns/policy_filterlist_test.go": (
+        "TestBuildPolicyFilterListRulesCompilesSupportedForms",
+        "TestBuildPolicyFilterListRulesSameListAllowExceptionWins",
+        "TestBuildPolicyFilterListRulesAllowCanOverrideWithHigherPriority",
+        "TestBuildPolicyFilterListRulesRejectsDigestMismatch",
+        "TestBuildPolicyFilterListRulesRejectsMissingDigest",
+        "TestBuildPolicyFilterListRulesRejectsConflictingNormalizedEntries",
+        "TestBuildPolicyFilterListRulesRejectsUnsupportedHostsAddress",
+        "TestBuildPolicyFilterListRulesRejectsUnsupportedSyntax",
+        "TestBuildPolicyFilterListRulesDeduplicatesEquivalentEntries",
+        "TestBuildPolicyFilterListRulesRejectsMaxPriorityWithAllow",
+    ),
     "internal/gcdns/policy_stats.go": (
         "type PolicyDecisionStat struct",
         "type PolicyDecisionStats struct",
@@ -84,6 +111,12 @@ required = {
         "Categories and services",
         "Family controls and SafeSearch",
         "same-priority exact target exemption",
+        "Integrity-bound filtering lists",
+        "exact SHA-256",
+        "8 MiB",
+        "500,000 lines",
+        "allow exceptions",
+        "Remote acquisition",
         "Privacy-safe decision trace",
         "Privacy-safe aggregate policy statistics",
         "GoreeCloud platform boundaries",
@@ -123,4 +156,4 @@ for rel, markers in required.items():
         if marker not in text:
             raise SystemExit(f"Beacon policy-profile validation failed: {rel} missing {marker!r}")
 
-print("GoreeCloud Beacon policy profiles, assignments, schedules, categories/services, family controls, SafeSearch enforcement, rewrites, normalization hardening, privacy-safe aggregate decision statistics, Beacon identity, durable source-validation, and GoreeCloud platform-boundary contract: PASS")
+print("GoreeCloud Beacon policy profiles, assignments, schedules, categories/services, family controls, SafeSearch enforcement, integrity-bound filtering-list ingestion, rewrites, normalization hardening, privacy-safe aggregate decision statistics, Beacon identity, durable source-validation, and GoreeCloud platform-boundary contract: PASS")
