@@ -329,8 +329,8 @@ func compilePolicyRule(rule PolicyRule, categories, services map[string][]string
 		}
 	}
 	if rule.Action == PolicyActionRewrite {
-		if err := validatePolicyRewrite(rule.Rewrite); err != nil {
-			return compiledPolicyRule{}, fmt.Errorf("rule %q: %w", rule.ID, err)
+		if rewriteErr := validatePolicyRewrite(rule.Rewrite); rewriteErr != nil {
+			return compiledPolicyRule{}, fmt.Errorf("rule %q: %w", rule.ID, rewriteErr)
 		}
 	}
 
