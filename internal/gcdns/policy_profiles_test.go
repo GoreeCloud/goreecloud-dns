@@ -74,7 +74,7 @@ func TestPolicyProfileEnginePriorityAllowsCustomExceptionOverServiceBlock(t *tes
 	recorder := &policyDecisionRecorderStub{}
 	engine, err := NewPolicyProfileEngine(PolicyProfileEngineConfig{
 		DefaultProfileID: "default",
-		Catalog: PolicyCatalog{Services: map[string][]string{"video": {"video.example"}}},
+		Catalog:          PolicyCatalog{Services: map[string][]string{"video": {"video.example"}}},
 		Profiles: []PolicyProfile{{
 			ID: "default",
 			Rules: []PolicyRule{
@@ -212,11 +212,11 @@ func TestPolicyProfileEngineCNAMERewrite(t *testing.T) {
 
 func TestPolicyDecisionIsPrivacyMinimized(t *testing.T) {
 	decision := PolicyDecision{
-		ProfileID: "family",
-		RuleID: "block-video",
-		Action: PolicyActionBlock,
+		ProfileID:       "family",
+		RuleID:          "block-video",
+		Action:          PolicyActionBlock,
 		AssignmentScope: "client",
-		MatchKind: PolicyMatchService,
+		MatchKind:       PolicyMatchService,
 	}
 	require.Equal(t, "family", decision.ProfileID)
 	require.NotContains(t, decision.RuleID, "example.org")
@@ -225,7 +225,7 @@ func TestPolicyDecisionIsPrivacyMinimized(t *testing.T) {
 func TestPolicyProfileEngineRejectsConflictingAssignments(t *testing.T) {
 	_, err := NewPolicyProfileEngine(PolicyProfileEngineConfig{
 		DefaultProfileID: "default",
-		Profiles: []PolicyProfile{{ID: "default"}, {ID: "other"}},
+		Profiles:         []PolicyProfile{{ID: "default"}, {ID: "other"}},
 		Assignments: []PolicyAssignment{
 			{ProfileID: "default", ClientID: "phone"},
 			{ProfileID: "other", ClientID: "phone"},
