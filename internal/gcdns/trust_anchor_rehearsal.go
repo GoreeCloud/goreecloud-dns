@@ -79,8 +79,8 @@ func RunIsolatedTrustAnchorRecoveryRehearsal(
 	if err != nil {
 		return receipt, err
 	}
-	if _, err := recoveryStore.Save(recovery); err != nil {
-		return receipt, err
+	if _, saveErr := recoveryStore.Save(recovery); saveErr != nil {
+		return receipt, saveErr
 	}
 	persistedRecovery, err := recoveryStore.Load(candidateFingerprint)
 	if err != nil {
@@ -124,8 +124,8 @@ func RunIsolatedTrustAnchorRecoveryRehearsal(
 	if err != nil {
 		return receipt, err
 	}
-	if err := store.Save(restored); err != nil {
-		return receipt, fmt.Errorf("goreecloud dns: persist explicitly recovered rehearsal state: %w", err)
+	if saveErr := store.Save(restored); saveErr != nil {
+		return receipt, fmt.Errorf("goreecloud dns: persist explicitly recovered rehearsal state: %w", saveErr)
 	}
 	finalFingerprint, err := trustAnchorFingerprint(restored.Active)
 	if err != nil {
