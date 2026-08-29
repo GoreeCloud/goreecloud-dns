@@ -40,6 +40,21 @@ required = {
         "TestPolicyProfileEngineRejectsNormalizedCatalogCollision",
         "TestPolicyProfileEngineSyntheticResultIsDNSSECIndeterminate",
     ),
+    "internal/gcdns/policy_stats.go": (
+        "type PolicyDecisionStat struct",
+        "type PolicyDecisionStats struct",
+        "func NewPolicyDecisionStats",
+        "func (s *PolicyDecisionStats) RecordPolicyDecision",
+        "func (s *PolicyDecisionStats) Snapshot",
+        "func (s *PolicyDecisionStats) Reset",
+        "var _ PolicyDecisionRecorder = (*PolicyDecisionStats)(nil)",
+    ),
+    "internal/gcdns/policy_stats_test.go": (
+        "TestPolicyDecisionStatsAggregatesDeterministically",
+        "TestPolicyDecisionStatsConcurrentRecording",
+        "TestPolicyDecisionStatsReset",
+        "TestPolicyDecisionStatHasNoRawActivityFields",
+    ),
     "docs/policy-profiles.md": (
         "Beacon Policy Profiles",
         "Assignment precedence",
@@ -47,6 +62,7 @@ required = {
         "Schedules",
         "Categories and services",
         "Privacy-safe decision trace",
+        "Privacy-safe aggregate policy statistics",
         "Production boundary",
         "NextDNS",
         "Control D",
@@ -69,4 +85,4 @@ for rel, markers in required.items():
         if marker not in text:
             raise SystemExit(f"Beacon policy-profile validation failed: {rel} missing {marker!r}")
 
-print("GoreeCloud Beacon policy profiles, assignments, schedules, categories/services, rewrites, normalization hardening, and privacy-safe decision contract: PASS")
+print("GoreeCloud Beacon policy profiles, assignments, schedules, categories/services, rewrites, normalization hardening, and privacy-safe aggregate decision statistics contract: PASS")
