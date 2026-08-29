@@ -25,7 +25,7 @@ type TrustAnchorRecoveryRehearsalReceipt struct {
 	CandidateActivated                    bool   `json:"candidate_activated"`
 	ActivationAudited                     bool   `json:"activation_audited"`
 	ActivationAuditReconciliationRequired bool   `json:"activation_audit_reconciliation_required"`
-	PreviousAnchorsRestored                bool   `json:"previous_anchors_restored"`
+	PreviousAnchorsRestored               bool   `json:"previous_anchors_restored"`
 	RecoveryAudited                       bool   `json:"recovery_audited"`
 	RecoveryAuditReconciliationRequired   bool   `json:"recovery_audit_reconciliation_required"`
 	LifecycleVerified                     bool   `json:"lifecycle_verified"`
