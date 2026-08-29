@@ -36,7 +36,7 @@ Beacon Resolver implements RFC 9824 Compact Denial of Existence using authentica
 
 ### CNAME/DNAME alias chains
 
-Beacon Resolver implements bounded CNAME/DNAME alias chains with validation of each ordinary CNAME RRset, signed DNAME handling, and RFC 6672 synthesized CNAME checks. A synthesized CNAME is accepted only when the securely validated DNAME derives the same target and the synthesis obeys the expected signature and TTL boundary. Detected alias cycles, conflicting alias data, malformed substitutions, or an indeterminate/bogus DNSSEC hop fail closed. Unresolved alias targets are resolved through a fresh applicable resolver/trust path instead of inheriting unrelated zone trust across the alias boundary.
+Beacon Resolver implements bounded CNAME/DNAME alias chains with validation of each ordinary CNAME RRset, signed DNAME handling, and RFC 6672 synthesized CNAME checks. A synthesized CNAME is accepted only when the securely validated DNAME derives the same target and the synthesis obeys the expected signature and TTL boundary. Alias cycles, conflicting alias data, malformed substitutions, or an indeterminate/bogus DNSSEC hop fail closed. Unresolved alias targets are resolved through a fresh applicable resolver/trust path instead of inheriting unrelated zone trust across the alias boundary.
 
 ### Out-of-bailiwick authoritative nameserver discovery
 
