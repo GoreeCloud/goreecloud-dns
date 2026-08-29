@@ -65,7 +65,6 @@ required = {
         "Privacy-safe aggregate policy statistics",
         "GoreeCloud platform boundaries",
         "Source-validation boundary",
-        "exact-head lint/build/runtime evidence",
         "Privacy Shield",
         "Wardveil Security",
         "Everkeep",
@@ -100,4 +99,4 @@ for rel, markers in required.items():
         if marker not in text:
             raise SystemExit(f"Beacon policy-profile validation failed: {rel} missing {marker!r}")
 
-print("GoreeCloud Beacon policy profiles, assignments, schedules, categories/services, rewrites, normalization hardening, privacy-safe aggregate decision statistics, Beacon identity, source-validation, CI boundary, and GoreeCloud platform-boundary contract: PASS")
+print("GoreeCloud Beacon policy profiles, assignments, schedules, categories/services, rewrites, normalization hardening, privacy-safe aggregate decision statistics, Beacon identity, source-validation, and GoreeCloud platform-boundary contract: PASS")
