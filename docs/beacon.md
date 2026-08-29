@@ -26,32 +26,17 @@ Beacon Shield is a DNS capability family and does not replace Wardveil Security 
 
 The native Beacon request path is organized around explicit first-party contracts for policy, authoritative resolution, caching, recursive/forwarded resolution, DNSSEC state, observation, downstream presentation, and error handling. Security-sensitive behavior is designed to fail closed rather than infer trust from incomplete evidence.
 
-The current isolated source path includes:
-
-- normalized request/result contracts and explicit DNSSEC trust states;
-- deterministic policy → authority → cache → resolver pipeline ordering;
-- sharded concurrency-safe cache behavior;
-- bounded resolver target scheduling and classic UDP/TCP transport;
-- iterative root/delegation recursion;
-- DNSSEC trust-chain validation, authenticated NSEC/NSEC3 denial, scoped NSEC3 Opt-Out, wildcard proofs, RFC 9824 compact denial, and signed CNAME/DNAME validation;
-- out-of-bailiwick authoritative nameserver discovery;
-- RFC 9156 QNAME minimisation;
-- forward, conditional, stub, and split-horizon routing;
-- runtime self-target protection;
-- private routed DNSSEC trust anchors and signed child-delegation trust carry;
-- protected trust-anchor lifecycle, activation/recovery evidence, persistence, and audit reconciliation;
-- migration evidence contracts that cannot authorize production cutover by themselves; and
-- a first-party Beacon Policy Profiles implementation for reusable client/network profiles, deterministic assignments and rule precedence, category/service matching, schedules, allow/block/rewrite actions, privacy-minimized decision tracing, and privacy-safe aggregate policy counters.
+The current isolated source path includes normalized request/result contracts and explicit DNSSEC trust states; deterministic policy → authority → cache → resolver pipeline ordering; sharded concurrency-safe cache behavior; bounded resolver target scheduling and classic UDP/TCP transport; iterative root/delegation recursion; DNSSEC trust-chain validation; authenticated NSEC/NSEC3 denial; scoped NSEC3 Opt-Out; wildcard proofs; RFC 9824 compact denial; signed CNAME/DNAME validation; out-of-bailiwick authoritative nameserver discovery; RFC 9156 QNAME minimisation; forward/conditional/stub/split-horizon routing; runtime self-target protection; private routed DNSSEC trust anchors and child-delegation trust carry; protected trust-anchor lifecycle and migration evidence; and a first-party Beacon Policy Profiles implementation.
 
 ## Beacon Policy Profiles
 
-`internal/gcdns/policy_profiles.go` now provides the first executable Beacon Shield profile engine through the native `Policy` boundary. Exact client identity assignments take precedence over network assignments; network assignments use longest-prefix matching; all other requests use the explicit default profile. Rule evaluation is deterministic and independent of input-array ordering.
+`internal/gcdns/policy_profiles.go` provides the first executable Beacon Shield profile engine through the native `Policy` boundary. Exact client identity assignments take precedence over network assignments; network assignments use longest-prefix matching; all other requests use the explicit default profile. Rule evaluation is deterministic and independent of input-array ordering.
 
 The source model supports exact-domain, suffix, locally defined category, and locally defined service selectors; explicit priorities; timezone-aware schedules including overnight windows; allow, NXDOMAIN/REFUSED block, A/AAAA/ANY address rewrite, and CNAME rewrite outcomes; configuration collision checks; and DNSSEC-indeterminate classification for synthetic policy answers.
 
 `internal/gcdns/policy_stats.go` supplies a concurrency-safe Beacon Insights aggregate recorder keyed only by profile, rule, action, assignment scope, and match kind. It intentionally does not store queried names, client addresses, client identifiers, or matched domain/catalog values. Raw query retention is a separate Privacy Shield-governed observability capability and is not enabled merely to produce policy statistics.
 
-`docs/policy-profiles.md` records the implementation and privacy boundary, and `scripts/validate_policy_profiles.py` is wired into the existing `beacon-native-core` lint job before `go test ./internal/gcdns`.
+`docs/policy-profiles.md` records implementation, platform, privacy, validation, and production boundaries. `scripts/validate_policy_profiles.py` is wired into the existing `beacon-native-core` lint job before `go test ./internal/gcdns` and protects the policy engine, tests, aggregate statistics, Beacon identity documentation, competitive requirement, and GoreeCloud platform boundary markers.
 
 NextDNS and Control D are reference/inspiration products for applicable policy-control capability. Beacon does not depend on their hosted control planes or proprietary implementations, and the existence of this initial engine is not a claim of complete feature parity.
 
