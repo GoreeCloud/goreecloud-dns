@@ -75,6 +75,7 @@ required = {
         "isSupportedPolicySinkholeAddress",
         "conflicting allow/block entries",
         "priority is too high to reserve allow-exception precedence",
+        "unsupported filter-list domain syntax",
     ),
     "internal/gcdns/policy_filterlist_test.go": (
         "TestBuildPolicyFilterListRulesCompilesSupportedForms",
@@ -85,6 +86,7 @@ required = {
         "TestBuildPolicyFilterListRulesRejectsConflictingNormalizedEntries",
         "TestBuildPolicyFilterListRulesRejectsUnsupportedHostsAddress",
         "TestBuildPolicyFilterListRulesRejectsUnsupportedSyntax",
+        "TestBuildPolicyFilterListRulesRejectsBrowserOnlyOptions",
         "TestBuildPolicyFilterListRulesDeduplicatesEquivalentEntries",
         "TestBuildPolicyFilterListRulesRejectsMaxPriorityWithAllow",
     ),
