@@ -28,6 +28,8 @@ The native Beacon request path is organized around explicit first-party contract
 
 The current isolated source path includes normalized request/result contracts and explicit DNSSEC trust states; deterministic policy → authority → cache → resolver pipeline ordering; sharded concurrency-safe cache behavior; bounded resolver target scheduling and classic UDP/TCP transport; iterative root/delegation recursion; DNSSEC trust-chain validation; authenticated NSEC/NSEC3 denial; scoped NSEC3 Opt-Out; wildcard proofs; RFC 9824 compact denial; signed CNAME/DNAME validation; out-of-bailiwick authoritative nameserver discovery; RFC 9156 QNAME minimisation; forward/conditional/stub/split-horizon routing; runtime self-target protection; private routed DNSSEC trust anchors and child-delegation trust carry; protected trust-anchor lifecycle and migration evidence; and a first-party Beacon Policy Profiles implementation.
 
+`ValidatingForwardingResolver` is Beacon Resolver's locally validating forwarding path. Configured recursive forwarders supply DNS data with RD/DO/CD semantics, but Beacon ignores upstream AD as trust evidence and performs root-anchored DNSSEC authentication locally before returning secure state. Raw forwarding remains explicitly DNSSEC-indeterminate unless this validation wrapper is selected.
+
 ## Beacon Policy Profiles
 
 `internal/gcdns/policy_profiles.go` provides the first executable Beacon Shield profile engine through the native `Policy` boundary. Exact client identity assignments take precedence over network assignments; network assignments use longest-prefix matching; all other requests use the explicit default profile. Rule evaluation is deterministic and independent of input-array ordering.
