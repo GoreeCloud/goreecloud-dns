@@ -15,6 +15,8 @@ required = {
         "PolicyMatchCategory",
         "PolicyMatchService",
         "left.prefix.Bits() > right.prefix.Bits()",
+        "duplicate normalized catalog entry",
+        "DNSSECStatus: DNSSECIndeterminate",
         "AssignmentScope",
         "RecordPolicyDecision",
         "buildPolicyRewriteResponse",
@@ -32,6 +34,11 @@ required = {
         "TestPolicyProfileEngineCNAMERewrite",
         "TestPolicyDecisionIsPrivacyMinimized",
         "TestPolicyProfileEngineRejectsConflictingAssignments",
+    ),
+    "internal/gcdns/policy_profiles_hardening_test.go": (
+        "TestPolicyProfileEngineTrimsProfileReferences",
+        "TestPolicyProfileEngineRejectsNormalizedCatalogCollision",
+        "TestPolicyProfileEngineSyntheticResultIsDNSSECIndeterminate",
     ),
     "docs/policy-profiles.md": (
         "Beacon Policy Profiles",
@@ -62,4 +69,4 @@ for rel, markers in required.items():
         if marker not in text:
             raise SystemExit(f"Beacon policy-profile validation failed: {rel} missing {marker!r}")
 
-print("GoreeCloud Beacon policy profiles, assignments, schedules, categories/services, rewrites, and privacy-safe decision contract: PASS")
+print("GoreeCloud Beacon policy profiles, assignments, schedules, categories/services, rewrites, normalization hardening, and privacy-safe decision contract: PASS")
