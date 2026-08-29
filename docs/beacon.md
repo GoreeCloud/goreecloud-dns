@@ -34,6 +34,10 @@ The current isolated source path includes normalized request/result contracts an
 
 Beacon Resolver implements RFC 9824 Compact Denial of Existence using authenticated `NXNAME` proof material. Compact Answers OK is treated as a hop-by-hop capability: validating resolver components may request and consume it upstream, while downstream presentation is reconstructed from the authenticated semantic result rather than blindly copying a client's EDNS option through the resolver path. Cached compact-denial metadata preserves the authenticated conclusion without mutating shared cache state for a particular client's DO/CO presentation.
 
+### CNAME/DNAME alias chains
+
+Beacon Resolver implements bounded CNAME/DNAME alias chains with validation of each ordinary CNAME RRset, signed DNAME handling, and RFC 6672 synthesized CNAME checks. A synthesized CNAME is accepted only when the securely validated DNAME derives the same target and the synthesis obeys the expected signature and TTL boundary. Alias cycles, conflicting alias data, malformed substitutions, or an indeterminate/bogus DNSSEC hop fail closed. Unresolved alias targets are resolved through a fresh applicable resolver/trust path instead of inheriting unrelated zone trust across the alias boundary.
+
 ## Beacon Policy Profiles
 
 `internal/gcdns/policy_profiles.go` provides the first executable Beacon Shield profile engine through the native `Policy` boundary. Exact client identity assignments take precedence over network assignments; network assignments use longest-prefix matching; all other requests use the explicit default profile. Rule evaluation is deterministic and independent of input-array ordering.
