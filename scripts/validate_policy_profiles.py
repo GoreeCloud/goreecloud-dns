@@ -14,7 +14,7 @@ required = {
         "PolicyMatchSuffix",
         "PolicyMatchCategory",
         "PolicyMatchService",
-        "longest",
+        "left.prefix.Bits() > right.prefix.Bits()",
         "AssignmentScope",
         "RecordPolicyDecision",
         "buildPolicyRewriteResponse",
@@ -47,7 +47,7 @@ required = {
     "docs/competitive-superset-requirement.md": (
         "NextDNS",
         "Control D",
-        "reusable policy profiles",
+        "reusable profiles",
         "service/application controls",
         "privacy-aware analytics",
     ),
