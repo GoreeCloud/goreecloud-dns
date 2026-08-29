@@ -27,7 +27,7 @@ func TestPolicyProfileEngineRejectsNormalizedCatalogCollision(t *testing.T) {
 		DefaultProfileID: "default",
 		Profiles:         []PolicyProfile{{ID: "default"}},
 		Catalog: PolicyCatalog{Categories: map[string][]string{
-			"Social": {"social.example"},
+			"Social":   {"social.example"},
 			" social ": {"other.example"},
 		}},
 	})
