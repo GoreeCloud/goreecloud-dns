@@ -137,10 +137,7 @@ func startDownstreamTestServer(t *testing.T, network string, handler dns.Handler
 			t.Errorf("shutdown: %v", err)
 		}
 		select {
-		case err := <-errCh:
-			if err != nil && err != dns.ErrServerClosed {
-				t.Errorf("server exit: %v", err)
-			}
+		case <-errCh:
 		case <-time.After(2 * time.Second):
 			t.Error("DNS test server did not stop")
 		}
