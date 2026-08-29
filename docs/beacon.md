@@ -30,6 +30,10 @@ The current isolated source path includes normalized request/result contracts an
 
 `ValidatingForwardingResolver` is Beacon Resolver's locally validating forwarding path. Configured recursive forwarders supply DNS data with RD/DO/CD semantics, but Beacon ignores upstream AD as trust evidence and performs root-anchored DNSSEC authentication locally before returning secure state. Raw forwarding remains explicitly DNSSEC-indeterminate unless this validation wrapper is selected.
 
+### RFC 9824 Compact Denial of Existence
+
+Beacon Resolver implements RFC 9824 Compact Denial of Existence using authenticated `NXNAME` proof material. Compact Answers OK is treated as a hop-by-hop capability: validating resolver components may request and consume it upstream, while downstream presentation is reconstructed from the authenticated semantic result rather than blindly copying a client's EDNS option through the resolver path. Cached compact-denial metadata preserves the authenticated conclusion without mutating shared cache state for a particular client's DO/CO presentation.
+
 ## Beacon Policy Profiles
 
 `internal/gcdns/policy_profiles.go` provides the first executable Beacon Shield profile engine through the native `Policy` boundary. Exact client identity assignments take precedence over network assignments; network assignments use longest-prefix matching; all other requests use the explicit default profile. Rule evaluation is deterministic and independent of input-array ordering.
