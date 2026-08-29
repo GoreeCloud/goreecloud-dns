@@ -26,14 +26,16 @@ func TestBuildPolicyFilterListRulesCompilesSupportedForms(t *testing.T) {
 	require.Len(t, rules, 4)
 	require.Equal(t, "reviewed:allow:000001", rules[0].ID)
 	require.Equal(t, PolicyActionAllow, rules[0].Action)
+	require.Equal(t, 41, rules[0].Priority)
 	require.Equal(t, "allowed.example.", rules[0].Match.Value)
 	require.Equal(t, "reviewed:block:000001", rules[1].ID)
+	require.Equal(t, 40, rules[1].Priority)
 	for _, rule := range rules {
 		require.Equal(t, PolicyMatchSuffix, rule.Match.Kind)
 	}
 }
 
-func TestBuildPolicyFilterListRulesRunsThroughPolicyEngine(t *testing.T) {
+func TestBuildPolicyFilterListRulesSameListAllowExceptionWins(t *testing.T) {
 	content := []byte("ads.example\n@@safe.ads.example\n")
 	rules, err := BuildPolicyFilterListRules(PolicyFilterListConfig{
 		ID:             "ads",
@@ -56,8 +58,8 @@ func TestBuildPolicyFilterListRulesRunsThroughPolicyEngine(t *testing.T) {
 
 	res, handled, err = engine.Evaluate(context.Background(), policyTestRequest("safe.ads.example", dns.TypeA, "client", ""))
 	require.NoError(t, err)
-	require.True(t, handled)
-	require.Equal(t, dns.RcodeRefused, res.Message.Rcode)
+	require.False(t, handled)
+	require.Nil(t, res)
 }
 
 func TestBuildPolicyFilterListRulesAllowCanOverrideWithHigherPriority(t *testing.T) {
@@ -144,4 +146,15 @@ func TestBuildPolicyFilterListRulesDeduplicatesEquivalentEntries(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.Len(t, rules, 1)
+}
+
+func TestBuildPolicyFilterListRulesRejectsMaxPriorityWithAllow(t *testing.T) {
+	content := []byte("@@example.com\n")
+	_, err := BuildPolicyFilterListRules(PolicyFilterListConfig{
+		ID:             "reviewed",
+		Priority:       int(^uint(0) >> 1),
+		ExpectedSHA256: policyFilterListDigest(content),
+		Content:        content,
+	})
+	require.ErrorContains(t, err, "priority is too high")
 }
