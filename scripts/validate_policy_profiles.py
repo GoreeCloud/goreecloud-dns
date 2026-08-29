@@ -74,6 +74,12 @@ required = {
         "service/application controls",
         "privacy-aware analytics",
     ),
+    "docs/beacon.md": (
+        "Beacon Shield",
+        "Beacon Policy Profiles",
+        "privacy-safe aggregate policy counters",
+        "NextDNS and Control D are reference/inspiration products",
+    ),
 }
 
 for rel, markers in required.items():
@@ -85,4 +91,4 @@ for rel, markers in required.items():
         if marker not in text:
             raise SystemExit(f"Beacon policy-profile validation failed: {rel} missing {marker!r}")
 
-print("GoreeCloud Beacon policy profiles, assignments, schedules, categories/services, rewrites, normalization hardening, and privacy-safe aggregate decision statistics contract: PASS")
+print("GoreeCloud Beacon policy profiles, assignments, schedules, categories/services, rewrites, normalization hardening, privacy-safe aggregate decision statistics, and Beacon identity contract: PASS")
