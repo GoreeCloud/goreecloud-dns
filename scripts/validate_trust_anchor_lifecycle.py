@@ -56,10 +56,12 @@ def main() -> None:
         DOCS,
         [
             "# Beacon Trust-Anchor Lifecycle",
-            "at most one pending proposed replacement set",
-            "Explicit approval",
+            "at most one pending candidate",
+            "explicit manual-approval-ready review",
             "RFC 5011",
-            "No production DNS service reads this state yet.",
+            "RunIsolatedTrustAnchorRecoveryRehearsal",
+            "production_cutover_authorized=false",
+            "No production DNS service reads the rehearsal stores",
         ],
     )
     require(WORKFLOW, ["scripts/validate_trust_anchor_lifecycle.py"])
