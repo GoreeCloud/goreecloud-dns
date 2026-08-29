@@ -62,9 +62,14 @@ func BuildPolicyFilterListRules(cfg PolicyFilterListConfig) ([]PolicyRule, error
 	blockIndex := 0
 	rules := make([]PolicyRule, 0, len(entries))
 	for _, entry := range entries {
+		priority := cfg.Priority
 		var ruleID string
 		switch entry.action {
 		case PolicyActionAllow:
+			if cfg.Priority == int(^uint(0)>>1) {
+				return nil, fmt.Errorf("goreecloud dns: policy filter-list %q priority is too high to reserve allow-exception precedence", id)
+			}
+			priority++
 			allowIndex++
 			ruleID = fmt.Sprintf("%s:allow:%06d", id, allowIndex)
 		case PolicyActionBlock:
@@ -75,7 +80,7 @@ func BuildPolicyFilterListRules(cfg PolicyFilterListConfig) ([]PolicyRule, error
 		}
 		rules = append(rules, PolicyRule{
 			ID:         ruleID,
-			Priority:   cfg.Priority,
+			Priority:   priority,
 			Action:     entry.action,
 			Match:      PolicyMatch{Kind: PolicyMatchSuffix, Value: entry.domain},
 			Schedule:   clonePolicySchedule(cfg.Schedule),
