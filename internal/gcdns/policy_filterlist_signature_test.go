@@ -74,7 +74,21 @@ func TestVerifyPolicyFilterListSignedMetadataRejectsUnknownFields(t *testing.T) 
 	now := time.Date(2026, 8, 30, 3, 20, 0, 0, time.UTC)
 	_, _, content, trusted := testSignedFilterListMetadata(t, 1, now)
 	contentDigest := sha256.Sum256(content)
-	metadataBytes := []byte(`{"schema":"goreecloud-beacon-filter-list-metadata/v1","source_id":"source-a","source_uri":"https://filters.example/list.txt","publisher":"GoreeCloud acceptance fixture","sequence":1,"issued_at":"2026-08-30T03:19:00Z","expires_at":"2026-08-31T03:20:00Z","content_sha256":"` + hex.EncodeToString(contentDigest[:]) + `","key_id":"primary","unexpected":true}`)
+	metadataBytes, err := json.Marshal(map[string]any{
+		"schema":         PolicyFilterListMetadataSchemaV1,
+		"source_id":      "source-a",
+		"source_uri":     "https://filters.example/list.txt",
+		"publisher":      "GoreeCloud acceptance fixture",
+		"sequence":       uint64(1),
+		"issued_at":      now.Add(-time.Minute).Format(time.RFC3339Nano),
+		"expires_at":     now.Add(24 * time.Hour).Format(time.RFC3339Nano),
+		"content_sha256": hex.EncodeToString(contentDigest[:]),
+		"key_id":         "primary",
+		"unexpected":     true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
 	privateKey := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{7}, ed25519.SeedSize))
 	signature := ed25519.Sign(privateKey, metadataBytes)
 	if _, err := VerifyPolicyFilterListSignedMetadata(metadataBytes, signature, content, trusted, now); err == nil || !strings.Contains(err.Error(), "unknown field") {
