@@ -62,8 +62,9 @@ func (l *PolicyFilterListLifecycle) Active() (PolicyFilterListSnapshot, bool) {
 // existing source must increase Sequence strictly. The previous active snapshot
 // is retained in bounded rollback history.
 func (l *PolicyFilterListLifecycle) Apply(snapshot PolicyFilterListSnapshot, now time.Time) error {
-	if err := validatePolicyFilterListSnapshot(snapshot, now); err != nil {
-		return err
+	validationErr := validatePolicyFilterListSnapshot(snapshot, now)
+	if validationErr != nil {
+		return validationErr
 	}
 
 	l.mu.Lock()
@@ -96,9 +97,9 @@ func (l *PolicyFilterListLifecycle) Apply(snapshot PolicyFilterListSnapshot, now
 // SHA-256. Expired snapshots are rejected. Rollback is explicit and does not
 // silently fetch or reconstruct missing historical content.
 func (l *PolicyFilterListLifecycle) Rollback(contentSHA256 string, now time.Time) error {
-	digest, err := normalizePolicyFilterListSHA256(contentSHA256)
-	if err != nil {
-		return fmt.Errorf("goreecloud dns: rollback digest: %w", err)
+	digest, normalizeErr := normalizePolicyFilterListSHA256(contentSHA256)
+	if normalizeErr != nil {
+		return fmt.Errorf("goreecloud dns: rollback digest: %w", normalizeErr)
 	}
 
 	l.mu.Lock()
@@ -111,8 +112,9 @@ func (l *PolicyFilterListLifecycle) Rollback(contentSHA256 string, now time.Time
 		if !strings.EqualFold(candidate.Provenance.ContentSHA256, digest) {
 			continue
 		}
-		if err := validatePolicyFilterListSnapshot(candidate, now); err != nil {
-			return fmt.Errorf("goreecloud dns: retained rollback snapshot is not acceptable: %w", err)
+		validationErr := validatePolicyFilterListSnapshot(candidate, now)
+		if validationErr != nil {
+			return fmt.Errorf("goreecloud dns: retained rollback snapshot is not acceptable: %w", validationErr)
 		}
 		current := clonePolicyFilterListSnapshot(*l.active)
 		l.history = append(l.history[:i], l.history[i+1:]...)
@@ -132,8 +134,8 @@ func validatePolicyFilterListSnapshot(snapshot PolicyFilterListSnapshot, now tim
 	if strings.TrimSpace(p.SourceID) == "" {
 		return errors.New("goreecloud dns: filter-list source ID is required")
 	}
-	parsed, err := url.Parse(strings.TrimSpace(p.SourceURI))
-	if err != nil || parsed.Scheme != "https" || parsed.Host == "" || parsed.User != nil {
+	parsed, parseErr := url.Parse(strings.TrimSpace(p.SourceURI))
+	if parseErr != nil || parsed.Scheme != "https" || parsed.Host == "" || parsed.User != nil {
 		return errors.New("goreecloud dns: filter-list source URI must be an absolute credential-free HTTPS URL")
 	}
 	if strings.TrimSpace(p.Publisher) == "" {
@@ -151,12 +153,13 @@ func validatePolicyFilterListSnapshot(snapshot PolicyFilterListSnapshot, now tim
 	if !now.Before(p.ExpiresAt) {
 		return errors.New("goreecloud dns: filter-list snapshot is expired")
 	}
-	if _, err := normalizePolicyFilterListSHA256(p.MetadataSHA256); err != nil {
-		return fmt.Errorf("goreecloud dns: filter-list metadata digest: %w", err)
+	_, metadataDigestErr := normalizePolicyFilterListSHA256(p.MetadataSHA256)
+	if metadataDigestErr != nil {
+		return fmt.Errorf("goreecloud dns: filter-list metadata digest: %w", metadataDigestErr)
 	}
-	contentDigest, err := normalizePolicyFilterListSHA256(p.ContentSHA256)
-	if err != nil {
-		return fmt.Errorf("goreecloud dns: filter-list content digest: %w", err)
+	contentDigest, contentDigestErr := normalizePolicyFilterListSHA256(p.ContentSHA256)
+	if contentDigestErr != nil {
+		return fmt.Errorf("goreecloud dns: filter-list content digest: %w", contentDigestErr)
 	}
 	if len(snapshot.Content) == 0 {
 		return errors.New("goreecloud dns: filter-list snapshot content is required")
@@ -176,7 +179,8 @@ func normalizePolicyFilterListSHA256(value string) (string, error) {
 	if len(value) != sha256.Size*2 {
 		return "", errors.New("SHA-256 must contain exactly 64 hexadecimal characters")
 	}
-	if _, err := hex.DecodeString(value); err != nil {
+	_, decodeErr := hex.DecodeString(value)
+	if decodeErr != nil {
 		return "", errors.New("SHA-256 is not valid hexadecimal")
 	}
 	return value, nil
