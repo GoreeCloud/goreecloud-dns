@@ -56,6 +56,8 @@
         'run': 'python3 scripts/validate_trust_anchor_lifecycle.py'
       - 'name': 'Validate Beacon policy profiles'
         'run': 'python3 scripts/validate_policy_profiles.py'
+      - 'name': 'Validate Beacon signed filter-list metadata'
+        'run': 'python3 scripts/validate_filterlist_signature.py'
       - 'name': 'Test native GoreeCloud DNS core'
         'run': 'go test ./internal/gcdns'
 
