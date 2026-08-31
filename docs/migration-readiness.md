@@ -25,7 +25,7 @@ Migration-rehearsal eligibility requires all of the following evidence for the e
 - Everkeep validation;
 - validation against the current Stable Glaze UI contract for user-facing administration surfaces.
 
-The current validated Glaze UI Stable baseline is 1.6.0. Candidate 2.0.0 is not accepted as the Stable migration baseline.
+The current validated Glaze UI Stable baseline is 2.1.0. Historical Glaze UI 1.x and 2.0.0 remain migration, rollback, or audit context only and cannot satisfy a current Beacon administration-surface acceptance claim.
 
 ## Safety boundary
 
