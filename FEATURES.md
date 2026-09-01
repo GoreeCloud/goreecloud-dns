@@ -28,6 +28,8 @@ GoreeCloud DNS is under active fork-to-native development. This file separates c
 - Immutable filter-list lifecycle validation for source identity, credential-free HTTPS provenance URI, publisher, monotonic sequence, freshness/expiry, metadata/content hashes, source continuity, retained history, and rollback
 - Detached Ed25519 filter-list metadata verification against an explicitly configured local trusted-key store
 - Bounded signed HTTPS acquisition that authenticates metadata before content retrieval, requires allowlisted HTTPS authorities, rejects redirects by default, enforces byte ceilings, verifies signed content SHA-256, and then applies the existing lifecycle contract
+- Privacy-safe Beacon runtime status with separate configuration validity, native-pipeline completeness, production-authority, and service-availability fields
+- Fail-closed `unknown / runtime_health_not_observed` service availability until an authoritative live resolver-health source exists
 - Fail-closed migration-readiness evidence that cannot authorize production DNS cutover
 
 ## GoreeCloud Beacon feature families
@@ -48,6 +50,7 @@ GoreeCloud DNS is under active fork-to-native development. This file separates c
 
 ## Accepted but not yet complete
 
+- An authoritative live resolver-health producer capable of moving Beacon service availability beyond fail-closed `unknown`
 - Scheduled managed-filter refresh/retry and offline behavior
 - Signing-key rotation/revocation and durable trusted-key storage
 - Durable Everkeep-backed filter-list lifecycle state and rollback history
@@ -68,6 +71,8 @@ GoreeCloud DNS is under active fork-to-native development. This file separates c
 
 ## Explicit non-claims
 
+- Beacon configuration validity and pipeline completeness are readiness facts, not proof of live resolver availability.
+- Beacon service availability does not imply network connectivity, Privacy Shield state, Wardveil Security posture, or Everkeep continuity readiness.
 - A mutable filter-list URL is not trusted merely because it uses HTTPS.
 - A metadata SHA-256 digest is not a signature.
 - Authenticated acquisition source tests do not establish production network trust or production migration readiness.
