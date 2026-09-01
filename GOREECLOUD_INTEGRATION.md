@@ -10,7 +10,7 @@ GoreeCloud DNS currently retains the AdGuard Home-derived runtime as its DNS dat
 go run ./goreecloud/statuscmd
 ```
 
-Set `GOREECLOUD_DNS_STATUS_FILE=/path/to/dns-status.json` to enable the local runtime handoff. The AdGuard Home `home` package then refreshes the file every 30 seconds using the same owner-only atomic writer used by the standalone emitter.
+Set `GOREECLOUD_DNS_STATUS_FILE=/path/to/dns-status.json` to enable the local runtime handoff. The AdGuard Home `home` package then refreshes the file every 30 seconds using the same atomic writer used by the standalone emitter. The writer requests POSIX mode `0600`; on platforms such as Windows where POSIX mode bits are not the native access-control boundary, the configured directory must have an approved ACL that limits access to the intended producer and consumer.
 
 The in-process adapter currently proves only bounded lifecycle facts:
 
