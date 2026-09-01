@@ -8,8 +8,10 @@ import (
 )
 
 // WriteFile atomically replaces path with a privacy-minimized status snapshot.
-// Temporary and final files are owner-only. Callers must place path on an
-// approved local filesystem shared only with the intended consumer.
+// It requests mode 0600 for temporary and final files.  On platforms where
+// POSIX mode bits are not the filesystem access-control boundary, callers must
+// place path in an approved directory whose native ACL limits access to the
+// intended producer and consumer.
 func WriteFile(path string, snapshot Snapshot) (err error) {
 	if path == "" {
 		return fmt.Errorf("status path is empty")
