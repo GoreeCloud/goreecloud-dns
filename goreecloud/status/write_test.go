@@ -4,11 +4,12 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 )
 
-func TestWriteFileAtomicallyWritesOwnerOnlyStatus(t *testing.T) {
+func TestWriteFileAtomicallyWritesStatus(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "nested", "dns-status.json")
 	snapshot := SnapshotFromEvidence(
 		time.Date(2026, 9, 1, 17, 20, 0, 0, time.UTC),
@@ -23,8 +24,10 @@ func TestWriteFileAtomicallyWritesOwnerOnlyStatus(t *testing.T) {
 	if err != nil {
 		t.Fatalf("stat status: %v", err)
 	}
-	if got := info.Mode().Perm(); got != 0o600 {
-		t.Fatalf("status permissions = %o, want 600", got)
+	if runtime.GOOS != "windows" {
+		if got := info.Mode().Perm(); got != 0o600 {
+			t.Fatalf("status permissions = %o, want 600", got)
+		}
 	}
 
 	data, err := os.ReadFile(path)
