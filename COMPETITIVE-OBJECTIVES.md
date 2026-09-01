@@ -1,22 +1,50 @@
-# GoreeCloud DNS Competitive Objectives
+# GoreeCloud DNS — Competitive Objectives
 
-Technitium DNS Server, Pi-hole, AdGuard Home, NextDNS, Control D, Unbound, and other DNS/resolver products may be used as feature, interoperability, operational, usability, and policy-control references. They are not GoreeCloud product authorities, and their proprietary hosted control planes or branding must not be copied.
+This record defines the DNS products and capability areas GoreeCloud DNS uses as benchmarks for continuous improvement. It is a product and acceptance target, not a claim that every listed capability is currently implemented or production-accepted.
 
-## Product objectives
+## Primary benchmark products
 
-GoreeCloud DNS / Beacon should compete through:
+- Technitium DNS Server
+- AdGuard Home
+- Pi-hole
+- Unbound
+- NextDNS and Control D where their policy, operational, or user-experience behavior establishes a useful benchmark
+- Comparable authoritative, recursive, filtering, encrypted-DNS, and self-hosted DNS platforms where they establish a stronger capability bar
 
-- first-party validating recursion and DNS policy control;
-- explicit DNSSEC trust and lifecycle evidence;
-- strong private-network and split-routing interoperability;
-- deterministic profile and policy composition;
-- managed filtering with verifiable provenance and safe rollback;
-- privacy-governed analytics and minimized diagnostics;
-- multi-user administration through GoreeCloud Identity;
-- accessible current-Stable Glaze UI administration;
-- Wardveil Security controls and Privacy Shield governance;
-- Everkeep-backed backup, restore, portability, and recovery;
-- GoreeCloud Mesh coordination without transferring DNS authority.
+Benchmark products are references, not GoreeCloud product authorities. Their proprietary hosted control planes, trust models, or branding must not be copied into GoreeCloud DNS.
+
+## Capability bar to match or exceed
+
+- Full recursive resolution and forwarding
+- Authoritative DNS for internal and public zones
+- DNSSEC validation and authoritative signing
+- NSEC and NSEC3 authenticated denial
+- Primary, secondary, stub, forwarder, local, and catalog zones
+- AXFR, IXFR, NOTIFY, and secure zone-transfer workflows
+- Concurrent recursive resolution, failover, latency-aware selection, and resilient caching
+- Positive, negative, aggressive-negative, persistent, serve-stale, prefetch, and auto-prefetch caching
+- Network-wide advertisement, tracker, malware, phishing, telemetry, and unwanted-domain blocking
+- Blocklists, allowlists, wildcard rules, regular expressions, response-policy behavior, client/subnet/group policy, and SafeSearch/family controls
+- DNS over HTTPS, DNS over TLS, DNS over QUIC, and encrypted forwarding
+- DHCP and automatic local DNS registration
+- Split-horizon, network-specific, geolocation-aware, conditional, and DNS64 behavior where approved
+- Multi-node clustering and independent node serving
+- Current-Stable Glaze UI web administration, first-party APIs, automation, runtime controls, dashboards, logs, metrics, and diagnostics
+- Multi-user RBAC, scoped API tokens, TOTP, and OIDC SSO through approved GoreeCloud Identity boundaries
+- Controlled extensions without bypassing core DNS safeguards
+
+## Objectives GoreeCloud DNS should exceed
+
+- No accidental open recursion and fail-safe defaults
+- Privacy-aware local-first resolution and QNAME minimisation where applicable
+- Minimized and configurable query logging with no required analytics telemetry
+- Strict separation between DNS-client service and DNS administration
+- Deterministic failover and independently serving cluster nodes
+- First-party configuration, APIs, resolver, cache, policy, authoritative, administration, and observability ownership
+- Verifiable managed-filter provenance, explicit trusted-key policy, bounded acquisition, freshness checks, and safe rollback
+- Complete backup, recovery, export, migration, and rollback control
+- Deep but bounded integration with Privacy Shield, Wardveil Security, Everkeep, GoreeCloud Network/Mesh, GoreeCloud Identity, and the wider GoreeCloud Suite
+- No permanent dependency on Technitium DNS Server, Pi-hole, AdGuard Home, Unbound, or proprietary cloud DNS for capabilities that belong inside GoreeCloud DNS
 
 ## Engineering objectives before production migration
 
@@ -24,12 +52,23 @@ GoreeCloud DNS / Beacon should compete through:
 2. Produce exact-artifact isolated runtime evidence for real Beacon request paths.
 3. Complete resolver feature parity for the accepted migration scope.
 4. Validate restart/failure, cache, encrypted-DNS, performance, security, backup/restore, and rollback behavior.
-5. Complete authenticated filter acquisition, signed metadata/source trust, scheduling, freshness, durable rollback, and offline behavior.
+5. Complete scheduled managed-filter refresh/retry/offline behavior, signing-key rotation/revocation, durable trusted-key storage, durable rollback, and multi-list composition.
 6. Complete production-grade profile administration, Identity/RBAC integration, and privacy-governed analytics.
-7. Validate required Privacy Shield, Wardveil Security, Everkeep, Glaze UI, Mesh, and Identity integration evidence.
+7. Validate required Privacy Shield, Wardveil Security, Everkeep, current-Stable Glaze UI, Mesh, Identity, and governance integration evidence.
 8. Rehearse reversible listener/client migration without unplanned DNS behavior changes.
 9. Retain exact source, artifact, configuration, state, and deployment provenance.
 
-## Differentiation rule
+## Capabilities intentionally rejected
 
-Competitive claims must remain evidence-backed. Implemented source contracts may be described as implemented; production scale, production migration, managed remote acquisition, signature trust, complete UI, or multi-user administration remain objectives until their acceptance evidence exists.
+- Public recursive-resolver exposure by default
+- Required vendor cloud control planes
+- Mandatory telemetry or analytics
+- Extensions that can bypass DNS security, privacy, policy, resource, or observability boundaries
+- Permanent sidecar architecture for core DNS capabilities that GoreeCloud DNS is intended to own
+- Feature parity that adds complexity without meaningful GoreeCloud value
+
+## Competitive review and evidence rule
+
+Current stable releases of benchmark products should be reviewed periodically. A newly identified gap becomes a GoreeCloud objective only when it materially improves DNS security, privacy, reliability, control, interoperability, administration, recovery, or user experience.
+
+Competitive claims must remain evidence-backed. Implemented source contracts may be described as implemented; production scale, production migration, complete UI, multi-user administration, or other unaccepted capabilities remain objectives until their required evidence exists.
