@@ -13,9 +13,10 @@ const (
 	goreecloudStatusInterval = 30 * time.Second
 )
 
-// init starts the fork-only status publisher only when an explicit local handoff
-// path is configured.  It creates no listener and performs no network access.
-func init() {
+// EnableGoreeCloudStatusPublisher enables the fork-only local status handoff
+// when GOREECLOUD_DNS_STATUS_FILE is configured.  It creates no listener and
+// performs no network access.
+func EnableGoreeCloudStatusPublisher() {
 	path := os.Getenv(goreecloudStatusFileEnv)
 	if path == "" {
 		return
