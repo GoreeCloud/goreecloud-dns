@@ -12,9 +12,9 @@ import (
 
 func main() {
 	snapshot := goreecloudstatus.DevelopmentSnapshot(time.Now())
-	payload, err := json.MarshalIndent(snapshot, "", "  ")
-	if err != nil {
-		fatal(err)
+	payload, marshalErr := json.MarshalIndent(snapshot, "", "  ")
+	if marshalErr != nil {
+		fatal(marshalErr)
 	}
 	payload = append(payload, '\n')
 
@@ -23,15 +23,15 @@ func main() {
 		_, _ = os.Stdout.Write(payload)
 		return
 	}
-	if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
-		fatal(err)
+	if mkdirErr := os.MkdirAll(filepath.Dir(path), 0o750); mkdirErr != nil {
+		fatal(mkdirErr)
 	}
 	tmp := path + ".tmp"
-	if err := os.WriteFile(tmp, payload, 0o640); err != nil {
-		fatal(err)
+	if writeErr := os.WriteFile(tmp, payload, 0o640); writeErr != nil {
+		fatal(writeErr)
 	}
-	if err := os.Rename(tmp, path); err != nil {
-		fatal(err)
+	if renameErr := os.Rename(tmp, path); renameErr != nil {
+		fatal(renameErr)
 	}
 }
 
