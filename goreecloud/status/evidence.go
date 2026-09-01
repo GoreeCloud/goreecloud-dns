@@ -16,10 +16,10 @@ const (
 // in-process AdGuard Home state without carrying queries, client identifiers,
 // addresses, credentials, logs, configuration values, or certificate data.
 type RuntimeEvidence struct {
-	ResolverRunning    bool
-	FilteringReady     bool
-	EncryptedDNSReady  bool
-	DNSPolicyReady     bool
+	ResolverRunning   bool
+	FilteringReady    bool
+	EncryptedDNSReady bool
+	DNSPolicyReady    bool
 }
 
 // SnapshotFromEvidence converts bounded runtime evidence into Infrastructure
