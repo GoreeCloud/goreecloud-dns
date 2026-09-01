@@ -1,7 +1,6 @@
 package home
 
 import (
-	"crypto/tls"
 	"log/slog"
 	"os"
 	"time"
@@ -102,10 +101,3 @@ func goreecloudEncryptedDNSReady(tlsMgr *tlsManager) bool {
 		extTLSConf.PortDNSOverTLS != 0 ||
 		extTLSConf.PortDNSOverQUIC != 0
 }
-
-// Compile-time assertions keep the readiness helper tied to TLS runtime state
-// rather than certificate/configuration serialization.
-var (
-	_ *tls.Config      = (*tlsManager)(nil).tlsConf
-	_ *tls.Certificate = (*tlsManager)(nil).tlsCert
-)
