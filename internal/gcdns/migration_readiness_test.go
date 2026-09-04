@@ -9,7 +9,10 @@ import (
 func TestEvaluateMigrationReadinessRequiresEveryGate(t *testing.T) {
 	evidence := completeMigrationEvidenceForTest()
 	evidence.RestartFailureValidated = false
+	evidence.ManagerIntegrationValidated = false
 	evidence.EverkeepValidated = false
+	evidence.MeshCoordinationValidated = false
+	evidence.IdentityIntegrationValidated = false
 
 	decision, err := EvaluateMigrationReadiness(evidence)
 	if err != nil {
@@ -21,8 +24,20 @@ func TestEvaluateMigrationReadinessRequiresEveryGate(t *testing.T) {
 	if decision.ProductionCutoverAuthorized {
 		t.Fatal("Beacon readiness decision unexpectedly authorized production cutover")
 	}
-	if len(decision.MissingGates) != 2 || decision.MissingGates[0] != "restart_failure_validated" || decision.MissingGates[1] != "everkeep_validated" {
-		t.Fatalf("missing gates = %v", decision.MissingGates)
+	want := []string{
+		"restart_failure_validated",
+		"manager_integration_validated",
+		"everkeep_validated",
+		"mesh_coordination_validated",
+		"identity_integration_validated",
+	}
+	if len(decision.MissingGates) != len(want) {
+		t.Fatalf("missing gates = %v, want %v", decision.MissingGates, want)
+	}
+	for i := range want {
+		if decision.MissingGates[i] != want[i] {
+			t.Fatalf("missing gates = %v, want %v", decision.MissingGates, want)
+		}
 	}
 }
 
@@ -71,10 +86,14 @@ func completeMigrationEvidenceForTest() MigrationEvidence {
 		BackupRestoreProven:                true,
 		RollbackRehearsed:                  true,
 		ObservabilityValidated:             true,
+		ManagerIntegrationValidated:        true,
 		PrivacyShieldValidated:             true,
 		WardveilSecurityValidated:          true,
 		EverkeepValidated:                  true,
 		GlazeUIStableValidated:             true,
+		MeshCoordinationValidated:          true,
+		IdentityIntegrationValidated:       true,
+		GovernanceIntegrationValidated:     true,
 		ProductionCutoverAuthorized:        false,
 	}
 }
