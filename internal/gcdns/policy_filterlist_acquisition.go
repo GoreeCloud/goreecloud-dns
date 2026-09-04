@@ -171,7 +171,7 @@ func validatePolicyFilterListAcquisitionURI(raw string, allowedHosts map[string]
 	return parsed, nil
 }
 
-func fetchPolicyFilterListBounded(ctx context.Context, client *http.Client, uri string, limit int64) ([]byte, error) {
+func fetchPolicyFilterListBounded(ctx context.Context, client *http.Client, uri string, limit int64) (body []byte, err error) {
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, uri, nil)
 	if err != nil {
 		return nil, err
@@ -181,14 +181,18 @@ func fetchPolicyFilterListBounded(ctx context.Context, client *http.Client, uri 
 	if err != nil {
 		return nil, err
 	}
-	defer response.Body.Close()
+	defer func() {
+		if closeErr := response.Body.Close(); err == nil && closeErr != nil {
+			err = fmt.Errorf("close response body: %w", closeErr)
+		}
+	}()
 	if response.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("unexpected HTTP status %d", response.StatusCode)
 	}
 	if response.ContentLength > limit {
 		return nil, fmt.Errorf("response exceeds %d-byte limit", limit)
 	}
-	body, err := io.ReadAll(io.LimitReader(response.Body, limit+1))
+	body, err = io.ReadAll(io.LimitReader(response.Body, limit+1))
 	if err != nil {
 		return nil, err
 	}
