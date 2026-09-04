@@ -20,5 +20,6 @@ import (
 var clientBuildFS embed.FS
 
 func main() {
+	home.EnableGoreeCloudStatusPublisher()
 	home.Main(clientBuildFS)
 }
