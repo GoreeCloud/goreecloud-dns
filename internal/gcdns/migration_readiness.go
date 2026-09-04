@@ -27,10 +27,14 @@ type MigrationEvidence struct {
 	BackupRestoreProven                bool   `json:"backup_restore_proven"`
 	RollbackRehearsed                  bool   `json:"rollback_rehearsed"`
 	ObservabilityValidated             bool   `json:"observability_validated"`
+	ManagerIntegrationValidated        bool   `json:"manager_integration_validated"`
 	PrivacyShieldValidated             bool   `json:"privacy_shield_validated"`
 	WardveilSecurityValidated          bool   `json:"wardveil_security_validated"`
 	EverkeepValidated                  bool   `json:"everkeep_validated"`
 	GlazeUIStableValidated             bool   `json:"glaze_ui_stable_validated"`
+	MeshCoordinationValidated          bool   `json:"mesh_coordination_validated"`
+	IdentityIntegrationValidated       bool   `json:"identity_integration_validated"`
+	GovernanceIntegrationValidated     bool   `json:"governance_integration_validated"`
 	ProductionCutoverAuthorized        bool   `json:"production_cutover_authorized"`
 }
 
@@ -75,10 +79,14 @@ func EvaluateMigrationReadiness(evidence MigrationEvidence) (MigrationDecision, 
 		{"backup_restore_proven", evidence.BackupRestoreProven},
 		{"rollback_rehearsed", evidence.RollbackRehearsed},
 		{"observability_validated", evidence.ObservabilityValidated},
+		{"manager_integration_validated", evidence.ManagerIntegrationValidated},
 		{"privacy_shield_validated", evidence.PrivacyShieldValidated},
 		{"wardveil_security_validated", evidence.WardveilSecurityValidated},
 		{"everkeep_validated", evidence.EverkeepValidated},
 		{"glaze_ui_stable_validated", evidence.GlazeUIStableValidated},
+		{"mesh_coordination_validated", evidence.MeshCoordinationValidated},
+		{"identity_integration_validated", evidence.IdentityIntegrationValidated},
+		{"governance_integration_validated", evidence.GovernanceIntegrationValidated},
 	}
 	for _, gate := range gates {
 		if !gate.pass {
