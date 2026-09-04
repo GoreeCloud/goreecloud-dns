@@ -6,8 +6,9 @@
 # See https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#permissions.
 'permissions': {}
 'env':
-  'GO_VERSION': '1.26.3'
+  'GO_VERSION': '1.26.6'
 'on':
+  'workflow_dispatch':
   'push':
     'tags':
       - 'v*'
@@ -15,6 +16,51 @@
       - '*'
   'pull_request':
 'jobs':
+  'beacon-native-core':
+    'runs-on': 'ubuntu-latest'
+    'permissions':
+      'contents': 'read'
+    'steps':
+      - 'uses': 'actions/checkout@v6'
+        'with':
+          'persist-credentials': false
+      - 'name': 'Set up Go'
+        'uses': 'actions/setup-go@v7'
+        'with':
+          'go-version': '${{ env.GO_VERSION }}'
+          'cache': true
+          'cache-dependency-path': 'go.sum'
+      - 'name': 'Validate Beacon source contract'
+        'run': 'python3 scripts/validate_beacon_foundation.py'
+      - 'name': 'Validate Beacon DNSSEC wildcard contract'
+        'run': 'python3 scripts/validate_dnssec_wildcard.py'
+      - 'name': 'Validate Beacon NSEC3 Opt-Out contract'
+        'run': 'python3 scripts/validate_dnssec_optout.py'
+      - 'name': 'Validate Beacon RFC 9824 compact denial contract'
+        'run': 'python3 scripts/validate_dnssec_compact_denial.py'
+      - 'name': 'Validate Beacon DNSSEC alias-chain contract'
+        'run': 'python3 scripts/validate_dnssec_alias.py'
+      - 'name': 'Validate Beacon referral discovery contract'
+        'run': 'python3 scripts/validate_referral_discovery.py'
+      - 'name': 'Validate Beacon QNAME minimisation contract'
+        'run': 'python3 scripts/validate_qname_minimisation.py'
+      - 'name': 'Validate Beacon resolver-routing contract'
+        'run': 'python3 scripts/validate_resolver_routing.py'
+      - 'name': 'Validate Beacon routed DNSSEC policy contract'
+        'run': 'python3 scripts/validate_routed_dnssec_policy.py'
+      - 'name': 'Validate Beacon private stub DNSSEC trust-carry contract'
+        'run': 'python3 scripts/validate_private_stub_dnssec.py'
+      - 'name': 'Validate Beacon DNSSEC algorithm, digest, and key-strength policy'
+        'run': 'python3 scripts/validate_dnssec_algorithm_policy.py'
+      - 'name': 'Validate Beacon persistent trust-anchor lifecycle'
+        'run': 'python3 scripts/validate_trust_anchor_lifecycle.py'
+      - 'name': 'Validate Beacon policy profiles'
+        'run': 'python3 scripts/validate_policy_profiles.py'
+      - 'name': 'Validate Beacon signed filter-list metadata'
+        'run': 'python3 scripts/validate_filterlist_signature.py'
+      - 'name': 'Test native GoreeCloud DNS core'
+        'run': 'go test ./internal/gcdns'
+
   'go-lint':
     'runs-on': 'ubuntu-latest'
     'permissions':
@@ -51,13 +97,13 @@
         'run': 'npm --prefix="./client" run lint'
   'notify':
     'needs':
+      - 'beacon-native-core'
       - 'go-lint'
       - 'eslint'
     # Secrets are not passed to workflows that are triggered by a pull request
     # from a fork.
     #
-    # Use always() to signal to the runner that this job must run even if the
-    # previous ones failed.
+    # Use always() to ensure this job runs even if a dependency fails.
     'if': |
       ${{
         always() &&
@@ -69,7 +115,6 @@
       }}
     'runs-on': 'ubuntu-latest'
     'permissions':
-      # Required by workflow-conclusion-action to check workflow status.
       'actions': 'read'
       'contents': 'read'
     'steps':
