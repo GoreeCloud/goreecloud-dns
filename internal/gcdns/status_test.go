@@ -22,9 +22,9 @@ func (statusAuthority) ResolveAuthoritative(context.Context, *Request) (*Result,
 
 type statusCache struct{}
 
-func (statusCache) Get(context.Context, *Request) (*Result, bool, error) { return nil, false, nil }
+func (statusCache) Get(context.Context, *Request) (*Result, bool, error)        { return nil, false, nil }
 func (statusCache) Put(context.Context, *Request, *Result, time.Duration) error { return nil }
-func (statusCache) Flush(context.Context) error { return nil }
+func (statusCache) Flush(context.Context) error                                 { return nil }
 
 type statusResolver struct{}
 
@@ -93,14 +93,14 @@ func TestStatusSnapshotPrivacySafeFieldBoundary(t *testing.T) {
 		t.Fatalf("decode status fields: %v", err)
 	}
 	allowed := map[string]bool{
-		"schema": true,
-		"generated_at": true,
-		"production_authority": true,
+		"schema":                        true,
+		"generated_at":                  true,
+		"production_authority":          true,
 		"production_cutover_authorized": true,
-		"configuration_state": true,
-		"pipeline_state": true,
-		"availability": true,
-		"availability_reason": true,
+		"configuration_state":           true,
+		"pipeline_state":                true,
+		"availability":                  true,
+		"availability_reason":           true,
 	}
 	if len(fields) != len(allowed) {
 		t.Fatalf("status fields = %d, want exactly %d privacy-safe fields", len(fields), len(allowed))
