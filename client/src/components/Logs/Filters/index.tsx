@@ -24,15 +24,16 @@ const Filters = ({ setIsLoading }: FiltersProps) => {
 
     return (
         <div className="page-header page-header--logs">
-            <h1 className="page-title page-title--large">
+            <h1 className="page-title page-title--large" aria-label={t('query_log')}>
                 {t('query_log')}
 
                 <button
                     type="button"
                     className="btn btn-icon--green logs__refresh"
                     title={t('refresh_btn')}
+                    aria-label={t('refresh_btn')}
                     onClick={refreshLogs}>
-                    <svg className="icons icon--24">
+                    <svg className="icons icon--24" aria-hidden="true" focusable="false">
                         <use xlinkHref="#update" />
                     </svg>
                 </button>

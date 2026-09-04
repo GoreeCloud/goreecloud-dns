@@ -12,9 +12,10 @@ type Props<T> = {
 export const Radio = forwardRef<HTMLInputElement, Props<string | boolean | number | undefined>>(
     ({ disabled, onChange, value, options, name, error, ...rest }, ref) => {
         const getId = (label: string) => (name ? `${label}_${name}` : label);
+        const errorId = error ? `${name}-error` : undefined;
 
         return (
-            <div>
+            <div role="radiogroup" aria-invalid={error ? true : undefined} aria-describedby={errorId}>
                 {options.map((o) => {
                     const checked = value === o.value;
 
@@ -25,6 +26,7 @@ export const Radio = forwardRef<HTMLInputElement, Props<string | boolean | numbe
                             className="custom-control custom-radio">
                             <input
                                 id={getId(o.label)}
+                                name={name}
                                 data-testid={o.value}
                                 type="radio"
                                 className="custom-control-input"
@@ -41,7 +43,11 @@ export const Radio = forwardRef<HTMLInputElement, Props<string | boolean | numbe
                         </label>
                     );
                 })}
-                {!disabled && error && <span className="form__message form__message--error">{error}</span>}
+                {!disabled && error && (
+                    <span id={errorId} className="form__message form__message--error" role="alert">
+                        {error}
+                    </span>
+                )}
             </div>
         );
     },

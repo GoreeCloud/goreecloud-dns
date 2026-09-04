@@ -14,6 +14,8 @@ import './Login.css';
 import '../../components/ui/Tabler.css';
 import { LoginState } from '../../initialState';
 
+const FORGOT_PASSWORD_HELP_ID = 'forgot-password-help';
+
 export const Login = () => {
     const dispatch = useDispatch();
     const { processingLogin } = useSelector((state: LoginState) => state.login);
@@ -37,12 +39,17 @@ export const Login = () => {
                 <Form onSubmit={handleSubmit} processing={processingLogin} />
 
                 <div className="login__info">
-                    <button type="button" className="btn btn-link login__link" onClick={toggleText}>
+                    <button
+                        type="button"
+                        className="btn btn-link login__link"
+                        aria-expanded={isForgotPasswordVisible}
+                        aria-controls={FORGOT_PASSWORD_HELP_ID}
+                        onClick={toggleText}>
                         <Trans>forgot_password</Trans>
                     </button>
 
                     {isForgotPasswordVisible && (
-                        <div className="login__message">
+                        <div id={FORGOT_PASSWORD_HELP_ID} className="login__message">
                             <Trans
                                 components={[
                                     <a

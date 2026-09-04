@@ -99,6 +99,7 @@ export const Auth = ({ onAuthSubmit }: Props) => {
                         name="confirm_password"
                         control={control}
                         rules={{
+                            deps: ['password'],
                             validate: {
                                 required: validateRequiredValue,
                                 confirmPassword: validateConfirmPassword,
