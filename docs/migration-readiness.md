@@ -20,12 +20,18 @@ Migration-rehearsal eligibility requires all of the following evidence for the e
 - backup/restore proof;
 - rollback rehearsal;
 - privacy-safe observability validation;
+- GoreeCloud Manager integration validation;
 - Privacy Shield validation;
 - Wardveil Security validation;
 - Everkeep validation;
-- validation against the current Stable Glaze UI contract for user-facing administration surfaces.
+- validation against the current Stable Glaze UI contract for user-facing administration surfaces;
+- GoreeCloud Mesh coordination validation;
+- GoreeCloud Identity integration validation;
+- GoreeCloud governance integration validation.
 
-The current validated Glaze UI Stable baseline is 2.1.0. Historical Glaze UI 1.x and 2.0.0 remain migration, rollback, or audit context only and cannot satisfy a current Beacon administration-surface acceptance claim.
+The official current design-system target is GLAZE UI V1.1 (1.1.0). Earlier V1.0 and pre-reset 2.x evidence is historical Development, migration, rollback, or audit context and cannot satisfy a current Beacon administration-surface acceptance claim.
+
+The seven integral GoreeCloud platform systems remain separate authorities: Manager for management, Privacy Shield for privacy governance, Wardveil Security for security/trust, Everkeep for continuity/recovery, Glaze UI for user experience/accessibility, GoreeCloud Mesh for coordination/integration, and GoreeCloud Identity for identity/authorization. Passing one platform gate does not substitute for another.
 
 ## Safety boundary
 
