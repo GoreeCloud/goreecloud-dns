@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/ed25519"
+	"errors"
 	"io"
 	"net/http"
 	"strings"
@@ -15,6 +16,14 @@ type policyFilterListRoundTripFunc func(*http.Request) (*http.Response, error)
 
 func (fn policyFilterListRoundTripFunc) RoundTrip(request *http.Request) (*http.Response, error) {
 	return fn(request)
+}
+
+type policyFilterListCloseErrorBody struct {
+	io.Reader
+}
+
+func (policyFilterListCloseErrorBody) Close() error {
+	return errors.New("test close failure")
 }
 
 func TestPolicyFilterListAcquirerAuthenticatesBeforeContentFetch(t *testing.T) {
@@ -125,6 +134,23 @@ func TestPolicyFilterListAcquirerRejectsRedirectStatus(t *testing.T) {
 	}, PolicyFilterListTrustedKeys{}, time.Now().UTC())
 	if err == nil || !strings.Contains(err.Error(), "unexpected HTTP status 302") {
 		t.Fatalf("redirect status error = %v", err)
+	}
+}
+
+func TestFetchPolicyFilterListBoundedReturnsCloseError(t *testing.T) {
+	client := &http.Client{Transport: policyFilterListRoundTripFunc(func(request *http.Request) (*http.Response, error) {
+		return &http.Response{
+			StatusCode:    http.StatusOK,
+			Status:        http.StatusText(http.StatusOK),
+			Header:        make(http.Header),
+			Body:          policyFilterListCloseErrorBody{Reader: strings.NewReader("example.com\n")},
+			ContentLength: int64(len("example.com\n")),
+			Request:       request,
+		}, nil
+	})}
+	_, err := fetchPolicyFilterListBounded(context.Background(), client, "https://filters.example/list.txt", 1024)
+	if err == nil || !strings.Contains(err.Error(), "close response body: test close failure") {
+		t.Fatalf("close error = %v", err)
 	}
 }
 
