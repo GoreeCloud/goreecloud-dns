@@ -36,7 +36,7 @@ required = {
         "TestPolicyFilterListTrustedKeyStoreRotationAndRevocation",
         "TestPolicyFilterListTrustedKeyStoreRejectsReuseAndTampering",
         "revoked filter-list signing key remained active",
-        "rotated filter-list signing key did not verify",
+        "rotated signing key did not verify",
         "emergency revocation should fail closed with no active keys",
         "tampered trusted-key state error",
     ),
