@@ -422,8 +422,8 @@ const Dashboard = ({
                             </div>
                             <p>
                                 Beacon Insights keeps the landing page aggregate-first.
-                                Raw domain activity and identifiable client details are not repeated here merely for dashboard
-                                richness; administrators can open the authoritative detailed views when needed.
+                                Raw domain activity and identifiable client details are not repeated here merely
+                                for dashboard richness; administrators can open the authoritative detailed views when needed.
                             </p>
                             <div className="beacon-deep-links" aria-label="Detailed DNS administration views">
                                 <Link className="btn btn-outline-primary btn-sm" to={MENU_URLS.logs}>
