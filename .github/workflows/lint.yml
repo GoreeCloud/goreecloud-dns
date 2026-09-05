@@ -34,6 +34,9 @@ jobs:
       - name: Validate Glaze UI contract
         run: python3 scripts/validate_glaze_ui.py
 
+      - name: Validate Beacon Insights contract
+        run: python3 scripts/validate_beacon_insights.py
+
   product-identity-contract:
     runs-on: ubuntu-latest
     permissions:
