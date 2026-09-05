@@ -6,7 +6,14 @@ import classNames from 'classnames';
 
 import Statistics from './Statistics';
 import Counters from './Counters';
-import { DISABLE_PROTECTION_TIMINGS, FILTERS_URLS, MENU_URLS, ONE_SECOND_IN_MS, SETTINGS_URLS, TIME_UNITS } from '../../helpers/constants';
+import {
+    DISABLE_PROTECTION_TIMINGS,
+    FILTERS_URLS,
+    MENU_URLS,
+    ONE_SECOND_IN_MS,
+    SETTINGS_URLS,
+    TIME_UNITS,
+} from '../../helpers/constants';
 import { formatNumber, msToDays, msToHours, msToMinutes, msToSeconds } from '../../helpers/helpers';
 
 import Loading from '../ui/Loading';
@@ -186,7 +193,8 @@ const Dashboard = ({
     const safetyRewrites =
         stats.numReplacedSafebrowsing + stats.numReplacedParental + stats.numReplacedSafesearch;
     const protectionActions = stats.numBlockedFiltering + safetyRewrites;
-    const protectionRate = stats.numDnsQueries > 0 ? `${((protectionActions / stats.numDnsQueries) * 100).toFixed(1)}%` : '0%';
+    const protectionRate =
+        stats.numDnsQueries > 0 ? `${((protectionActions / stats.numDnsQueries) * 100).toFixed(1)}%` : '0%';
     const averageProcessingTime = stats.avgProcessingTime ? `${Math.round(stats.avgProcessingTime)} ms` : '0 ms';
 
     const resolutionSteps = [
@@ -208,13 +216,21 @@ const Dashboard = ({
         },
         {
             label: 'Upstream',
-            detail: topUpstream ?? (upstreamNames.length ? `${upstreamNames.length} observed` : 'No upstream statistics yet'),
+            detail:
+                topUpstream ??
+                (upstreamNames.length ? `${upstreamNames.length} observed` : 'No upstream statistics yet'),
         },
         {
             label: 'Response',
             detail: `${averageProcessingTime} average processing`,
         },
     ];
+
+    const coreStatusClass = isCoreRunning ? 'beacon-status--success' : 'beacon-status--warning';
+    const protectionStatusClass = protectionEnabled ? 'beacon-status--success' : 'beacon-status--warning';
+    const clientMetricDetail = `${formatNumber(configuredClientCount)} configured · ${formatNumber(
+        observedClientCount,
+    )} observed`;
 
     return (
         <main className="beacon-dashboard" aria-labelledby="beacon-insights-title">
@@ -230,11 +246,11 @@ const Dashboard = ({
                     </p>
 
                     <div className="beacon-status-row" aria-label="DNS service status">
-                        <span className={`beacon-status ${isCoreRunning ? 'beacon-status--success' : 'beacon-status--warning'}`}>
+                        <span className={`beacon-status ${coreStatusClass}`}>
                             <span className="beacon-status__dot" aria-hidden="true" />
                             {isCoreRunning ? 'DNS service online' : 'DNS service state unavailable'}
                         </span>
-                        <span className={`beacon-status ${protectionEnabled ? 'beacon-status--success' : 'beacon-status--warning'}`}>
+                        <span className={`beacon-status ${protectionStatusClass}`}>
                             <span className="beacon-status__dot" aria-hidden="true" />
                             {protectionEnabled ? 'Protection active' : 'Protection paused'}
                         </span>
@@ -253,7 +269,9 @@ const Dashboard = ({
                             }}
                             disabled={processingProtection}>
                             {protectionDisabledDuration
-                                ? `${t('enable_protection_timer', { time: getRemainingTimeText(protectionDisabledDuration) })}`
+                                ? `${t('enable_protection_timer', {
+                                      time: getRemainingTimeText(protectionDisabledDuration),
+                                  })}`
                                 : getProtectionBtnText(protectionEnabled)}
                         </button>
 
@@ -269,7 +287,10 @@ const Dashboard = ({
                         )}
                     </div>
 
-                    <button type="button" className="btn btn-outline-primary btn-sm beacon-refresh" onClick={getAllStats}>
+                    <button
+                        type="button"
+                        className="btn btn-outline-primary btn-sm beacon-refresh"
+                        onClick={getAllStats}>
                         <svg className="icons icon12" aria-hidden="true" focusable="false">
                             <use xlinkHref="#refresh" />
                         </svg>
@@ -320,7 +341,7 @@ const Dashboard = ({
                         <InsightMetric
                             label="DNS clients"
                             value={formatNumber(configuredClientCount + observedClientCount)}
-                            detail={`${formatNumber(configuredClientCount)} configured · ${formatNumber(observedClientCount)} observed`}
+                            detail={clientMetricDetail}
                             testId="beacon-client-total"
                         />
                         <InsightMetric
@@ -344,8 +365,8 @@ const Dashboard = ({
                                 <h2 id="beacon-resolution-title">DNS Resolution Path</h2>
                             </div>
                             <p>
-                                This reflects the currently configured DNS data plane. Native Beacon resolver stages are shown here only
-                                when runtime evidence exposes them.
+                                This reflects the currently configured DNS data plane. Native Beacon resolver stages are shown
+                                here only when runtime evidence exposes them.
                             </p>
                         </div>
 
@@ -381,7 +402,9 @@ const Dashboard = ({
                                     ))}
                                 </ul>
                             ) : (
-                                <p className="beacon-empty-state">No DNS listener address is available in the current runtime state.</p>
+                                <p className="beacon-empty-state">
+                                    No DNS listener address is available in the current runtime state.
+                                </p>
                             )}
 
                             <div className="beacon-version-row">
@@ -398,9 +421,9 @@ const Dashboard = ({
                                 </div>
                             </div>
                             <p>
-                                Beacon Insights keeps the landing page aggregate-first. Raw domain activity and identifiable client
-                                details are not repeated here merely for dashboard richness; administrators can open the authoritative
-                                detailed views when needed.
+                                Beacon Insights keeps the landing page aggregate-first. Raw domain activity and identifiable
+                                client details are not repeated here merely for dashboard richness; administrators can open the
+                                authoritative detailed views when needed.
                             </p>
                             <div className="beacon-deep-links" aria-label="Detailed DNS administration views">
                                 <Link className="btn btn-outline-primary btn-sm" to={MENU_URLS.logs}>
