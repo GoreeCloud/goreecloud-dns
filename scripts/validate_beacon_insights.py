@@ -33,7 +33,7 @@ def main() -> int:
             "Beacon Insights",
             "DNS Resolution Path",
             "Aggregate by default",
-            "Current configured DNS data plane",
+            "currently configured DNS data plane",
             "Native Beacon resolver stages are shown here only",
             "Open Query Log",
             "Manage Clients",
