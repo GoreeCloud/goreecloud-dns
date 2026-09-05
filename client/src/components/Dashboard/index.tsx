@@ -241,8 +241,8 @@ const Dashboard = ({
                         Beacon Insights
                     </h1>
                     <p id="beacon-insights-summary" className="beacon-hero__summary">
-                        A privacy-minimized operational view of how DNS requests enter GoreeCloud, pass through protection,
-                        reach the configured resolver path, and return to clients.
+                        A privacy-minimized operational view of how DNS requests enter GoreeCloud,
+                        pass through protection, reach the configured resolver path, and return to clients.
                     </p>
 
                     <div className="beacon-status-row" aria-label="DNS service status">
@@ -365,8 +365,8 @@ const Dashboard = ({
                                 <h2 id="beacon-resolution-title">DNS Resolution Path</h2>
                             </div>
                             <p>
-                                This reflects the currently configured DNS data plane. Native Beacon resolver stages are shown
-                                here only when runtime evidence exposes them.
+                                This reflects the currently configured DNS data plane.
+                                Native Beacon resolver stages are shown here only when runtime evidence exposes them.
                             </p>
                         </div>
 
@@ -421,9 +421,9 @@ const Dashboard = ({
                                 </div>
                             </div>
                             <p>
-                                Beacon Insights keeps the landing page aggregate-first. Raw domain activity and identifiable
-                                client details are not repeated here merely for dashboard richness; administrators can open the
-                                authoritative detailed views when needed.
+                                Beacon Insights keeps the landing page aggregate-first.
+                                Raw domain activity and identifiable client details are not repeated here merely for dashboard
+                                richness; administrators can open the authoritative detailed views when needed.
                             </p>
                             <div className="beacon-deep-links" aria-label="Detailed DNS administration views">
                                 <Link className="btn btn-outline-primary btn-sm" to={MENU_URLS.logs}>
@@ -448,7 +448,9 @@ const Dashboard = ({
                                 <span className="beacon-eyebrow">Aggregate activity</span>
                                 <h2 id="beacon-activity-title">Queries and protection</h2>
                             </div>
-                            <p>Trend cards summarize activity without putting raw query names on the overview surface.</p>
+                            <p>
+                                Trend cards summarize activity without putting raw query names on the overview surface.
+                            </p>
                         </div>
                         <Statistics
                             dnsQueries={stats.dnsQueries}
