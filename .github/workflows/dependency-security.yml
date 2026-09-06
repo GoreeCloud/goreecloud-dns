@@ -1,0 +1,57 @@
+name: dependency-security
+
+permissions: {}
+
+env:
+  NODE_VERSION: '20'
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - agent/dependency-security
+
+jobs:
+  runtime-dependencies:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+      - name: Install locked dependencies
+        working-directory: client
+        run: npm ci --ignore-scripts
+      - name: Audit runtime dependency graph
+        working-directory: client
+        run: npm audit --omit=dev --json
+
+  full-dependencies:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+      - name: Install locked dependencies
+        working-directory: client
+        run: npm ci --ignore-scripts
+      - name: Audit full dependency graph
+        working-directory: client
+        run: npm audit --json
