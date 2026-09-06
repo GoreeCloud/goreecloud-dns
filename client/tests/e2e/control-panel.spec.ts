@@ -13,6 +13,33 @@ test.describe('Control Panel', () => {
         await page.waitForURL((url) => !url.href.endsWith('/login.html'));
     });
 
+    test('should expose Beacon Insights as an aggregate-first DNS overview', async ({ page }) => {
+        await expect(page.getByRole('heading', { name: 'Beacon Insights' })).toBeVisible();
+        await expect(page.getByRole('heading', { name: 'DNS Resolution Path' })).toBeVisible();
+        await expect(page.getByText('Aggregate by default')).toBeVisible();
+        await expect(page.getByTestId('beacon-query-total')).toBeVisible();
+        await expect(page.getByTestId('beacon-filtered-total')).toBeVisible();
+        await expect(page.getByTestId('beacon-client-total')).toBeVisible();
+        await expect(page.getByTestId('beacon-upstream-total')).toBeVisible();
+        await expect(page.getByTestId('beacon-latency')).toBeVisible();
+        await expect(page.getByRole('link', { name: 'Open Query Log' })).toBeVisible();
+        await expect(page.getByRole('link', { name: 'Manage Clients' })).toBeVisible();
+        await expect(page.getByRole('link', { name: 'DNS Settings' })).toBeVisible();
+        await expect(page.getByRole('link', { name: 'Filter Lists' })).toBeVisible();
+    });
+
+    test('should keep Beacon Insights reachable without horizontal overflow on compact screens', async ({ page }) => {
+        await page.setViewportSize({ width: 390, height: 844 });
+
+        await expect(page.getByRole('heading', { name: 'Beacon Insights' })).toBeVisible();
+        await expect(page.getByTestId('beacon-query-total')).toBeVisible();
+
+        const hasHorizontalOverflow = await page.evaluate(
+            () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
+        );
+        expect(hasHorizontalOverflow).toBeFalsy();
+    });
+
     test('should expose mobile navigation state and controlled landmark', async ({ page }) => {
         await page.setViewportSize({ width: 390, height: 844 });
 
