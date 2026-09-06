@@ -73,6 +73,10 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
+      - name: Prepare development version baseline
+        shell: bash
+        run: git show-ref --verify --quiet refs/heads/master || git branch master origin/master
+
       - name: Set up Go
         uses: actions/setup-go@v7
         with:
