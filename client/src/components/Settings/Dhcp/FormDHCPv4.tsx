@@ -104,10 +104,12 @@ const FormDHCPv4 = ({ processingConfig, ipv4placeholders, interfaces, onSubmit }
                 </div>
 
                 <div className="col-lg-6">
-                    <div className="form__group mb-0">
+                    <div className="form__group mb-0" role="group" aria-labelledby="dhcp-v4-range-title">
                         <div className="row">
                             <div className="col-12">
-                                <label>{t('dhcp_form_range_title')}</label>
+                                <div id="dhcp-v4-range-title" className="form__label">
+                                    {t('dhcp_form_range_title')}
+                                </div>
                             </div>
 
                             <div className="col">

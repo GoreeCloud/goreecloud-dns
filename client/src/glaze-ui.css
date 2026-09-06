@@ -1,0 +1,361 @@
+/* GoreeCloud DNS — Glaze UI 1.1 consumer layer.
+ * This file maps the inherited AdGuard Home frontend onto GoreeCloud semantic
+ * design roles without changing DNS behavior or requiring remote UI assets.
+ */
+
+:root {
+    --glaze-version: 1.1.0;
+
+    /* Semantic color roles. Product accent remains DNS-specific. */
+    --glaze-canvas: #f4f7fb;
+    --glaze-canvas-accent: #e8f5f2;
+    --glaze-solid: #ffffff;
+    --glaze-raised: rgba(255, 255, 255, 0.96);
+    --glaze-glaze: rgba(255, 255, 255, 0.76);
+    --glaze-overlay: rgba(255, 255, 255, 0.94);
+    --glaze-text: #17202a;
+    --glaze-text-muted: #667085;
+    --glaze-border: rgba(31, 51, 73, 0.12);
+    --glaze-accent: #287d68;
+    --glaze-accent-strong: #176b59;
+    --glaze-accent-soft: #dcefe9;
+    --glaze-on-accent: #ffffff;
+    --glaze-info: #2463d4;
+    --glaze-success: #238636;
+    --glaze-warning: #9a6700;
+    --glaze-danger: #c0362c;
+    --glaze-focus: #278a75;
+    --glaze-scrim: rgba(8, 18, 34, 0.42);
+
+    /* Shared state-layer opacity semantics. */
+    --glaze-state-hover: 0.08;
+    --glaze-state-pressed: 0.12;
+    --glaze-state-focus: 0.14;
+    --glaze-state-selected: 0.12;
+
+    /* Surface and geometry roles. */
+    --glaze-radius-sm: 0.625rem;
+    --glaze-radius-md: 0.875rem;
+    --glaze-radius-control: 1rem;
+    --glaze-radius-card: 1.375rem;
+    --glaze-radius-overlay: 1.75rem;
+    --glaze-radius-pill: 999px;
+    --glaze-shadow-soft: 0 8px 30px rgba(37, 55, 82, 0.05);
+    --glaze-shadow-raised: 0 18px 48px rgba(37, 55, 82, 0.09);
+    --glaze-shadow-overlay: 0 28px 80px rgba(0, 0, 0, 0.22);
+    --glaze-blur: 22px;
+    --glaze-blur-overlay: 28px;
+
+    /* Target, icon, density, and spacing roles. */
+    --glaze-target-min: 44px;
+    --glaze-target-comfortable: 48px;
+    --glaze-icon-sm: 16px;
+    --glaze-icon-md: 20px;
+    --glaze-icon-lg: 24px;
+    --glaze-icon-xl: 32px;
+    --glaze-density-compact-control-padding: 12px;
+    --glaze-density-comfortable-control-padding: 16px;
+    --glaze-density-compact-gap: 8px;
+    --glaze-density-comfortable-gap: 12px;
+    --glaze-space-1: 0.25rem;
+    --glaze-space-2: 0.5rem;
+    --glaze-space-3: 0.75rem;
+    --glaze-space-4: 1rem;
+    --glaze-space-5: 1.25rem;
+    --glaze-space-6: 1.5rem;
+    --glaze-space-8: 2rem;
+    --glaze-space-10: 2.5rem;
+    --glaze-space-12: 3rem;
+    --glaze-space-16: 4rem;
+
+    /* Adaptive gutters and content bounds. */
+    --glaze-gutter-compact: 16px;
+    --glaze-gutter-medium: 24px;
+    --glaze-gutter-expanded: 32px;
+    --glaze-gutter-wide: 40px;
+    --glaze-content-max: 1180px;
+    --glaze-reading-max: 760px;
+
+    /* Typography roles. */
+    --glaze-font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --glaze-text-caption: 12px;
+    --glaze-text-label: 13px;
+    --glaze-text-small: 14px;
+    --glaze-text-body: 16px;
+    --glaze-text-body-large: 18px;
+    --glaze-text-title-small: 20px;
+    --glaze-text-title: 28px;
+    --glaze-text-headline: 32px;
+    --glaze-line-height-body: 1.55;
+    --glaze-line-height-tight: 1.1;
+
+    /* Canonical motion vocabulary. */
+    --glaze-motion-instant: 90ms;
+    --glaze-motion-fast: 160ms;
+    --glaze-motion-standard: 220ms;
+    --glaze-motion-emphasized: 320ms;
+    --glaze-ease-standard: cubic-bezier(0.2, 0, 0, 1);
+    --glaze-ease-emphasized: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+    /* Layering roles. */
+    --glaze-z-base: 0;
+    --glaze-z-raised: 10;
+    --glaze-z-navigation: 100;
+    --glaze-z-scrim: 900;
+    --glaze-z-overlay: 1000;
+    --glaze-z-toast: 1100;
+
+    /* Bridge inherited roles to Glaze UI semantics. */
+    --bgcolor: var(--glaze-canvas);
+    --header-bgcolor: var(--glaze-glaze);
+    --card-bgcolor: var(--glaze-raised);
+    --card-border-color: var(--glaze-border);
+    --border-color: var(--glaze-border);
+    --ctrl-bgcolor: var(--glaze-solid);
+    --mcolor: var(--glaze-text);
+    --scolor: var(--glaze-text-muted);
+    --btn-success-bgcolor: var(--glaze-accent);
+}
+
+[data-theme='dark'] {
+    --glaze-canvas: #0d1318;
+    --glaze-canvas-accent: #13231f;
+    --glaze-solid: #151d23;
+    --glaze-raised: rgba(24, 34, 42, 0.96);
+    --glaze-glaze: rgba(18, 27, 33, 0.78);
+    --glaze-overlay: rgba(23, 32, 39, 0.96);
+    --glaze-text: #edf3f5;
+    --glaze-text-muted: #a7b2b8;
+    --glaze-border: rgba(208, 226, 234, 0.13);
+    --glaze-accent: #62b9a1;
+    --glaze-accent-strong: #83cbb8;
+    --glaze-accent-soft: #193d34;
+    --glaze-on-accent: #0b1020;
+    --glaze-info: #8ab4ff;
+    --glaze-success: #57b86a;
+    --glaze-warning: #e2b84b;
+    --glaze-danger: #f07167;
+    --glaze-focus: #77d2bb;
+    --glaze-scrim: rgba(0, 0, 0, 0.62);
+    --glaze-shadow-soft: 0 8px 30px rgba(0, 0, 0, 0.16);
+    --glaze-shadow-raised: 0 18px 54px rgba(0, 0, 0, 0.24);
+    --glaze-shadow-overlay: 0 28px 80px rgba(0, 0, 0, 0.34);
+
+    --bgcolor: var(--glaze-canvas);
+    --header-bgcolor: var(--glaze-glaze);
+    --card-bgcolor: var(--glaze-raised);
+    --card-border-color: var(--glaze-border);
+    --border-color: var(--glaze-border);
+    --ctrl-bgcolor: var(--glaze-solid);
+    --mcolor: var(--glaze-text);
+    --scolor: var(--glaze-text-muted);
+    --btn-success-bgcolor: var(--glaze-accent);
+}
+
+html,
+body,
+#root {
+    min-height: 100%;
+}
+
+body {
+    color: var(--glaze-text);
+    font-family: var(--glaze-font-family);
+    background:
+        radial-gradient(circle at 12% 0%, var(--glaze-canvas-accent), transparent 34rem),
+        var(--glaze-canvas);
+}
+
+.header {
+    z-index: var(--glaze-z-navigation);
+    padding-top: env(safe-area-inset-top, 0px);
+    background: var(--glaze-glaze);
+    border-bottom: 1px solid var(--glaze-border);
+    backdrop-filter: blur(var(--glaze-blur)) saturate(135%);
+    -webkit-backdrop-filter: blur(var(--glaze-blur)) saturate(135%);
+}
+
+.card,
+.modal-content,
+.dropdown-menu {
+    border: 1px solid var(--glaze-border);
+    border-radius: var(--glaze-radius-card);
+    background: var(--glaze-raised);
+    box-shadow: var(--glaze-shadow-raised);
+}
+
+.modal-content,
+.dropdown-menu {
+    background: var(--glaze-overlay);
+    box-shadow: var(--glaze-shadow-overlay);
+}
+
+.modal-backdrop,
+.modal-backdrop.show {
+    background: var(--glaze-scrim);
+}
+
+.btn,
+.form-control,
+.custom-select,
+select,
+input,
+textarea {
+    border-radius: var(--glaze-radius-control);
+}
+
+.btn,
+.nav-link,
+.form-control,
+.custom-select {
+    transition:
+        background-color var(--glaze-motion-fast) var(--glaze-ease-standard),
+        border-color var(--glaze-motion-fast) var(--glaze-ease-standard),
+        color var(--glaze-motion-fast) var(--glaze-ease-standard),
+        box-shadow var(--glaze-motion-fast) var(--glaze-ease-standard),
+        transform var(--glaze-motion-fast) var(--glaze-ease-standard);
+}
+
+.btn-success {
+    color: var(--glaze-on-accent);
+    border-color: var(--glaze-accent);
+    background: linear-gradient(135deg, var(--glaze-accent), var(--glaze-accent-strong));
+}
+
+.btn-success:hover,
+.btn-success:focus {
+    color: var(--glaze-on-accent);
+    border-color: var(--glaze-accent-strong);
+}
+
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+    outline: 3px solid color-mix(in srgb, var(--glaze-focus) 70%, transparent);
+    outline-offset: 2px;
+}
+
+[aria-current='page'],
+[aria-selected='true'] {
+    --glaze-current-state-layer: color-mix(
+        in srgb,
+        var(--glaze-accent) calc(var(--glaze-state-selected) * 100%),
+        transparent
+    );
+}
+
+@media (pointer: coarse) {
+    .btn,
+    .nav-link,
+    .form-control,
+    .custom-select,
+    button,
+    input,
+    select {
+        min-height: var(--glaze-target-min);
+    }
+}
+
+/* Glaze UI adaptive layout contract:
+ * Compact: <=599px
+ * Medium: 600-1023px
+ * Expanded: 1024-1439px
+ * Wide: >=1440px
+ */
+@media (max-width: 599px) {
+    .container,
+    .header__container {
+        padding-right: max(var(--glaze-gutter-compact), env(safe-area-inset-right, 0px));
+        padding-left: max(var(--glaze-gutter-compact), env(safe-area-inset-left, 0px));
+    }
+
+    .card {
+        border-radius: var(--glaze-radius-md);
+    }
+}
+
+@media (min-width: 600px) and (max-width: 1023px) {
+    .container,
+    .header__container {
+        padding-right: max(var(--glaze-gutter-medium), env(safe-area-inset-right, 0px));
+        padding-left: max(var(--glaze-gutter-medium), env(safe-area-inset-left, 0px));
+    }
+}
+
+@media (min-width: 1024px) and (max-width: 1439px) {
+    .container,
+    .header__container {
+        padding-right: max(var(--glaze-gutter-expanded), env(safe-area-inset-right, 0px));
+        padding-left: max(var(--glaze-gutter-expanded), env(safe-area-inset-left, 0px));
+    }
+}
+
+@media (min-width: 1440px) {
+    .container,
+    .header__container {
+        max-width: var(--glaze-content-max);
+        padding-right: max(var(--glaze-gutter-wide), env(safe-area-inset-right, 0px));
+        padding-left: max(var(--glaze-gutter-wide), env(safe-area-inset-left, 0px));
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        scroll-behavior: auto !important;
+        transition-duration: 0.01ms !important;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+    }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+    .header,
+    .card,
+    .modal-content,
+    .dropdown-menu {
+        background: var(--glaze-solid);
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+    }
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .header,
+    .modal-content,
+    .dropdown-menu {
+        background: var(--glaze-solid);
+    }
+}
+
+@media (prefers-contrast: more) {
+    :root {
+        --glaze-border: currentColor;
+    }
+
+    .btn,
+    .form-control,
+    .custom-select,
+    .card,
+    .modal-content {
+        border-width: 2px;
+    }
+}
+
+@media (forced-colors: active) {
+    .header,
+    .card,
+    .modal-content,
+    .dropdown-menu,
+    .btn-success {
+        color: CanvasText;
+        border-color: ButtonText;
+        background: Canvas;
+        box-shadow: none;
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+    }
+
+    :where(a, button, input, select, textarea, [tabindex]):focus-visible {
+        outline: 2px solid Highlight;
+    }
+}

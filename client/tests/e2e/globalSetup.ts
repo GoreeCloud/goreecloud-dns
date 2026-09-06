@@ -1,8 +1,9 @@
-import { chromium, type FullConfig } from '@playwright/test';
+import { chromium, expect, type FullConfig } from '@playwright/test';
 
 import { ADMIN_USERNAME, ADMIN_PASSWORD, PORT, CONFIG_FILE_PATH } from '../constants';
 
 const BASE_URL = `http://127.0.0.1:${PORT}`;
+const UPDATED_ADMIN_PASSWORD = `${ADMIN_PASSWORD}-updated`;
 
 async function checkServerAvailable(): Promise<boolean> {
     try {
@@ -44,7 +45,21 @@ async function globalSetup(config: FullConfig) {
         await page.getByTestId('install_password').blur();
         await page.getByTestId('install_confirm_password').fill(ADMIN_PASSWORD);
         await page.getByTestId('install_confirm_password').blur();
-        await page.getByTestId('install_next').click();
+
+        const nextButton = page.getByTestId('install_next');
+        await expect(nextButton).toBeEnabled();
+
+        await page.getByTestId('install_password').fill(UPDATED_ADMIN_PASSWORD);
+        await page.getByTestId('install_password').blur();
+        await expect(nextButton).toBeDisabled();
+
+        await page.getByTestId('install_password').fill(ADMIN_PASSWORD);
+        await page.getByTestId('install_password').blur();
+        await page.getByTestId('install_confirm_password').fill(ADMIN_PASSWORD);
+        await page.getByTestId('install_confirm_password').blur();
+        await expect(nextButton).toBeEnabled();
+
+        await nextButton.click();
         await page.getByTestId('install_next').click();
         await page.getByTestId('install_open_dashboard').click();
         await page.waitForURL((url) => !url.href.endsWith('/install.html'));

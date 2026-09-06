@@ -19,12 +19,22 @@ test.describe('DHCP Configuration', () => {
         await page.keyboard.press('Tab');
         await page.getByTestId('sign_in').click();
         await page.waitForURL((url) => !url.href.endsWith('/login.html'));
-        await page.goto(`/#dhcp`);
+        await page.goto('/#dhcp');
     });
 
     test('should select the correct DHCP interface', async ({ page }) => {
         await page.getByTestId('interface_name').selectOption(INTERFACE_NAME);
         expect(await page.locator('select[name="interface_name"]').inputValue()).toBe(INTERFACE_NAME);
+    });
+
+    test('should expose the IPv4 range as a named field group', async ({ page }) => {
+        await page.getByTestId('interface_name').selectOption(INTERFACE_NAME);
+
+        const rangeGroup = page.locator('[role="group"][aria-labelledby="dhcp-v4-range-title"]');
+        await expect(rangeGroup).toBeVisible();
+        await expect(page.locator('#dhcp-v4-range-title')).toBeVisible();
+        await expect(rangeGroup.getByTestId('v4_range_start')).toBeVisible();
+        await expect(rangeGroup.getByTestId('v4_range_end')).toBeVisible();
     });
 
     test('should configure DHCP IPv4 settings correctly', async ({ page }) => {
