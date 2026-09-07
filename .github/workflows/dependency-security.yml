@@ -9,7 +9,8 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - agent/dependency-security
+      - master
+  pull_request:
 
 jobs:
   runtime-dependencies:
