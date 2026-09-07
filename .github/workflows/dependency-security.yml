@@ -30,9 +30,20 @@ jobs:
       - name: Install locked dependencies
         working-directory: client
         run: npm ci --ignore-scripts
-      - name: Audit runtime dependency graph
+      - name: Report runtime dependency findings
         working-directory: client
-        run: npm audit --omit=dev --json
+        shell: bash
+        run: |
+          set +e
+          npm audit --omit=dev --json
+          status=$?
+          set -e
+          if [ "$status" -ne 0 ] && [ "$status" -ne 1 ]; then
+            exit "$status"
+          fi
+      - name: Enforce runtime high and critical threshold
+        working-directory: client
+        run: npm audit --omit=dev --audit-level=high
 
   full-dependencies:
     runs-on: ubuntu-latest
@@ -52,6 +63,17 @@ jobs:
       - name: Install locked dependencies
         working-directory: client
         run: npm ci --ignore-scripts
-      - name: Audit full dependency graph
+      - name: Report full dependency findings
         working-directory: client
-        run: npm audit --json
+        shell: bash
+        run: |
+          set +e
+          npm audit --json
+          status=$?
+          set -e
+          if [ "$status" -ne 0 ] && [ "$status" -ne 1 ]; then
+            exit "$status"
+          fi
+      - name: Enforce full high and critical threshold
+        working-directory: client
+        run: npm audit --audit-level=high
