@@ -18,11 +18,9 @@ Wardveil Security remains the separate platform security/protection authority. G
 
 ## Declared capability
 
-The initial adapter declares only:
+The adapter declares only `dns-privacy`.
 
-- `dns-privacy`
-
-The adapter does not declare Browser capabilities such as `content-blocking`, `tracking-resistance`, or `url-cleaning`; networking capabilities such as `network-privacy`; or broader application capabilities such as telemetry, retention, deletion, portable export, or generic privacy status merely because GoreeCloud DNS may have related settings.
+It does not declare Browser capabilities such as `content-blocking`, `tracking-resistance`, or `url-cleaning`; networking capabilities such as `network-privacy`; or broader application capabilities such as telemetry, retention, deletion, portable export, or generic privacy status merely because GoreeCloud DNS may have related settings.
 
 A capability may be added only after GoreeCloud DNS implements and validates that specific current Privacy Shield contract.
 
@@ -34,17 +32,19 @@ The declaration does not claim that DNS filtering prevents all tracking. It does
 
 ## Privacy-safe status boundary
 
-A runtime status producer may report high-level Privacy Shield DNS state only through the current Privacy Shield status contract. It must not export raw DNS queries or other private activity merely to render a central Privacy Shield, Manager, or Wardveil surface.
+The runtime-status development line projects only the existing coarse DNS lifecycle evidence into the current Privacy Shield status v1 shape. It must not export raw DNS queries or other private activity merely to render a central Privacy Shield, Manager, or Wardveil surface.
 
-Privacy Shield status must remain a separate contract from GoreeCloud Infrastructure Status. Shared runtime evidence may be projected into both contracts, but the envelopes and state vocabularies must not be conflated.
+Privacy Shield status remains a separate contract from GoreeCloud Infrastructure Status. Shared runtime evidence may feed both contracts, but their envelopes, environment variables, and state vocabularies are distinct.
 
-A Privacy Shield DNS status record must contain only minimized state necessary to explain the adapter's declared capability and acceptance state. It must explicitly preserve these invariants:
+Privacy Shield status uses `GOREECLOUD_DNS_PRIVACY_SHIELD_STATUS_FILE`. Infrastructure Status uses `GOREECLOUD_DNS_STATUS_FILE`. Neither local handoff is enabled unless its own path is explicitly configured.
+
+The Privacy Shield DNS status record contains only minimized state and explicitly preserves these invariants:
 
 - raw private activity is not included;
 - credentials are not included;
 - identifiers are not included;
 - runtime acceptance remains required;
-- production approval is not inferred.
+- production approval is false.
 
 Query logs, client identifiers, source addresses, requested domain names, rule-match details, authentication material, configuration secrets, private rewrites, filter contents, certificate/private-key material, and unrestricted diagnostic logs remain within the authoritative DNS environment unless a separately approved workflow genuinely requires them.
 
@@ -52,18 +52,30 @@ Query logs, client identifiers, source addresses, requested domain names, rule-m
 
 `privacy-shield/adapter.json` records `production_approved=false` and `runtime_acceptance_required=true`.
 
-This is deliberate. The adapter declaration documents the intended and source-supported capability boundary; it does not approve the current GoreeCloud DNS development branch, the inherited compatibility data plane, any native Beacon development branch, an isolated deployment, or a production migration.
+The runtime mapper preserves that boundary. Healthy resolver/filtering/policy evidence produces `development` / `pending-acceptance`, not `protected` / `active`. Resolver loss fails closed to `unavailable`; incomplete filtering or policy evidence reports `attention` / `inactive`.
 
-Before `production_approved` may become true, the exact GoreeCloud DNS runtime intended for production must demonstrate the declared DNS privacy behavior, fail-closed configuration handling, a schema-valid privacy-minimized status projection if status is enabled, migration/rollback safety, and target-environment acceptance.
+Before `production_approved` may become true, the exact GoreeCloud DNS runtime intended for production must demonstrate the declared DNS privacy behavior, fail-closed configuration handling, schema-valid privacy-minimized status output where enabled, migration/rollback safety, and target-environment acceptance.
 
 Shared Privacy Shield contract validation is not runtime acceptance.
 
 ## Current implementation state
 
-The current work is a source-level adapter foundation layered on the active GoreeCloud DNS development foundation. It does not modify the DNS engine, filter engine, query-processing path, resolver/forwarder configuration, client DNS settings, DHCP behavior, firewall state, credentials, production listeners, or cutover state.
+This branch contains:
 
-A separate GoreeCloud Infrastructure Status development line already defines coarse DNS runtime evidence and an atomic local status handoff. That evidence source is suitable for reuse, but its Infrastructure Status v1 envelope is not the Privacy Shield status contract. The next Privacy Shield runtime slice is therefore to project only the necessary coarse DNS privacy evidence into a distinct schema-valid Privacy Shield status record while keeping `production_approved=false` until runtime acceptance is complete.
+- the `dns-privacy` adapter declaration;
+- a fail-closed adapter validator;
+- an exact reviewed Privacy Shield contract lock;
+- a separate Privacy Shield runtime-status serializer and atomic writer;
+- tests for state mapping, privacy minimization, permissions, and empty-path rejection;
+- a local publisher integration that reuses coarse DNS runtime evidence while keeping Infrastructure Status and Privacy Shield output separate;
+- a dedicated fail-closed runtime-status source validator in lint CI.
+
+The implementation does not modify the DNS engine, filter engine, query-processing path, resolver/forwarder configuration, client DNS settings, DHCP behavior, firewall state, credentials, production listeners, or cutover state.
+
+This remains Development source work. The status output itself is not proof that the declared privacy capability has passed runtime acceptance.
 
 ## Canonical contract checkpoint
 
-This adapter shape was rechecked against the current GoreeCloud Privacy Shield adapter schema and `dns-privacy` capability registry on the Privacy Shield `main` line during the September 7, 2026 reconciliation. Future Privacy Shield contract changes still require fresh consumer review; this document does not freeze an external contract revision indefinitely.
+The adapter and runtime projection were checked against GoreeCloud Privacy Shield `main` revision `f10d90c0c53c0b876d6ff5cdb6926d6b87205438` on September 7, 2026. Exact reviewed schema/capability blob identities are recorded in `privacy-shield/status-contract.lock.json`.
+
+Future Privacy Shield contract changes require fresh consumer review. The lock is an evidence anchor, not a permanent exemption from current-contract adoption.

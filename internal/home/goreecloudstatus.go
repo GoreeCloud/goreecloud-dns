@@ -5,40 +5,55 @@ import (
 	"os"
 	"time"
 
+	privacyshieldstatus "github.com/AdguardTeam/AdGuardHome/goreecloud/privacyshieldstatus"
 	goreecloudstatus "github.com/AdguardTeam/AdGuardHome/goreecloud/status"
 )
 
 const (
-	goreecloudStatusFileEnv  = "GOREECLOUD_DNS_STATUS_FILE"
-	goreecloudStatusInterval = 30 * time.Second
+	goreecloudStatusFileEnv              = "GOREECLOUD_DNS_STATUS_FILE"
+	goreecloudPrivacyShieldStatusFileEnv = "GOREECLOUD_DNS_PRIVACY_SHIELD_STATUS_FILE"
+	goreecloudStatusInterval             = 30 * time.Second
 )
 
-// EnableGoreeCloudStatusPublisher enables the fork-only local status handoff
-// when GOREECLOUD_DNS_STATUS_FILE is configured.  It creates no listener and
-// performs no network access.
+// EnableGoreeCloudStatusPublisher enables the fork-only local status handoffs
+// when either status path is configured.  Infrastructure Status and Privacy
+// Shield status remain separate files and contracts.  The publisher creates no
+// listener and performs no network access.
 func EnableGoreeCloudStatusPublisher() {
-	path := os.Getenv(goreecloudStatusFileEnv)
-	if path == "" {
+	statusPath := os.Getenv(goreecloudStatusFileEnv)
+	privacyShieldPath := os.Getenv(goreecloudPrivacyShieldStatusFileEnv)
+	if statusPath == "" && privacyShieldPath == "" {
 		return
 	}
 
-	go runGoreeCloudStatusPublisher(path, goreecloudStatusInterval)
+	go runGoreeCloudStatusPublisher(statusPath, privacyShieldPath, goreecloudStatusInterval)
 }
 
-func runGoreeCloudStatusPublisher(path string, interval time.Duration) {
-	publishGoreeCloudStatus(path, time.Now())
+func runGoreeCloudStatusPublisher(statusPath, privacyShieldPath string, interval time.Duration) {
+	publishGoreeCloudStatus(statusPath, privacyShieldPath, time.Now())
 
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 	for now := range ticker.C {
-		publishGoreeCloudStatus(path, now)
+		publishGoreeCloudStatus(statusPath, privacyShieldPath, now)
 	}
 }
 
-func publishGoreeCloudStatus(path string, now time.Time) {
-	snapshot := goreecloudstatus.SnapshotFromEvidence(now, goreecloudRuntimeEvidence())
-	if err := goreecloudstatus.WriteFile(path, snapshot); err != nil {
-		slog.Warn("goreecloud status handoff failed", "error", err)
+func publishGoreeCloudStatus(statusPath, privacyShieldPath string, now time.Time) {
+	evidence := goreecloudRuntimeEvidence()
+
+	if statusPath != "" {
+		snapshot := goreecloudstatus.SnapshotFromEvidence(now, evidence)
+		if err := goreecloudstatus.WriteFile(statusPath, snapshot); err != nil {
+			slog.Warn("goreecloud status handoff failed", "error", err)
+		}
+	}
+
+	if privacyShieldPath != "" {
+		snapshot := privacyshieldstatus.SnapshotFromEvidence(now, evidence)
+		if err := privacyshieldstatus.WriteFile(privacyShieldPath, snapshot); err != nil {
+			slog.Warn("goreecloud Privacy Shield status handoff failed", "error", err)
+		}
 	}
 }
 
