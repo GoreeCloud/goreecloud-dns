@@ -72,12 +72,12 @@ func TestSerializedStatusIsPrivacyMinimized(t *testing.T) {
 	}
 	allowed := map[string]bool{
 		"schema_version": true,
-		"producer": true,
-		"generated_at": true,
-		"state": true,
-		"capabilities": true,
-		"privacy": true,
-		"acceptance": true,
+		"producer":       true,
+		"generated_at":   true,
+		"state":          true,
+		"capabilities":   true,
+		"privacy":        true,
+		"acceptance":     true,
 	}
 	for key := range object {
 		if !allowed[key] {
