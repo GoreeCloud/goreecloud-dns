@@ -34,7 +34,7 @@ The declaration does not claim that DNS filtering prevents all tracking. It does
 
 The runtime-status development line projects only the existing coarse DNS lifecycle evidence into the current Privacy Shield status v1 shape. It must not export raw DNS queries or other private activity merely to render a central Privacy Shield, Manager, or Wardveil surface.
 
-Privacy Shield status remains a separate contract from GoreeCloud Infrastructure Status. Shared runtime evidence may feed both contracts, but their envelopes, environment variables, and state vocabularies are distinct.
+The Infrastructure Status v1 envelope is not the Privacy Shield status contract. Privacy Shield status remains a separate contract from GoreeCloud Infrastructure Status. Shared runtime evidence may feed both contracts, but their envelopes, environment variables, and state vocabularies are distinct.
 
 Privacy Shield status uses `GOREECLOUD_DNS_PRIVACY_SHIELD_STATUS_FILE`. Infrastructure Status uses `GOREECLOUD_DNS_STATUS_FILE`. Neither local handoff is enabled unless its own path is explicitly configured.
 
