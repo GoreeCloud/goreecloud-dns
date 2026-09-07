@@ -1,85 +1,101 @@
 # GoreeCloud DNS
 
-GoreeCloud DNS is the planned client-facing DNS filtering, policy-enforcement, private service-discovery, and DNS security platform for GoreeCloud.
+GoreeCloud DNS is GoreeCloud's DNS filtering, policy, private-service-discovery, resolver, DNS security, and administration project. The repository is currently in **Development** and is not a Stable or production-accepted GoreeCloud DNS release.
 
-This repository is a GoreeCloud-maintained fork of AdGuard Home. The project begins from the mature AdGuard Home DNS foundation and will be progressively adapted into a distinct GoreeCloud product while preserving applicable upstream licensing, attribution, and source-availability obligations.
+The repository began from AdGuard Home as a controlled migration and compatibility foundation. The governing target is an original GoreeCloud-owned DNS application and service. Inherited complete-product code, user interface, workflows, and architecture are transitional and cannot establish final Stable status.
 
-## Project Direction
+## Current repository state
 
-GoreeCloud DNS is intended to provide:
+This development line contains the GoreeCloud DNS product-identity and Glaze UI migration foundation, cross-platform build/test workflows, browser acceptance coverage, repository governance records, and the machine-readable GoreeCloud Platform Contract.
 
-- network-wide advertisement and tracker blocking;
-- malicious-domain and threat-domain blocking;
-- client-specific DNS policies;
-- family and child policy profiles;
-- private GoreeCloud DNS records and service discovery;
-- custom filtering and allow rules;
-- query visibility and privacy-aware diagnostics;
-- upstream DNS management;
-- approved encrypted DNS capabilities;
-- GoreeCloud Network integration for private connectivity and client identity;
-- GoreeCloud Monitor integration for DNS observability;
-- GoreeCloud Notify integration for operational and security alerts;
-- GoreeCloud Backup integration for configuration and recovery;
-- GoreeCloud Manager integration for centralized visibility;
-- Wardveil Security capabilities for DNS security and policy enforcement.
+The native GoreeCloud Beacon DNS core is being developed on a separate controlled development branch and is not represented here as merged, production-authoritative, or accepted merely because related specifications describe the target architecture.
 
-## Architecture Boundary
+The current Platform Contract records GoreeCloud DNS as `development` and `nonconformant`. Required GoreeCloud Manager, Privacy Shield, Wardveil Security, Everkeep, Glaze UI, GoreeCloud Mesh, and GoreeCloud Identity acceptance remains incomplete or blocked as recorded in [`goreecloud.platform.yaml`](goreecloud.platform.yaml).
 
-The initial production architecture remains:
+## Product direction
 
-```text
-Approved Clients
-      |
-      v
-GoreeCloud DNS
-      |
-      v
-   Unbound
-      |
-      v
-Internet DNS Authorities
+The accepted product direction is a single GoreeCloud DNS responsibility model that progressively owns:
+
+- client-facing DNS service and access policy;
+- advertisement, tracker, malware, phishing, telemetry, and unwanted-domain filtering;
+- client, network, family, and policy-profile controls;
+- private DNS and GoreeCloud service discovery;
+- recursive and forwarded resolution;
+- caching and DNSSEC validation;
+- authoritative DNS where approved;
+- encrypted DNS transports where approved;
+- DHCP and clustering where implemented and accepted;
+- privacy-conscious query visibility, auditing, health, and statistics;
+- first-party administration and API boundaries.
+
+GoreeCloud Beacon is the capability umbrella inside GoreeCloud DNS. Beacon does not create a separate product or transfer DNS runtime authority to another GoreeCloud service.
+
+## User interface
+
+The browser administration experience is migrating toward the current applicable Stable Glaze UI contract. Current source work includes GoreeCloud product identity, semantic surfaces, adaptive layout, accessible focus/target treatment, local presentation resources, and setup/login/dashboard migration work.
+
+This source work is **migration-required**, not final Glaze UI acceptance. A successful source validator or build does not by itself establish rendered, accessibility, form-factor, target-environment, or Stable-release acceptance.
+
+The Beacon Insights Overview is being developed as the future default Beacon Console landing page with privacy-safe aggregate DNS activity, listener/address state, client counts, filtering outcomes, resolver/upstream health, latency, and a DNS Resolution Path. Raw query/client/address detail must remain inside authorized administrative drill-downs and is not required merely to populate the overview.
+
+## Build and validation
+
+The repository Makefile defaults to the inherited `client_v2` path. GoreeCloud-controlled frontend development currently uses `CLIENT_DIR=client` explicitly.
+
+Typical development commands are:
+
+```sh
+make CLIENT_DIR=client deps
+make CLIENT_DIR=client quick-build
+make CLIENT_DIR=client lint test js-typecheck
 ```
 
-GoreeCloud DNS is the client-facing filtering, policy, and private-DNS layer. Unbound remains the recursive, caching, and DNSSEC-validating resolver unless a future approved architecture explicitly changes that responsibility.
+Browser end-to-end validation uses the `js-test-e2e` target after Playwright browser dependencies are installed:
 
-## Development Model
-
-The project follows a controlled fork-to-native transition:
-
-```text
-AdGuard Home
-    -> GoreeCloud-maintained fork
-    -> GoreeCloud-native user experience and integrations
-    -> increasingly independent internal architecture
-    -> GoreeCloud-controlled DNS platform
+```sh
+make CLIENT_DIR=client js-test-e2e
 ```
 
-The upstream foundation is an engineering bootstrap, not the final product boundary.
+GitHub Actions exercises Linux, macOS, and Windows repository tests together with GoreeCloud frontend lint, TypeScript, unit-test, production-build, source-contract, and browser-e2e gates on applicable development changes. Exact-release acceptance remains tied to the exact candidate revision and cannot be inferred from an earlier workflow run.
 
-## User Interface
+## Privacy and security boundary
 
-GoreeCloud DNS consumes Stable Glaze UI 1.1 as its design system. Current foundation work includes GoreeCloud DNS product identity, semantic light/dark surfaces, the Canvas/Solid/Raised/Glaze/Overlay hierarchy, accessible target and focus treatment, adaptive layouts, dense administration hardening, and local-only presentation resources.
+DNS activity can reveal sensitive browsing, application, device, and user behavior. GoreeCloud DNS therefore requires privacy-by-default handling, data minimization, controlled retention, explicit administrative access, privacy-safe logs and metrics, and no unnecessary raw activity collection for dashboards or platform status consumers.
 
-The independently bundled dashboard, initial setup flow, and login flow all load the same Glaze UI consumer layers and GoreeCloud product-identity adapter. Setup and authentication surfaces are also being migrated away from inherited hard-coded card, shadow, progress, error, and accent presentation values.
+DNS resolution does not itself grant authorization. Network access, application authentication and authorization, ingress/publication, Privacy Shield, Wardveil Security, and other enforcement boundaries remain independent authorities.
 
-Visible localized self-references to the inherited product name are adapted through a controlled identity layer that replaces only the exact `AdGuard Home` product name. Generic upstream references, protocol terminology, filtering syntax, licensing, attribution, and provenance are not generically rewritten.
+GoreeCloud DNS must not become an unrestricted public recursive resolver. Production configuration, credentials, secrets, listener exposure, firewall state, client DNS assignment, and cutover authority remain outside ordinary development-source changes unless separately approved and accepted.
 
-## Production Safety
+## Production boundary
 
-The existing production AdGuard Home deployment remains operational during early GoreeCloud DNS development. No production cutover should occur until GoreeCloud DNS has passed isolated runtime, filtering, private-DNS, upstream, failure, backup/restore, performance, security, and rollback validation.
+Current production DNS authority has **not** transferred to this development work. Existing production DNS services remain authoritative until the native GoreeCloud DNS replacement passes isolated runtime validation, resolver/filtering parity, DNSSEC, encrypted-DNS where applicable, failure/restart, performance, security, privacy, backup/restore, recovery, migration, rollback, platform-integration, exact-artifact, production-acceptance, and stabilization gates.
 
-## Repository Documents
+No branch, pull request, green CI run, dashboard implementation, or source-level native subsystem is sufficient by itself to authorize production cutover or Stable classification.
 
-- `UPSTREAM.md` — upstream relationship and fork maintenance model.
-- `SECURITY.md` — security and production-safety boundary.
-- `docs/goreecloud-project.md` — project architecture and development direction.
-- `docs/glaze-ui-conformance.md` — Glaze UI consumer conformance and Stable-release boundary.
+## Repository documentation
 
-## Validation Status
+The controlled root documentation set is:
 
-Fail-closed source validators cover Stable Glaze UI 1.1 and product identity across the dashboard, setup, and login entrypoints, including the current Query Log and advanced-settings accessibility contracts. For the latest inspected exact head, GitHub returned no pull-request workflow run and no combined commit-status checks. Executable lint, typecheck, tests, production build, and compiled visual/accessibility acceptance therefore remain outstanding rather than inferred from source-marker validation.
+- [`README.md`](README.md) — repository orientation and verified current-state boundary.
+- [`SPECIFICATIONS.md`](SPECIFICATIONS.md) — repository-coupled technical and acceptance specification.
+- [`FEATURES.md`](FEATURES.md) — implemented and planned capability catalogue with evidence boundaries.
+- [`BENEFITS.md`](BENEFITS.md) — intended product value without elevating implementation state.
+- [`COMPETITIVE-OBJECTIVES.md`](COMPETITIVE-OBJECTIVES.md) — competitive reference envelope and GoreeCloud differentiation targets.
+- [`BRANDING.md`](BRANDING.md) — GoreeCloud DNS and Beacon identity guidance.
+- [`USER-MANUAL.md`](USER-MANUAL.md) — current Development operator/user guidance and safety boundaries.
 
-## Current Status
+Additional records include:
 
-GoreeCloud DNS is under active development. Repository, CI, application-shell, localization identity, Stable Glaze UI 1.1, setup, authentication, dense administration, and accessibility foundations are being established before DNS-engine behavior or production migration work begins.
+- [`UPSTREAM.md`](UPSTREAM.md) — upstream provenance and transition relationship.
+- [`SECURITY.md`](SECURITY.md) — security reporting and production-safety boundary.
+- [`docs/goreecloud-project.md`](docs/goreecloud-project.md) — project architecture and development direction.
+- [`docs/glaze-ui-conformance.md`](docs/glaze-ui-conformance.md) — repository-local Glaze UI conformance mapping.
+- [`docs/PLATFORM_CONFORMANCE.md`](docs/PLATFORM_CONFORMANCE.md) — current platform-contract conformance record.
+
+The canonical project specification and governance records are maintained in the authoritative GoreeCloud Google Drive hierarchy. Repository documentation must remain consistent with those records while describing the exact source state of this repository.
+
+## Lifecycle
+
+**Release lifecycle: Development.**
+
+GoreeCloud DNS must remain non-Stable until every applicable exact-candidate functional, native-build, Glaze UI, Wardveil Security, Privacy Shield, Everkeep, Identity, Mesh, API, security, dependency, accessibility, observability, backup/restore, recovery, release-provenance, deployment, production-acceptance, and stabilization gate has been satisfied with retained evidence.

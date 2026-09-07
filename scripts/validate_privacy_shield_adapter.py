@@ -90,16 +90,22 @@ def main() -> None:
     text = DOC.read_text(encoding="utf-8").lower()
     for phrase in (
         "enforcement adapter for the `dns-privacy` capability",
-        "unbound remains authoritative",
+        "goreecloud dns remains the authoritative goreecloud product",
         "privacy shield provides the shared privacy identity",
         "does not declare browser capabilities",
         "must not export raw dns queries",
+        "privacy shield status must remain a separate contract from goreecloud infrastructure status",
         "production_approved=false",
+        "runtime_acceptance_required=true",
         "shared privacy shield contract validation is not runtime acceptance",
         "does not modify the dns engine",
+        "infrastructure status v1 envelope is not the privacy shield status contract",
     ):
         if phrase not in text:
             fail(f"Privacy Shield DNS integration document missing boundary: {phrase}")
+
+    if "unbound remains authoritative" in text:
+        fail("Privacy Shield documentation must not encode Unbound as permanent GoreeCloud DNS authority")
 
     print("GoreeCloud DNS Privacy Shield adapter validation passed.")
 

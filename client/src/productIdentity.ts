@@ -3,8 +3,14 @@ import i18n from './i18n';
 const UPSTREAM_PRODUCT_NAME = 'AdGuard Home';
 const GOREECLOUD_PRODUCT_NAME = 'GoreeCloud DNS';
 
-type TranslationValue = string | number | boolean | null | TranslationValue[] | TranslationObject;
-type TranslationObject = Record<string, TranslationValue>;
+type TranslationValue =
+    | string
+    | number
+    | boolean
+    | null
+    | TranslationValue[]
+    | { [key: string]: TranslationValue };
+type TranslationObject = { [key: string]: TranslationValue };
 
 const replaceProductName = (value: TranslationValue): TranslationValue => {
     if (typeof value === 'string') {
