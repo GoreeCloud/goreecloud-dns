@@ -1,4 +1,5 @@
-// Package status defines the privacy-minimized GoreeCloud infrastructure status boundary.
+// Package status defines the privacy-minimized GoreeCloud infrastructure
+// status boundary.
 package status
 
 import "time"
