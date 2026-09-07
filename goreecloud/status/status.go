@@ -40,15 +40,17 @@ type Snapshot struct {
 	Capabilities  []Capability `json:"capabilities"`
 }
 
-// DevelopmentSnapshot is deliberately conservative until the adapter is wired to
-// accepted GoreeCloud DNS runtime evidence.
+// DevelopmentSnapshot is deliberately conservative until the status boundary
+// is wired to accepted GoreeCloud DNS runtime evidence.  RuntimeAuthority names
+// the GoreeCloud product/repository that owns DNS runtime truth; it must not be
+// replaced by the name of a transitional implementation or data-plane source.
 func DevelopmentSnapshot(now time.Time) Snapshot {
 	return Snapshot{
 		SchemaVersion: SchemaVersion,
 		Producer: Producer{
 			ServiceID:        "goreecloud-dns",
 			AdapterID:        "goreecloud-dns/status-v1",
-			RuntimeAuthority: "GoreeCloud/AdGuardHomeDataPlane",
+			RuntimeAuthority: "GoreeCloud/goreecloud-dns",
 		},
 		GeneratedAt: now.UTC().Format(time.RFC3339),
 		State:       "development",

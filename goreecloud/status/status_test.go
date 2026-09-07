@@ -10,6 +10,9 @@ func TestDevelopmentSnapshotDoesNotExposeDNSData(t *testing.T) {
 	if snapshot.SchemaVersion != 1 || snapshot.Producer.ServiceID != "goreecloud-dns" {
 		t.Fatal("unexpected GoreeCloud DNS contract identity")
 	}
+	if snapshot.Producer.RuntimeAuthority != "GoreeCloud/goreecloud-dns" {
+		t.Fatalf("runtime authority = %q, want GoreeCloud/goreecloud-dns", snapshot.Producer.RuntimeAuthority)
+	}
 	if snapshot.State != "development" || snapshot.Acceptance.ProductionApproved {
 		t.Fatal("development adapter must not claim production readiness")
 	}

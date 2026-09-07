@@ -90,6 +90,8 @@ const Interfaces = () => {
     }
 
     const interfaceValue = interface_name && interfaces[interface_name];
+    const interfaceErrorId = 'interface_name-error';
+    const hasInterfaceError = Boolean(errors.interface_name);
 
     return (
         <div className="row dhcp__interfaces">
@@ -102,6 +104,8 @@ const Interfaces = () => {
                     data-testid="interface_name"
                     className="form-control custom-select pl-4 col-md"
                     disabled={enabled}
+                    aria-invalid={hasInterfaceError}
+                    aria-describedby={hasInterfaceError ? interfaceErrorId : undefined}
                     {...register('interface_name', {
                         validate: validateRequiredValue,
                     })}>
@@ -111,7 +115,9 @@ const Interfaces = () => {
                     {renderInterfaces(interfaces)}
                 </select>
                 {errors.interface_name && (
-                    <div className="form__message form__message--error">{t(errors.interface_name.message)}</div>
+                    <div id={interfaceErrorId} className="form__message form__message--error" role="alert">
+                        {t(errors.interface_name.message)}
+                    </div>
                 )}
             </div>
             {interfaceValue &&

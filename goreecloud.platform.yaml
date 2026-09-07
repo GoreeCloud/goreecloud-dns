@@ -1,0 +1,122 @@
+schema_version: '0.2'
+
+component:
+  type: service
+  id: goreecloud-dns
+  product_name: GoreeCloud DNS
+  repository: GoreeCloud/goreecloud-dns
+
+lifecycle: development
+version: unreleased-development
+
+supported_platforms:
+  - linux
+
+api:
+  versions: []
+  endpoints: []
+
+platform_systems:
+  manager:
+    result: applicable-blocked
+    version: null
+    evidence:
+      - FEATURES.md
+    notes: Manager operational visibility is applicable, but no accepted GoreeCloud Manager integration is declared on the authoritative default branch.
+  privacy_shield:
+    result: applicable-blocked
+    version: null
+    evidence:
+      - FEATURES.md
+    notes: DNS privacy controls are integral to the product, but the default branch does not contain accepted Privacy Shield integration or runtime acceptance evidence.
+  wardveil_security:
+    result: applicable-blocked
+    version: null
+    evidence:
+      - FEATURES.md
+    notes: Resolver, filtering, encrypted-DNS, exposure, configuration-integrity, and administrative security integration remains acceptance-gated.
+  everkeep:
+    result: applicable-blocked
+    version: null
+    evidence:
+      - FEATURES.md
+    notes: Durable backup, restore, rollback, trust-anchor, policy, filter-list, zone, DHCP, and configuration recovery under Everkeep remains incomplete and unaccepted.
+  glaze_ui:
+    result: applicable-migration-required
+    version: null
+    evidence:
+      - FEATURES.md
+    notes: The repository retains an inherited administration experience while Beacon Console requires migration to the current Stable Glaze UI 1.1.0 contract; no accepted current-Stable implementation is declared on the default branch.
+  mesh:
+    result: applicable-blocked
+    version: null
+    evidence:
+      - FEATURES.md
+    notes: GoreeCloud Mesh coordination for governed DNS relationships and future clustering is applicable, but no accepted Mesh runtime integration is declared on the default branch.
+    capabilities: []
+    dependencies: []
+    published_events: []
+    consumed_events: []
+  identity:
+    result: applicable-blocked
+    version: null
+    evidence:
+      - FEATURES.md
+    notes: Beacon Identity and GoreeCloud Identity integration are required for approved human and service administration; accepted platform Identity integration is incomplete.
+
+health:
+  health_endpoint: null
+  readiness_endpoint: null
+
+continuity:
+  backup:
+    required: true
+    requirements:
+      - Protect canonical DNS configuration, policy, zones, DHCP state where enabled, trusted-key metadata, filter-list lifecycle state, and required operational history through the approved Everkeep recovery model.
+      - Keep reusable credentials and private key material outside ordinary portable evidence and recover them only through approved protected mechanisms.
+  restore:
+    required: true
+    requirements:
+      - Validate DNS restoration in an isolated environment before production qualification.
+      - Verify resolver, cache, policy, filtering, trust, configuration, and service-start behavior for the exact release candidate without transferring production listener authority.
+  export:
+    required: true
+    requirements:
+      - Provide documented, bounded export of user-controlled DNS configuration and durable policy data without including raw query activity or reusable secrets by default.
+  portability:
+    required: true
+    requirements:
+      - Use versioned GoreeCloud-owned configuration and data formats where practical so the native DNS platform can be recovered or migrated without permanent dependence on a complete third-party DNS product.
+
+external_dependencies: []
+
+compatibility:
+  platform_contract: '0.2'
+  glaze_ui_required: '1.1.0'
+  requires:
+    - goreecloud-platform-contract==0.2
+  provides: []
+
+evidence:
+  acceptance_tests: []
+  release: []
+
+conformance:
+  status: nonconformant
+  validated_at: null
+  evidence:
+    - FEATURES.md
+    - BENEFITS.md
+    - COMPETITIVE-OBJECTIVES.md
+  blockers:
+    - GoreeCloud DNS remains in fork-to-native Development and the authoritative default branch still contains an AdGuard Home-derived compatibility foundation.
+    - Production DNS authority remains outside a fully accepted GoreeCloud-native Beacon runtime; no production cutover is authorized by this manifest.
+    - GoreeCloud Manager integration and acceptance are incomplete.
+    - Privacy Shield integration and acceptance are incomplete.
+    - Wardveil Security integration and acceptance are incomplete.
+    - Everkeep backup, restore, rollback, and recovery acceptance are incomplete.
+    - Beacon Console migration to current Stable Glaze UI 1.1.0 and representative accessibility acceptance are incomplete.
+    - GoreeCloud Mesh integration and acceptance are incomplete.
+    - GoreeCloud Identity integration and acceptance are incomplete.
+    - Production-path native resolver, filtering, encrypted-DNS, DHCP, clustering, administration, recovery, rollback, and exact-artifact acceptance remain incomplete.
+    - No Stable or production-approved GoreeCloud DNS release evidence is declared.
