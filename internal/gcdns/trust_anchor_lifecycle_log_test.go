@@ -3,6 +3,7 @@ package gcdns
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -52,7 +53,15 @@ func TestTrustAnchorLifecycleLogAppendsHashChainedActivationEvents(t *testing.T)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if info.Mode().Perm() != 0o600 {
+	if runtime.GOOS == "windows" {
+		// Go maps only the owner-writable bit of os.FileMode onto the Windows
+		// read-only attribute.  The remaining Unix permission bits are not
+		// represented on Windows, so requiring an exact 0600 mode there would
+		// test a Unix-only encoding rather than the platform contract.
+		if info.Mode().Perm()&0o200 == 0 {
+			t.Fatalf("lifecycle log is unexpectedly read-only on Windows: mode=%#o", info.Mode().Perm())
+		}
+	} else if info.Mode().Perm() != 0o600 {
 		t.Fatalf("lifecycle log mode=%#o", info.Mode().Perm())
 	}
 }
