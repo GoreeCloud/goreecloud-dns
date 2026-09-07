@@ -159,7 +159,8 @@ func TestPolicyFilterListManagerEnableDisableOptionalSource(t *testing.T) {
 		t.Fatalf("disabled composition rules=%#v calls=%d states=%#v", rules, optional.calls, states)
 	}
 
-	if err := manager.SetEnabled("optional", true); err != nil {
+	err = manager.SetEnabled("optional", true)
+	if err != nil {
 		t.Fatalf("SetEnabled(true) error = %v", err)
 	}
 	rules, states, err = manager.BuildRules(now)
