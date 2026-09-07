@@ -46,7 +46,8 @@ platform_systems:
     version: null
     evidence:
       - FEATURES.md
-    notes: The repository retains an inherited administration experience while Beacon Console requires migration to the current Stable Glaze UI 1.1.0 contract; no accepted current-Stable implementation is declared on the default branch.
+      - docs/glaze-ui-conformance.md
+    notes: GLAZE UI V1.2 / 1.2.0 is the current Stable GoreeCloud design-system target. This repository line retains a validated V1.1 source baseline plus migration work, but no repository-local V1.2 consumer acceptance is declared; current-Stable adoption remains required.
   mesh:
     result: applicable-blocked
     version: null
@@ -92,7 +93,7 @@ external_dependencies: []
 
 compatibility:
   platform_contract: '0.2'
-  glaze_ui_required: '1.1.0'
+  glaze_ui_required: '1.2.0'
   requires:
     - goreecloud-platform-contract==0.2
   provides: []
@@ -115,7 +116,7 @@ conformance:
     - Privacy Shield integration and acceptance are incomplete.
     - Wardveil Security integration and acceptance are incomplete.
     - Everkeep backup, restore, rollback, and recovery acceptance are incomplete.
-    - Beacon Console migration to current Stable Glaze UI 1.1.0 and representative accessibility acceptance are incomplete.
+    - Beacon Console migration to current Stable GLAZE UI V1.2 / 1.2.0 and repository-local accessibility acceptance are incomplete.
     - GoreeCloud Mesh integration and acceptance are incomplete.
     - GoreeCloud Identity integration and acceptance are incomplete.
     - Production-path native resolver, filtering, encrypted-DNS, DHCP, clustering, administration, recovery, rollback, and exact-artifact acceptance remain incomplete.
