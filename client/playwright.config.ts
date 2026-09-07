@@ -43,7 +43,10 @@ export default defineConfig({
     webServer: process.env.CI
         ? {
               stdout: 'pipe',
-              command: `./AdGuardHome --local-frontend -v -c ${CONFIG_FILE_PATH}`,
+              // The E2E global setup intentionally exercises AdGuard Home's
+              // first-install flow, which requires administrator privileges.
+              // Keep that privilege confined to this disposable CI server.
+              command: `sudo ./AdGuardHome --local-frontend -v -c ${CONFIG_FILE_PATH}`,
               url: 'http://127.0.0.1:3000',
               cwd: '..',
               timeout: 10000,

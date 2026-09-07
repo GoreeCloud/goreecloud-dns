@@ -94,9 +94,6 @@ jobs:
       - name: Build local frontend and DNS server
         run: make CLIENT_DIR=client VERBOSE=1 deps quick-build
 
-      - name: Allow unprivileged DNS bind for E2E
-        run: sudo setcap 'cap_net_bind_service=+ep' ./AdGuardHome
-
       - name: Install Playwright Chromium
         working-directory: client
         run: npx playwright install --with-deps chromium
