@@ -47,6 +47,7 @@ platform_systems:
     evidence:
       - FEATURES.md
       - docs/glaze-ui-conformance.md
+      - docs/glaze-ui-v1.2-adoption.md
     notes: GLAZE UI V1.2 / 1.2.0 is the current Stable GoreeCloud design-system target. This repository line retains a validated V1.1 source baseline plus migration work, but no repository-local V1.2 consumer acceptance is declared; current-Stable adoption remains required.
   mesh:
     result: applicable-blocked
