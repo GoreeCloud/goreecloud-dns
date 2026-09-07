@@ -52,6 +52,8 @@ Query logs, client identifiers, source addresses, requested domain names, rule-m
 
 `privacy-shield/adapter.json` records `production_approved=false` and `runtime_acceptance_required=true`.
 
+The runtime producer uses adapter id `dns`, product `GoreeCloud DNS`, runtime authority `GoreeCloud/goreecloud-dns`, and adapter contract version `1`.
+
 The runtime mapper preserves that boundary. Healthy resolver/filtering/policy evidence produces `development` / `pending-acceptance`, not `protected` / `active`. Resolver loss fails closed to `unavailable`; incomplete filtering or policy evidence reports `attention` / `inactive`.
 
 Before `production_approved` may become true, the exact GoreeCloud DNS runtime intended for production must demonstrate the declared DNS privacy behavior, fail-closed configuration handling, schema-valid privacy-minimized status output where enabled, migration/rollback safety, and target-environment acceptance.
