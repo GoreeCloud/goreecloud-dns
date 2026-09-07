@@ -37,7 +37,15 @@ jobs:
 
       - name: Apply non-breaking transitive audit fixes
         working-directory: client
-        run: npm audit fix --package-lock-only --ignore-scripts
+        shell: bash
+        run: |
+          set +e
+          npm audit fix --package-lock-only --ignore-scripts
+          status=$?
+          set -e
+          if [ "$status" -ne 0 ] && [ "$status" -ne 1 ]; then
+            exit "$status"
+          fi
 
       - name: Verify locked install
         working-directory: client
