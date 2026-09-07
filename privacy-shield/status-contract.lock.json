@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "source_repository": "GoreeCloud/goreecloud-privacy-shield",
+  "source_revision": "f10d90c0c53c0b876d6ff5cdb6926d6b87205438",
+  "adapter_schema": {
+    "path": "contracts/privacy-shield.adapter.schema.json",
+    "blob": "cc0a50a3d0d5151d06ed34be2df30266a91c3bf9"
+  },
+  "capabilities_registry": {
+    "path": "contracts/privacy-shield.capabilities.json",
+    "blob": "d9bb4e26cf7eb3b90034f763e885d47023df3664"
+  },
+  "status_schema": {
+    "path": "contracts/privacy-shield.status.schema.json",
+    "blob": "f6b62576e68e19ad8b25ced5383f8a3df74716fb"
+  }
+}
