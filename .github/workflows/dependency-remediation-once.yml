@@ -1,0 +1,64 @@
+name: dependency-remediation-once
+
+permissions: {}
+
+on:
+  push:
+    branches:
+      - agent/dependency-security
+
+jobs:
+  remediate:
+    if: github.event.head_commit.message == 'ci: stage controlled dependency remediation'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout remediation branch
+        uses: actions/checkout@v6
+        with:
+          ref: agent/dependency-security
+          fetch-depth: 0
+
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+
+      - name: Upgrade direct vulnerable dependencies without force
+        working-directory: client
+        run: >-
+          npm install --package-lock-only --ignore-scripts
+          js-yaml@^3.15.1
+          nanoid@^3.3.18
+          query-string@^9.5.1
+          vitest@^3.2.6
+
+      - name: Apply non-breaking transitive audit fixes
+        working-directory: client
+        run: npm audit fix --package-lock-only --ignore-scripts
+
+      - name: Verify locked install
+        working-directory: client
+        run: npm ci --ignore-scripts
+
+      - name: Require runtime high/critical audit clearance
+        working-directory: client
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Require full critical audit clearance
+        working-directory: client
+        run: npm audit --audit-level=critical
+
+      - name: Commit regenerated dependency manifest and lockfile
+        shell: bash
+        run: |
+          git diff --check
+          git config user.name 'GoreeCloud CI'
+          git config user.email '295260680+GoreeCloud@users.noreply.github.com'
+          git add client/package.json client/package-lock.json
+          git diff --cached --quiet && exit 0
+          git commit -m 'security: remediate audited frontend dependencies'
+          git push origin HEAD:agent/dependency-security
