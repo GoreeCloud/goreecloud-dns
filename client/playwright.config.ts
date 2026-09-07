@@ -11,6 +11,9 @@ export default defineConfig({
     globalSetup: path.resolve('./tests/e2e/globalSetup.ts'),
     globalTeardown: path.resolve('./tests/e2e/globalTeardown.ts'),
     timeout: 5000,
+    // Keep CI fail closed if setup, retries, or a browser operation enters a
+    // pathological state that does not respect an individual test timeout.
+    globalTimeout: process.env.CI ? 15 * 60 * 1000 : undefined,
     /* Run tests in files in parallel */
     fullyParallel: true,
     /* Fail the build on CI if you accidentally left test.only in the source code. */
@@ -19,8 +22,10 @@ export default defineConfig({
     retries: process.env.CI ? 2 : 0,
     /* Opt out of parallel tests on CI. */
     workers: process.env.CI ? 1 : undefined,
-    /* Reporter to use. See https://playwright.dev/docs/test-reporters */
-    reporter: [['html', { open: 'never' }]],
+    /* Reporter to use. Keep a concise CI stream in addition to the HTML artifact. */
+    reporter: process.env.CI
+        ? [['line'], ['html', { open: 'never' }]]
+        : [['html', { open: 'never' }]],
     /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
     use: {
         /* Base URL to use in actions like `await page.goto('/')`. */
