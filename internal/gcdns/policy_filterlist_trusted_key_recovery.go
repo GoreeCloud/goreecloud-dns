@@ -17,9 +17,9 @@ const PolicyFilterListTrustedKeyRecoveryPointSchemaV1 = "goreecloud-beacon-filte
 // backup record for Beacon filter-list public-key rotation and revocation state.
 // It contains no private signing material and does not activate restored state.
 type PolicyFilterListTrustedKeyRecoveryPoint struct {
-	Schema                 string                          `json:"schema"`
-	CreatedAt              string                          `json:"created_at"`
-	StateFingerprintSHA256 string                          `json:"state_fingerprint_sha256"`
+	Schema                 string                           `json:"schema"`
+	CreatedAt              string                           `json:"created_at"`
+	StateFingerprintSHA256 string                           `json:"state_fingerprint_sha256"`
 	State                  PolicyFilterListTrustedKeyState `json:"state"`
 }
 
@@ -84,8 +84,8 @@ func validatePolicyFilterListTrustedKeyRecoveryPoint(recovery PolicyFilterListTr
 	if err != nil {
 		return errors.New("goreecloud dns: filter-list trusted-key recovery point created_at is invalid")
 	}
-	if err := validatePolicyFilterListTrustedKeyState(recovery.State); err != nil {
-		return err
+	if validationErr := validatePolicyFilterListTrustedKeyState(recovery.State); validationErr != nil {
+		return validationErr
 	}
 	updatedAt, err := time.Parse(time.RFC3339Nano, recovery.State.UpdatedAt)
 	if err != nil {
