@@ -1,0 +1,38 @@
+name: Beacon validating forwarding
+
+permissions: {}
+
+env:
+  GO_VERSION: '1.26.6'
+  GOREECLOUD_BEACON_SOURCE_REVISION: ${{ github.event.pull_request.head.sha || github.sha }}
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - '*'
+  pull_request:
+
+jobs:
+  beacon-validating-forwarding:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check out exact source
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ env.GOREECLOUD_BEACON_SOURCE_REVISION }}
+          persist-credentials: false
+      - name: Verify exact source
+        run: test "$(git rev-parse HEAD)" = "$GOREECLOUD_BEACON_SOURCE_REVISION"
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version: '${{ env.GO_VERSION }}'
+          cache: true
+          cache-dependency-path: go.sum
+      - name: Validate Beacon locally validating forwarding contract
+        run: python3 scripts/validate_validating_forwarding.py
+      - name: Test native GoreeCloud DNS core
+        run: go test ./internal/gcdns

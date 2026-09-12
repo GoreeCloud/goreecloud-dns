@@ -8,7 +8,10 @@ This record defines the DNS products and capability areas GoreeCloud DNS uses as
 - AdGuard Home
 - Pi-hole
 - Unbound
+- NextDNS and Control D where their policy, operational, or user-experience behavior establishes a useful benchmark
 - Comparable authoritative, recursive, filtering, encrypted-DNS, and self-hosted DNS platforms where they establish a stronger capability bar
+
+Benchmark products are references, not GoreeCloud product authorities. Their proprietary hosted control planes, trust models, or branding must not be copied into GoreeCloud DNS.
 
 ## Capability bar to match or exceed
 
@@ -26,21 +29,34 @@ This record defines the DNS products and capability areas GoreeCloud DNS uses as
 - DHCP and automatic local DNS registration
 - Split-horizon, network-specific, geolocation-aware, conditional, and DNS64 behavior where approved
 - Multi-node clustering and independent node serving
-- Glaze UI web administration, first-party APIs, automation, runtime controls, dashboards, logs, metrics, and diagnostics
-- Multi-user RBAC, scoped API tokens, TOTP, and OIDC SSO
+- Current-Stable Glaze UI web administration, first-party APIs, automation, runtime controls, dashboards, logs, metrics, and diagnostics
+- Multi-user RBAC, scoped API tokens, TOTP, and OIDC SSO through approved GoreeCloud Identity boundaries
 - Controlled extensions without bypassing core DNS safeguards
 
 ## Objectives GoreeCloud DNS should exceed
 
 - No accidental open recursion and fail-safe defaults
-- Privacy-aware local-first resolution and QNAME minimization where applicable
+- Privacy-aware local-first resolution and QNAME minimisation where applicable
 - Minimized and configurable query logging with no required analytics telemetry
 - Strict separation between DNS-client service and DNS administration
 - Deterministic failover and independently serving cluster nodes
 - First-party configuration, APIs, resolver, cache, policy, authoritative, administration, and observability ownership
+- Verifiable managed-filter provenance, explicit trusted-key policy, bounded acquisition, freshness checks, and safe rollback
 - Complete backup, recovery, export, migration, and rollback control
-- Deep but bounded integration with GoreeCloud Network and the wider GoreeCloud Suite
+- Deep but bounded integration with Privacy Shield, Wardveil Security, Everkeep, GoreeCloud Network/Mesh, GoreeCloud Identity, and the wider GoreeCloud Suite
 - No permanent dependency on Technitium DNS Server, Pi-hole, AdGuard Home, Unbound, or proprietary cloud DNS for capabilities that belong inside GoreeCloud DNS
+
+## Engineering objectives before production migration
+
+1. Resolve branch-owned CI regressions while distinguishing inherited compatibility debt.
+2. Produce exact-artifact isolated runtime evidence for real Beacon request paths.
+3. Complete resolver feature parity for the accepted migration scope.
+4. Validate restart/failure, cache, encrypted-DNS, performance, security, backup/restore, and rollback behavior.
+5. Complete scheduled managed-filter refresh/retry/offline behavior, signing-key rotation/revocation, durable trusted-key storage, durable rollback, and multi-list composition.
+6. Complete production-grade profile administration, Identity/RBAC integration, and privacy-governed analytics.
+7. Validate required Privacy Shield, Wardveil Security, Everkeep, current-Stable Glaze UI, Mesh, Identity, and governance integration evidence.
+8. Rehearse reversible listener/client migration without unplanned DNS behavior changes.
+9. Retain exact source, artifact, configuration, state, and deployment provenance.
 
 ## Capabilities intentionally rejected
 
@@ -51,6 +67,8 @@ This record defines the DNS products and capability areas GoreeCloud DNS uses as
 - Permanent sidecar architecture for core DNS capabilities that GoreeCloud DNS is intended to own
 - Feature parity that adds complexity without meaningful GoreeCloud value
 
-## Competitive review rule
+## Competitive review and evidence rule
 
 Current stable releases of benchmark products should be reviewed periodically. A newly identified gap becomes a GoreeCloud objective only when it materially improves DNS security, privacy, reliability, control, interoperability, administration, recovery, or user experience.
+
+Competitive claims must remain evidence-backed. Implemented source contracts may be described as implemented; production scale, production migration, complete UI, multi-user administration, or other unaccepted capabilities remain objectives until their required evidence exists.
