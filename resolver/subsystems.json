@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "product": "GoreeCloud DNS",
+  "runtime_model": "single-process-or-coordinated-single-service",
+  "subsystems": [
+    {"id":"listener","owns":["dns-udp","dns-tcp","dns-over-https","dns-over-tls","dns-over-quic"],"depends_on":["identity-policy","query-pipeline"]},
+    {"id":"identity-policy","owns":["client-identification","subnet-groups","role-based-access-control","api-tokens","totp-two-factor-authentication","oidc-single-sign-on"]},
+    {"id":"query-pipeline","owns":["split-horizon-dns","client-specific-policies","custom-dns-processing","geolocation-responses","dns64"],"depends_on":["filtering","authoritative","cache","resolver"]},
+    {"id":"filtering","owns":["blocklists","allowlists","wildcard-filtering","regex-filtering","response-policy-zones","advertisement-blocking","tracker-blocking","malware-blocking","phishing-blocking","telemetry-blocking","dns-rebinding-protection"]},
+    {"id":"authoritative","owns":["authoritative-dns","internal-zones","public-zones","primary-zones","secondary-zones","forwarder-zones","stub-zones","catalog-zones","zone-transfer","zone-notify","dnssec-signing"]},
+    {"id":"cache","owns":["dns-cache","persistent-cache","negative-cache","aggressive-negative-cache","cache-ttl-controls","serve-stale","prefetch","auto-prefetch","cache-sharding"]},
+    {"id":"resolver","owns":["recursive-resolution","concurrent-recursion","latency-based-nameserver-selection","forward-zones","conditional-forwarding","multi-upstream-failover","encrypted-forwarding","dnssec-validation","trust-anchor-management","qname-minimization","minimal-responses"]},
+    {"id":"dhcp","owns":["integrated-dhcp","dhcp-dns-registration"],"depends_on":["authoritative"]},
+    {"id":"cluster","owns":["clustering","centralized-multi-instance-management"],"depends_on":["configuration","authoritative","filtering","identity-policy"]},
+    {"id":"administration","owns":["browser-administration-console","http-api","runtime-administration"]},
+    {"id":"observability","owns":["query-logging","audit-logging","runtime-statistics","dashboards","health-monitoring","metrics"]},
+    {"id":"configuration","owns":["validated-configuration","configuration-reload","backup-export-boundary"]},
+    {"id":"security-runtime","owns":["client-access-control","interface-restrictions","query-restrictions","privilege-separation","resolver-hardening","multi-threading"]},
+    {"id":"extensions","owns":["extensible-processing-framework"],"restrictions":["extensions-must-not-bypass-policy","extensions-must-not-read-secrets-without-explicit-grant","extensions-must-be-observable-and-disableable"]}
+  ],
+  "query_order": ["listener","identity-policy","query-pipeline","authoritative","filtering","cache","resolver","dnssec-validation","filtering","listener"],
+  "production_approved": false
+}

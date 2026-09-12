@@ -1,0 +1,70 @@
+{
+  "schema_version": 1,
+  "listeners": {
+    "dns": {"enabled": true, "bind": ["127.0.0.1", "::1"], "port": 53},
+    "doh": {"enabled": false, "bind": ["127.0.0.1"], "port": 443},
+    "dot": {"enabled": false, "bind": ["127.0.0.1"], "port": 853},
+    "doq": {"enabled": false, "bind": ["127.0.0.1"], "port": 853}
+  },
+  "resolver": {
+    "mode": "recursive",
+    "dnssec_validation": true,
+    "qname_minimization": true,
+    "concurrent_recursion": true,
+    "latency_based_nameserver_selection": true,
+    "forward_zones": [],
+    "conditional_forwarding": []
+  },
+  "cache": {
+    "enabled": true,
+    "persistent": false,
+    "serve_stale": true,
+    "prefetch": true,
+    "auto_prefetch": true,
+    "minimum_ttl_seconds": 0,
+    "maximum_ttl_seconds": 86400,
+    "negative_cache": true,
+    "aggressive_negative_cache": true
+  },
+  "authoritative": {
+    "enabled": false,
+    "zones": [],
+    "catalog_zones": [],
+    "dnssec_signing": false
+  },
+  "filtering": {
+    "enabled": true,
+    "blocklists": [],
+    "allowlists": [],
+    "wildcard_rules": [],
+    "regex_rules": [],
+    "response_policy_zones": [],
+    "rebinding_protection": true
+  },
+  "split_horizon": {"enabled": false, "views": []},
+  "dhcp": {"enabled": false, "automatic_dns_registration": true, "scopes": []},
+  "cluster": {"enabled": false, "node_id": null, "peers": []},
+  "identity": {
+    "local_users_enabled": true,
+    "rbac_enabled": true,
+    "totp_enabled": false,
+    "oidc_enabled": false,
+    "api_tokens_enabled": true
+  },
+  "api": {"enabled": true, "bind": ["127.0.0.1"], "port": 3000},
+  "observability": {
+    "query_logging": true,
+    "audit_logging": true,
+    "metrics": true,
+    "privacy_mode": "minimized"
+  },
+  "extensions": {"enabled": false, "modules": []},
+  "security": {
+    "allow_recursion_from": ["127.0.0.0/8", "::1/128"],
+    "allow_authoritative_queries_from": ["0.0.0.0/0", "::/0"],
+    "administration_networks": ["127.0.0.0/8", "::1/128"],
+    "drop_privileges": true,
+    "public_recursive_resolver": false
+  },
+  "production_approved": false
+}

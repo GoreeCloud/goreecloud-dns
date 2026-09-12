@@ -1,0 +1,87 @@
+// Package gcdns contains the first-party GoreeCloud DNS core contracts.
+package gcdns
+
+import (
+	"context"
+	"net/netip"
+	"time"
+
+	"github.com/miekg/dns"
+)
+
+// Transport identifies how a client query entered GoreeCloud DNS.
+type Transport string
+
+const (
+	TransportDNS Transport = "dns"
+	TransportDoH Transport = "doh"
+	TransportDoT Transport = "dot"
+	TransportDoQ Transport = "doq"
+)
+
+// DNSSECStatus describes the validation state attached to a DNS result.
+type DNSSECStatus string
+
+const (
+	DNSSECIndeterminate DNSSECStatus = "indeterminate"
+	DNSSECInsecure      DNSSECStatus = "insecure"
+	DNSSECSecure        DNSSECStatus = "secure"
+	DNSSECBogus         DNSSECStatus = "bogus"
+)
+
+// Request is the normalized query passed through the native GoreeCloud DNS
+// processing pipeline. Message must not be nil.
+type Request struct {
+	Message   *dns.Msg
+	ClientIP  netip.Addr
+	ClientID  string
+	Transport Transport
+}
+
+// Result is the normalized result returned by a first-party DNS subsystem.
+type Result struct {
+	Message      *dns.Msg
+	Source       string
+	CacheTTL     time.Duration
+	Stale        bool
+	DNSSECStatus DNSSECStatus
+}
+
+// Policy evaluates request policy before recursive or authoritative resolution.
+type Policy interface {
+	Evaluate(ctx context.Context, req *Request) (res *Result, handled bool, err error)
+}
+
+// Authority answers queries from local, internal, or public authoritative zones.
+type Authority interface {
+	ResolveAuthoritative(ctx context.Context, req *Request) (res *Result, handled bool, err error)
+}
+
+// Cache stores validated DNS results.
+type Cache interface {
+	Get(ctx context.Context, req *Request) (res *Result, ok bool, err error)
+	Put(ctx context.Context, req *Request, res *Result, ttl time.Duration) (err error)
+	Flush(ctx context.Context) (err error)
+}
+
+// Resolver performs native recursive, forward-zone, conditional-forwarding,
+// or stub resolution after policy and authoritative processing.
+type Resolver interface {
+	Resolve(ctx context.Context, req *Request) (res *Result, err error)
+}
+
+// Observer receives privacy-aware pipeline events.
+type Observer interface {
+	Record(ctx context.Context, event Event)
+}
+
+// Event is a minimal pipeline-observability record.
+type Event struct {
+	Stage        string
+	Source       string
+	Duration     time.Duration
+	CacheHit     bool
+	Stale        bool
+	DNSSECStatus DNSSECStatus
+	Err          error
+}
