@@ -35,13 +35,23 @@ const Header = () => {
         'badge-danger': !protectionEnabled,
     });
 
+    const menuToggleClass = classnames('header-toggler d-lg-none ml-lg-0', {
+        collapsed: !isMenuOpen,
+    });
+
     return (
         <div className="header">
             <div className="header__container">
                 <div className="header__row">
-                    <div className="header-toggler d-lg-none ml-lg-0 collapsed" onClick={toggleMenuOpen}>
-                        <span className="header-toggler-icon" />
-                    </div>
+                    <button
+                        type="button"
+                        className={menuToggleClass}
+                        aria-label="GoreeCloud DNS navigation"
+                        aria-expanded={isMenuOpen}
+                        aria-controls="goreecloud-primary-navigation"
+                        onClick={toggleMenuOpen}>
+                        <span className="header-toggler-icon" aria-hidden="true" />
+                    </button>
 
                     <div className="header__column">
                         <div className="d-flex align-items-center">
