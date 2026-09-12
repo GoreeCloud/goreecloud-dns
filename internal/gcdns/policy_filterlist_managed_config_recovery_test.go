@@ -154,7 +154,6 @@ func TestStagePolicyFilterListManagedConfigRecoveryPointRejectsRequiredSourceDis
 		t.Fatalf("build recovery: %v", err)
 	}
 	recovery.Sources[0].Enabled = false
-	recovery.StateFingerprintSHA256 = mustManagedConfigRecoveryFingerprint(t, recovery.Revision, recovery.Sources)
 
 	_, err = StagePolicyFilterListManagedConfigRecoveryPoint(manager, 6, recovery, recovery.StateFingerprintSHA256)
 	if err == nil || !strings.Contains(err.Error(), "cannot be disabled") {
