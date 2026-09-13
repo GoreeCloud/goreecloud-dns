@@ -32,15 +32,15 @@ type PolicyFilterListManagedConfigRecoverySource struct {
 // non-activating and contains no list content, acquisition credentials, signing
 // keys, or runtime source objects.
 type PolicyFilterListManagedConfigRecoveryPoint struct {
-	Schema                 string                                      `json:"schema"`
-	CreatedAt              string                                      `json:"created_at"`
-	Revision               uint64                                      `json:"revision"`
-	StateFingerprintSHA256 string                                      `json:"state_fingerprint_sha256"`
+	Schema                 string                                        `json:"schema"`
+	CreatedAt              string                                        `json:"created_at"`
+	Revision               uint64                                        `json:"revision"`
+	StateFingerprintSHA256 string                                        `json:"state_fingerprint_sha256"`
 	Sources                []PolicyFilterListManagedConfigRecoverySource `json:"sources"`
 }
 
 type policyFilterListManagedConfigFingerprintState struct {
-	Revision uint64                                      `json:"revision"`
+	Revision uint64                                        `json:"revision"`
 	Sources  []PolicyFilterListManagedConfigRecoverySource `json:"sources"`
 }
 
