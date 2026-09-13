@@ -6,9 +6,7 @@ import (
 	"time"
 )
 
-type managedConfigRecoverySnapshotSource struct {
-	marker int
-}
+type managedConfigRecoverySnapshotSource struct{}
 
 func (*managedConfigRecoverySnapshotSource) UsableSnapshot(time.Time) (PolicyFilterListSnapshot, PolicyFilterListAvailability, bool) {
 	return PolicyFilterListSnapshot{}, PolicyFilterListAvailabilityUnavailable, false
