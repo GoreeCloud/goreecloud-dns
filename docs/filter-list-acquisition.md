@@ -1,3 +1,12 @@
+---
+title: "Beacon Bounded Signed Filter-List Acquisition"
+document_type: "Development Capability Record"
+version: "v0.5"
+status: "Draft"
+classification: "Internal"
+last_updated: "2026-09-15"
+---
+
 # Beacon Bounded Signed Filter-List Acquisition
 
 Beacon now has a bounded remote-acquisition layer for signed filter-list snapshots. It is intentionally narrow and fail closed.
@@ -8,7 +17,7 @@ Beacon now has a bounded remote-acquisition layer for signed filter-list snapsho
 2. configured detached-signature URI; and
 3. the content URI carried inside successfully authenticated metadata.
 
-The metadata and signature bootstrap URIs must be absolute credential-free HTTPS URLs, must use an explicitly allowlisted host, and must share the same HTTPS authority. Redirects are disabled by the default client. Non-200 responses fail. Metadata, signature, and content reads are byte-bounded.
+The metadata and signature bootstrap URIs must be absolute credential-free HTTPS URLs, must use an explicitly allowlisted host, and must share the same HTTPS authority. Redirects are rejected by the acquisition boundary for both the default HTTP client and caller-supplied clients. When a caller supplies a client, Beacon clones its client configuration and overrides only redirect handling, so custom transport and timeout settings can be retained without allowing the caller to weaken the no-redirect policy or mutating the caller's shared client. Non-200 responses fail. Metadata, signature, and content reads are byte-bounded.
 
 Beacon authenticates the exact metadata bytes with an explicitly configured local Ed25519 trusted-key store before it fetches list content. An unauthenticated metadata document therefore cannot redirect Beacon to an arbitrary content location. After authentication, the signed `source_uri` must independently pass the HTTPS and host-allowlist policy before content is retrieved.
 
