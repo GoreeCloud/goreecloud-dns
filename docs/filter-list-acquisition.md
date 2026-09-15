@@ -1,3 +1,12 @@
+---
+title: "Beacon Bounded Signed Filter-List Acquisition"
+document_type: "Development Capability Record"
+version: "v0.6"
+status: "Draft"
+classification: "Internal"
+last_updated: "2026-09-15"
+---
+
 # Beacon Bounded Signed Filter-List Acquisition
 
 Beacon now has a bounded remote-acquisition layer for signed filter-list snapshots. It is intentionally narrow and fail closed.
@@ -8,7 +17,7 @@ Beacon now has a bounded remote-acquisition layer for signed filter-list snapsho
 2. configured detached-signature URI; and
 3. the content URI carried inside successfully authenticated metadata.
 
-The metadata and signature bootstrap URIs must be absolute credential-free HTTPS URLs, must use an explicitly allowlisted host, and must share the same HTTPS authority. Redirects are disabled by the default client. Non-200 responses fail. Metadata, signature, and content reads are byte-bounded.
+The metadata and signature bootstrap URIs must be absolute credential-free HTTPS URLs, must use an explicitly allowlisted host, and must share the same HTTPS authority. Redirects are rejected by the acquisition boundary for both the default HTTP client and caller-supplied clients. When a caller supplies a client, Beacon clones its client configuration and overrides only redirect handling, so custom transport and timeout settings can be retained without allowing the caller to weaken the no-redirect policy or mutating the caller's shared client. Non-200 responses fail. Metadata, signature, and content reads are byte-bounded.
 
 Beacon authenticates the exact metadata bytes with an explicitly configured local Ed25519 trusted-key store before it fetches list content. An unauthenticated metadata document therefore cannot redirect Beacon to an arbitrary content location. After authentication, the signed `source_uri` must independently pass the HTTPS and host-allowlist policy before content is retrieved.
 
@@ -18,6 +27,16 @@ Trusted-key state loading is strict: unknown JSON fields, trailing JSON data, in
 
 The downloaded content is then verified against the signed content SHA-256 and passed through the existing snapshot validation and lifecycle rules for source continuity, monotonic sequence, freshness/expiry, bounded history, and rollback.
 
-This layer still does not provide scheduled refresh, retry/backoff policy, offline grace behavior, transport pinning, Everkeep-backed trusted-key/filter lifecycle recovery, multi-list composition, managed enable/disable administration, or production activation. Those remain separate acceptance work.
+## Development refresh and managed-list orchestration
 
-AdGuard Home and Unbound remain production-authoritative. This acquisition and trusted-key lifecycle code does not change production DNS listeners, filtering state, client assignment, recursion/forwarding paths, or cutover authority.
+Development code also includes `PolicyFilterListRefreshController`. It provides a caller-driven refresh orchestration boundary with a positive refresh interval, capped exponential retry/backoff, one-refresh-at-a-time enforcement, privacy-safe status, and an explicit offline-grace usability window for a previously authenticated active snapshot. The controller deliberately owns no goroutine and no production listener; callers decide when to invoke `Refresh` and may use `NextAttempt` to integrate with a later runtime scheduler. Offline grace never relaxes signature, digest, source-identity, sequence, or acquisition validation.
+
+`PolicyFilterListManager` provides deterministic composition of independently authenticated managed sources into ordinary Beacon policy rules. It binds local managed-list identities to expected remote source identities, distinguishes required and optional sources, prevents required sources from being disabled, permits explicit administrative enablement changes for optional sources, fails closed when a required source is unavailable or a source identity mismatches, and emits privacy-minimized managed-source state. It owns no acquisition goroutine, listener, or production activation path.
+
+Recovery work in this Development stack includes strict candidate staging, integrity-bound recovery generations, and bounded recovery-artifact import/validation. These recovery candidates are not self-authorizing and do not establish Everkeep runtime acceptance or automatic restore activation.
+
+## Remaining acceptance boundaries
+
+The Development components above do **not** establish a production scheduler, production list activation, transport pinning, `Everkeep-backed trusted-key/filter lifecycle recovery`, target-environment acceptance, production cutover, Release Candidate eligibility, or Stable status. Everkeep-backed recovery/runtime integration remains a separate evidence-gated acceptance boundary. Additional managed-list lifecycle capabilities defined by the authoritative GoreeCloud DNS specification remain subject to their own implementation and acceptance evidence.
+
+AdGuard Home and Unbound remain production-authoritative. This acquisition, refresh, managed-list, trusted-key, and recovery-candidate Development code does not change production DNS listeners, filtering state, client assignment, recursion/forwarding paths, or cutover authority.

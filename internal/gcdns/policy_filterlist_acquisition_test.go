@@ -137,6 +137,47 @@ func TestPolicyFilterListAcquirerRejectsRedirectStatus(t *testing.T) {
 	}
 }
 
+func TestPolicyFilterListAcquirerOverridesCallerRedirectPolicy(t *testing.T) {
+	var callerRedirectChecks int
+	var followedRedirect bool
+	client := &http.Client{
+		CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
+			callerRedirectChecks++
+			return nil
+		},
+		Transport: policyFilterListRoundTripFunc(func(request *http.Request) (*http.Response, error) {
+			if request.URL.Hostname() == "redirect.example" {
+				followedRedirect = true
+				return policyFilterListResponse(request, http.StatusOK, []byte(`{"schema":"unexpected"}`)), nil
+			}
+			response := policyFilterListResponse(request, http.StatusFound, nil)
+			response.Header.Set("Location", "https://redirect.example/metadata.json")
+			return response, nil
+		}),
+	}
+
+	_, err := (PolicyFilterListAcquirer{Client: client}).AcquireSigned(context.Background(), PolicyFilterListAcquisitionConfig{
+		MetadataURI:  "https://filters.example/metadata.json",
+		SignatureURI: "https://filters.example/metadata.sig",
+		AllowedHosts: []string{"filters.example"},
+	}, PolicyFilterListTrustedKeys{}, time.Now().UTC())
+	if err == nil || !strings.Contains(err.Error(), "unexpected HTTP status 302") {
+		t.Fatalf("redirect override error = %v", err)
+	}
+	if followedRedirect {
+		t.Fatal("acquisition followed a redirect permitted by the caller client")
+	}
+	if callerRedirectChecks != 0 {
+		t.Fatalf("caller redirect policy was invoked %d times during acquisition", callerRedirectChecks)
+	}
+	if err = client.CheckRedirect(nil, nil); err != nil {
+		t.Fatalf("caller redirect policy was mutated: %v", err)
+	}
+	if callerRedirectChecks != 1 {
+		t.Fatalf("caller redirect policy invocation count = %d, want 1 after direct call", callerRedirectChecks)
+	}
+}
+
 func TestFetchPolicyFilterListBoundedReturnsCloseError(t *testing.T) {
 	client := &http.Client{Transport: policyFilterListRoundTripFunc(func(request *http.Request) (*http.Response, error) {
 		return &http.Response{

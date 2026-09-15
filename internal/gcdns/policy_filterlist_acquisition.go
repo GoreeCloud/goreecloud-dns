@@ -62,15 +62,7 @@ func (a PolicyFilterListAcquirer) AcquireSigned(
 		return PolicyFilterListSnapshot{}, errors.New("goreecloud dns: filter-list metadata and signature must use the same HTTPS authority")
 	}
 
-	client := a.Client
-	if client == nil {
-		client = &http.Client{
-			Timeout: policyFilterListHTTPTimeout,
-			CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
-				return http.ErrUseLastResponse
-			},
-		}
-	}
+	client := policyFilterListAcquisitionClient(a.Client)
 	metadataBytes, err := fetchPolicyFilterListBounded(ctx, client, metadataURL.String(), maxPolicyFilterListMetadataBytes)
 	if err != nil {
 		return PolicyFilterListSnapshot{}, fmt.Errorf("goreecloud dns: acquire filter-list metadata: %w", err)
@@ -112,6 +104,19 @@ func (l *PolicyFilterListLifecycle) AcquireAndApplySigned(
 		return err
 	}
 	return l.Apply(snapshot, now)
+}
+
+func policyFilterListAcquisitionClient(client *http.Client) *http.Client {
+	if client == nil {
+		client = &http.Client{Timeout: policyFilterListHTTPTimeout}
+	} else {
+		clone := *client
+		client = &clone
+	}
+	client.CheckRedirect = func(_ *http.Request, _ []*http.Request) error {
+		return http.ErrUseLastResponse
+	}
+	return client
 }
 
 func authenticatePolicyFilterListMetadata(metadataBytes, signature []byte, trustedKeys PolicyFilterListTrustedKeys) (PolicyFilterListSignedMetadata, error) {
