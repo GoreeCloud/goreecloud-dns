@@ -1,9 +1,10 @@
 # GoreeCloud DNS — Feature Roadmap
 
 **Status:** Active roadmap control  
-**As of:** 2026-09-08  
-**Authoritative project record:** Project Specification — DNS  
-**Canonical repository:** GoreeCloud/goreecloud-dns
+**As of:** 2026-09-15  
+**Version:** v1.0  
+**Authoritative project record:** Project Specification — DNS (internal version v1.0)  
+**Canonical repository:** GoreeCloud/goreecloud-dns  
 **Drive control:** `GoreeCloud/Feature Roadmap/GoreeCloud DNS/FEATURE-ROADMAP.docx`
 
 ## Purpose
@@ -17,6 +18,8 @@ This file is the repository-side feature roadmap control for GoreeCloud DNS. It 
 | FR-001 | Reconcile and maintain every current planned or recommended GoreeCloud DNS feature from the authoritative project record and verified repository evidence in this roadmap. | High | Ongoing control |
 | FR-002 | Move actionable feature obligations into GoreeCloud Tasks Management when required, preserving priority, dependency, and lifecycle disposition. | High | Ongoing control |
 | FR-003 | Do not mark features implemented, complete, cancelled, or superseded without authoritative evidence and synchronized repository/Drive roadmap updates. | High | Ongoing control |
+| FR-004 | Implement the expanded GoreeCloud DNS + GoreeCloud Beacon capability program defined by Project Specification — DNS v1.0 §34. The program covers Beacon Shield, Policy Profiles, Resolver, Cache, Zones, Secure DNS, Horizon, DHCP, Cluster, Console, API, Identity, Insights, Extensions, privacy controls, family controls, managed catalogs/lists, service discovery, and the governed GoreeCloud ecosystem boundaries. Full capability completion must remain evidence-gated. | High | Requirements approved; phased Development; full implementation and production acceptance pending |
+| FR-005 | Keep this repository roadmap materially synchronized with Project Specification — DNS v1.0 §34 and the Drive `FEATURE-ROADMAP.docx`, and verify the synchronized record after material scope changes. | High | Synchronized and verified 2026-09-15; ongoing maintenance required |
 
 ## Maintenance and synchronization
 
