@@ -16,10 +16,18 @@ The signed metadata schema binds the source ID, credential-free HTTPS source URI
 
 The resulting `MetadataSHA256` is the SHA-256 of the exact authenticated metadata bytes. It is useful as immutable evidence identity but is not itself the authentication mechanism; Ed25519 verification against the configured trust store is.
 
+## Recovery artifact portability boundary
+
+The managed recovery path can bind trusted signing-key recovery state and managed filter-list administrative configuration into one integrity-protected recovery generation. `internal/gcdns/policy_filterlist_recovery_bundle_codec.go` adds a bounded JSON portability boundary for that bundle so an approved recovery authority can retain or transport the artifact without bypassing Beacon validation.
+
+Recovery bundle decoding is limited to 1 MiB, rejects unknown JSON fields and trailing JSON data, revalidates the embedded trusted-key state, managed configuration, timestamps, and bundle fingerprint, and canonicalizes managed-source ordering and SHA-256 formatting before returning the artifact. Encoding likewise validates and canonicalizes before producing deterministic, newline-terminated JSON.
+
+The artifact is not self-authorizing. Restore staging still requires the independently retained bundle fingerprint and preserves the existing trusted-key rollback, revocation, managed-revision, source-identity, required-source, and local runtime-source gates. Encoding or decoding a bundle does not write the trusted-key store, persist managed configuration, refresh a list, start a scheduler, alter resolver policy, or activate production state.
+
 ## Remaining acquisition and recovery boundary
 
-This implementation still performs no network I/O. It does not download a source URI, follow redirects, perform TLS pinning, schedule refreshes, decide offline retry policy, rotate signing keys, persist the trusted-key store, or infer publisher trust from HTTPS alone. Those behaviors require a separately reviewed acquisition layer with bounded downloads, redirect/host policy, transport security, explicit key rotation/revocation rules, and deterministic failure behavior.
+This implementation still performs no network I/O. It does not download a source URI, follow redirects, perform TLS pinning, schedule refreshes, decide offline retry policy, infer publisher trust from HTTPS alone, or activate restored recovery state. Those behaviors require separately reviewed acquisition and recovery layers with bounded downloads, redirect/host policy, transport security, deterministic failure behavior, and explicit authorization boundaries.
 
-Durable lifecycle state and rollback history are also not yet Everkeep-backed. Persistent state, Everkeep recovery/portability, multi-list conflict policy, Glaze UI administration, target-environment runtime acceptance, and production activation remain separate gates.
+Trusted signing-key rotation and revocation state now has a local persistence model and an integrity-bound recovery representation, but broader durable filter-list lifecycle state and rollback history are not yet Everkeep-backed. The recovery bundle codec does not itself connect to Everkeep or any other remote recovery service. Everkeep integration/acceptance, persistent managed-configuration activation, multi-list conflict policy, Glaze UI administration, target-environment runtime acceptance, and production activation remain separate gates.
 
-No filter-list lifecycle or signed metadata operation authorizes production cutover. Production AdGuard Home and Unbound behavior remains unchanged until the complete migration and rollback evidence set is accepted.
+No filter-list lifecycle, signed metadata, recovery-bundle, or recovery-artifact operation authorizes production cutover. Production AdGuard Home and Unbound behavior remains unchanged until the complete migration and rollback evidence set is accepted.
