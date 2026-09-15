@@ -37,6 +37,6 @@ Recovery work in this Development stack includes strict candidate staging, integ
 
 ## Remaining acceptance boundaries
 
-The Development components above do **not** establish a production scheduler, production list activation, transport pinning, Everkeep-backed durable runtime integration, target-environment acceptance, production cutover, Release Candidate eligibility, or Stable status. Those remain separate evidence-gated work. Additional managed-list lifecycle capabilities defined by the authoritative GoreeCloud DNS specification remain subject to their own implementation and acceptance evidence.
+The Development components above do **not** establish a production scheduler, production list activation, transport pinning, `Everkeep-backed trusted-key/filter lifecycle recovery`, target-environment acceptance, production cutover, Release Candidate eligibility, or Stable status. Everkeep-backed recovery/runtime integration remains a separate evidence-gated acceptance boundary. Additional managed-list lifecycle capabilities defined by the authoritative GoreeCloud DNS specification remain subject to their own implementation and acceptance evidence.
 
 AdGuard Home and Unbound remain production-authoritative. This acquisition, refresh, managed-list, trusted-key, and recovery-candidate Development code does not change production DNS listeners, filtering state, client assignment, recursion/forwarding paths, or cutover authority.
