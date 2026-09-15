@@ -17,11 +17,11 @@ const PolicyFilterListRecoveryBundleSchemaV1 = "goreecloud-beacon-filter-list-re
 // integrity-protected recovery generation. It contains no private signing
 // material, acquisition credentials, list content, or runtime source objects.
 type PolicyFilterListRecoveryBundle struct {
-	Schema                 string                                          `json:"schema"`
-	CreatedAt              string                                          `json:"created_at"`
-	StateFingerprintSHA256 string                                          `json:"state_fingerprint_sha256"`
-	TrustedKeys            PolicyFilterListTrustedKeyRecoveryPoint         `json:"trusted_keys"`
-	ManagedConfig          PolicyFilterListManagedConfigRecoveryPoint      `json:"managed_config"`
+	Schema                 string                                     `json:"schema"`
+	CreatedAt              string                                     `json:"created_at"`
+	StateFingerprintSHA256 string                                     `json:"state_fingerprint_sha256"`
+	TrustedKeys            PolicyFilterListTrustedKeyRecoveryPoint    `json:"trusted_keys"`
+	ManagedConfig          PolicyFilterListManagedConfigRecoveryPoint `json:"managed_config"`
 }
 
 // PolicyFilterListRecoveryBundleCandidate is a non-activating restore
