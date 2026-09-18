@@ -1,0 +1,404 @@
+/* GoreeCloud DNS — Glaze UI 1.1 component alignment.
+ * Presentation-only overrides for inherited Bootstrap-style primitives.
+ */
+
+.card-header,
+.card-footer {
+    border-color: var(--glaze-border);
+    background: transparent;
+}
+
+.table {
+    width: 100%;
+    color: var(--glaze-text);
+    background: transparent;
+}
+
+.table th,
+.table td,
+.table thead th {
+    border-color: var(--glaze-border);
+}
+
+.table thead th {
+    color: var(--glaze-text-muted);
+    font-size: var(--glaze-text-label);
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    background: color-mix(in srgb, var(--glaze-solid) 90%, var(--glaze-canvas));
+}
+
+.table tbody tr,
+.ReactTable .rt-tr-group,
+.logs__table .logs__row {
+    min-height: var(--glaze-target-min);
+    transition: background-color var(--glaze-motion-fast) var(--glaze-ease-standard);
+}
+
+.table-hover tbody tr:hover,
+.ReactTable .rt-tr-group:hover,
+.logs__table .logs__row:hover,
+.dropdown-item:hover,
+.dropdown-item:focus {
+    color: var(--glaze-text);
+    background: color-mix(
+        in srgb,
+        var(--glaze-accent) calc(var(--glaze-state-hover) * 100%),
+        transparent
+    );
+}
+
+.dropdown-item,
+.dropdown-header {
+    color: var(--glaze-text);
+}
+
+.dropdown-item {
+    min-height: var(--glaze-target-min);
+    display: flex;
+    align-items: center;
+    border-radius: var(--glaze-radius-md);
+}
+
+.dropdown-menu {
+    padding: var(--glaze-space-2);
+}
+
+.form-control,
+.custom-select,
+select,
+input,
+textarea {
+    color: var(--glaze-text);
+    border-color: var(--glaze-border);
+    background-color: var(--glaze-solid);
+}
+
+.form-control:focus,
+.custom-select:focus,
+select:focus,
+input:focus,
+textarea:focus {
+    color: var(--glaze-text);
+    border-color: var(--glaze-focus);
+    background-color: var(--glaze-solid);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--glaze-focus) 20%, transparent);
+}
+
+.form-control:disabled,
+.form-control[readonly],
+.custom-select:disabled,
+input:disabled,
+select:disabled,
+textarea:disabled {
+    color: var(--glaze-text-muted);
+    opacity: 0.72;
+    background: color-mix(in srgb, var(--glaze-solid) 86%, var(--glaze-canvas));
+}
+
+.btn-outline-secondary {
+    color: var(--glaze-text-muted);
+    border-color: var(--glaze-border);
+    background: transparent;
+}
+
+.btn-outline-secondary:hover,
+.btn-outline-secondary:focus {
+    color: var(--glaze-text);
+    border-color: var(--glaze-accent);
+    background: color-mix(
+        in srgb,
+        var(--glaze-accent) calc(var(--glaze-state-hover) * 100%),
+        transparent
+    );
+}
+
+.badge {
+    border-radius: var(--glaze-radius-pill);
+}
+
+.badge-success {
+    background-color: var(--glaze-success);
+}
+
+.badge-danger {
+    background-color: var(--glaze-danger);
+}
+
+.alert {
+    border-color: var(--glaze-border);
+    border-radius: var(--glaze-radius-card);
+}
+
+.pagination {
+    gap: var(--glaze-density-compact-gap);
+}
+
+.pagination .page-link {
+    min-width: var(--glaze-target-min);
+    min-height: var(--glaze-target-min);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--glaze-text);
+    border-color: var(--glaze-border);
+    border-radius: var(--glaze-radius-md) !important;
+    background: var(--glaze-solid);
+}
+
+.pagination .page-item.active .page-link {
+    color: var(--glaze-on-accent);
+    border-color: var(--glaze-accent);
+    background: var(--glaze-accent);
+}
+
+.ReactTable,
+.rt-table,
+.logs__table,
+.table-responsive {
+    color: var(--glaze-text);
+    border-color: var(--glaze-border);
+    background: transparent;
+}
+
+.ReactTable .rt-thead,
+.ReactTable .rt-tr-group,
+.ReactTable .rt-td,
+.ReactTable .rt-th {
+    border-color: var(--glaze-border);
+}
+
+.ReactTable .rt-thead {
+    color: var(--glaze-text-muted);
+    background: color-mix(in srgb, var(--glaze-solid) 90%, var(--glaze-canvas));
+}
+
+.modal-header,
+.modal-footer {
+    border-color: var(--glaze-border);
+}
+
+.modal-body {
+    line-height: var(--glaze-line-height-body);
+}
+
+.close {
+    min-width: var(--glaze-target-min);
+    min-height: var(--glaze-target-min);
+    color: var(--glaze-text-muted);
+    border-radius: var(--glaze-radius-control);
+    text-shadow: none;
+}
+
+.close:hover,
+.close:focus {
+    color: var(--glaze-text);
+    background: color-mix(
+        in srgb,
+        var(--glaze-accent) calc(var(--glaze-state-hover) * 100%),
+        transparent
+    );
+}
+
+/* Dense administration surfaces: keep inherited behavior while making the
+ * settings stack and Query Log visually legible as GoreeCloud-owned regions.
+ */
+.box-body--settings,
+.page-header--logs,
+.logs__table,
+.ReactTable,
+.table-responsive {
+    border: 1px solid var(--glaze-border);
+    border-radius: var(--glaze-radius-card);
+    background: var(--glaze-raised);
+    box-shadow: var(--glaze-shadow-soft);
+}
+
+.box-body--settings {
+    padding: var(--glaze-space-6);
+}
+
+.box-body--settings + .box-body--settings {
+    margin-top: var(--glaze-space-5);
+}
+
+.box-body--settings h2,
+.box-body--settings h3,
+.box-body--settings h4 {
+    color: var(--glaze-text);
+}
+
+.box-body--settings .form-group:last-child {
+    margin-bottom: 0;
+}
+
+.page-header--logs {
+    align-items: center;
+    gap: var(--glaze-density-comfortable-gap);
+    margin-bottom: var(--glaze-space-4);
+    padding: var(--glaze-space-4) var(--glaze-space-6);
+}
+
+.page-header--logs .page-title {
+    margin-bottom: 0;
+    color: var(--glaze-text);
+}
+
+.page-header--logs .form-control--container {
+    gap: var(--glaze-density-comfortable-gap);
+}
+
+.page-header--logs .field__search,
+.page-header--logs .field__select {
+    min-height: var(--glaze-target-min);
+}
+
+.page-header--logs .form-control--search,
+.page-header--logs .custom-select--logs {
+    min-height: var(--glaze-target-min);
+    border: 1px solid var(--glaze-border);
+    background-color: var(--glaze-solid) !important;
+}
+
+.logs__refresh {
+    min-width: var(--glaze-target-min);
+    min-height: var(--glaze-target-min);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--glaze-accent);
+    border-radius: var(--glaze-radius-control);
+    transition:
+        color var(--glaze-motion-fast) var(--glaze-ease-standard),
+        background-color var(--glaze-motion-fast) var(--glaze-ease-standard),
+        transform var(--glaze-motion-fast) var(--glaze-ease-standard);
+}
+
+.logs__refresh:hover,
+.logs__refresh:focus-visible {
+    color: var(--glaze-accent-strong);
+    background: color-mix(
+        in srgb,
+        var(--glaze-accent) calc(var(--glaze-state-hover) * 100%),
+        transparent
+    );
+}
+
+.logs__refresh:active {
+    background: color-mix(
+        in srgb,
+        var(--glaze-accent) calc(var(--glaze-state-pressed) * 100%),
+        transparent
+    );
+}
+
+.logs__table,
+.table-responsive,
+.ReactTable .rt-table {
+    overflow: auto;
+    scrollbar-gutter: stable;
+}
+
+.logs__table .logs__row {
+    border-bottom-color: var(--glaze-border);
+}
+
+.logs__table .logs__cell--header__container {
+    color: var(--glaze-text-muted);
+    background: color-mix(in srgb, var(--glaze-solid) 90%, var(--glaze-canvas));
+}
+
+/* Keep dense rows readable and touch-safe without forcing comfortable density
+ * on pointer-heavy administrative screens. */
+.table td,
+.table th,
+.ReactTable .rt-td,
+.ReactTable .rt-th,
+.logs__table .logs__cell {
+    padding-top: var(--glaze-density-compact-gap);
+    padding-bottom: var(--glaze-density-compact-gap);
+}
+
+@media (pointer: coarse) {
+    .table td,
+    .table th,
+    .ReactTable .rt-td,
+    .ReactTable .rt-th,
+    .logs__table .logs__cell {
+        padding-top: var(--glaze-density-comfortable-gap);
+        padding-bottom: var(--glaze-density-comfortable-gap);
+    }
+}
+
+@media (max-width: 599px) {
+    .card-body,
+    .modal-body,
+    .box-body--settings {
+        padding: var(--glaze-space-4);
+    }
+
+    .page-header--logs {
+        align-items: stretch;
+        padding: var(--glaze-space-4);
+    }
+
+    .page-header--logs .form-control--container {
+        width: 100%;
+        gap: var(--glaze-density-compact-gap);
+    }
+
+    .page-header--logs .field__search,
+    .page-header--logs .field__select {
+        width: 100%;
+        margin-top: 0;
+        padding-right: 0;
+        padding-left: 0;
+    }
+
+    .table-responsive,
+    .ReactTable,
+    .logs__table {
+        border-radius: var(--glaze-radius-md);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .table tbody tr,
+    .ReactTable .rt-tr-group,
+    .logs__refresh,
+    .logs__table .logs__row {
+        transition: none;
+    }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+    .box-body--settings,
+    .page-header--logs,
+    .logs__table,
+    .ReactTable,
+    .table-responsive {
+        background: var(--glaze-solid);
+    }
+}
+
+@media (forced-colors: active) {
+    .form-control,
+    .custom-select,
+    .btn-outline-secondary,
+    .pagination .page-link,
+    .alert,
+    .box-body--settings,
+    .page-header--logs,
+    .logs__table,
+    .ReactTable,
+    .table-responsive {
+        color: CanvasText;
+        border-color: ButtonText;
+        background: Canvas;
+        box-shadow: none;
+    }
+
+    .logs__refresh {
+        color: ButtonText;
+    }
+}

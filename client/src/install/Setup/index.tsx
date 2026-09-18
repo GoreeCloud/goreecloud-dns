@@ -1,4 +1,4 @@
-import React, { useEffect, Fragment } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import debounce from 'lodash/debounce';
 
@@ -9,7 +9,7 @@ import { INSTALL_TOTAL_STEPS, ALL_INTERFACES_IP, DEBOUNCE_TIMEOUT } from '../../
 
 import Loading from '../../components/ui/Loading';
 import Greeting from './Greeting';
-import { ConfigType, DnsConfig, Settings, WebConfig } from './Settings';
+import { ConfigType, DnsConfig, Settings, SettingsFormValues, WebConfig } from './Settings';
 import { Devices } from './Devices';
 import { Submit } from './Submit';
 import { Progress } from './Progress';
@@ -31,7 +31,7 @@ export const Setup = () => {
 
     useEffect(() => {
         dispatch(actionCreators.getDefaultAddresses());
-    }, []);
+    }, [dispatch]);
 
     const handleFormSubmit = (values: any) => {
         const config = { ...values };
@@ -48,13 +48,24 @@ export const Setup = () => {
         }
     };
 
-    const checkConfig = debounce((values) => {
-        const { web, dns } = values;
+    const checkConfig = useMemo(
+        () =>
+            debounce((values: SettingsFormValues) => {
+                const { web, dns } = values;
 
-        if (values && web.port && dns.port) {
-            dispatch(actionCreators.checkConfig({ web, dns, set_static_ip: false }));
-        }
-    }, DEBOUNCE_TIMEOUT);
+                if (web.port && dns.port) {
+                    dispatch(actionCreators.checkConfig({ web, dns, set_static_ip: false }));
+                }
+            }, DEBOUNCE_TIMEOUT),
+        [dispatch],
+    );
+
+    useEffect(
+        () => () => {
+            checkConfig.cancel();
+        },
+        [checkConfig],
+    );
 
     const handleFix = (web: WebConfig, dns: DnsConfig, set_static_ip: boolean) => {
         dispatch(actionCreators.checkConfig({ web, dns, set_static_ip }));

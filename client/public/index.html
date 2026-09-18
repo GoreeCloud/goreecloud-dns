@@ -8,10 +8,10 @@
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default">
-        <link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon-180x180.png" />
-        <link rel="mask-icon" href="assets/safari-pinned-tab.svg" color="#67B279">
-        <link rel="icon" type="image/png" href="assets/favicon.png" sizes="48x48">
-        <title>AdGuard Home</title>
+        <meta name="theme-color" content="#287d68">
+        <meta name="description" content="GoreeCloud DNS — private DNS filtering, policy enforcement, and service discovery for GoreeCloud.">
+        <link rel="icon" type="image/svg+xml" href="assets/goreecloud-dns-mark.svg">
+        <title>GoreeCloud DNS</title>
         <style>
             .wrapper {
                 display: flex;
@@ -21,14 +21,14 @@
                 min-height: 100vh;
             }
 
-            [data-theme="DARK"] .wrapper {
-                background-color: #f5f7fb;
+            [data-theme="dark"] .wrapper {
+                background-color: #0d1318;
             }
         </style>
     </head>
     <body>
         <noscript>
-            You need to enable JavaScript to run this app.
+            You need to enable JavaScript to run GoreeCloud DNS.
         </noscript>
         <div id="root">
             <div class="wrapper"></div>
@@ -36,15 +36,16 @@
         <script>
             (function() {
                 var LOCAL_STORAGE_THEME_KEY = 'account_theme';
-                var theme = 'light';
+                var storedTheme = null;
+                var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
 
                 try {
-                    theme = window.localStorage.getItem(LOCAL_STORAGE_THEME_KEY);
+                    storedTheme = window.localStorage.getItem(LOCAL_STORAGE_THEME_KEY);
                 } catch(e) {
                     console.error(e);
                 }
 
-                document.body.dataset.theme = theme;
+                document.body.dataset.theme = storedTheme || (prefersDark ? 'dark' : 'light');
             })();
         </script>
     </body>

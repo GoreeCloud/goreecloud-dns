@@ -114,7 +114,7 @@ class Menu extends Component<MenuProps> {
             className={`order-${order} ${className}`}
             onClick={this.closeMenu}>
             {icon && (
-                <svg className="nav-icon">
+                <svg className="nav-icon" aria-hidden="true" focusable="false">
                     <use xlinkHref={`#${icon}`} />
                 </svg>
             )}
@@ -147,7 +147,7 @@ class Menu extends Component<MenuProps> {
         });
         return (
             <>
-                <div className={menuClass}>
+                <nav id="goreecloud-primary-navigation" className={menuClass} aria-label="GoreeCloud DNS">
                     <ul className="nav nav-tabs border-0 flex-column flex-lg-row flex-nowrap">
                         {MENU_ITEMS.map((item) => (
                             <li className={`nav-item order-${item.order}`} key={item.text} onClick={this.closeMenu}>
@@ -178,7 +178,7 @@ class Menu extends Component<MenuProps> {
                             })}
                         </li>
                     </ul>
-                </div>
+                </nav>
             </>
         );
     }

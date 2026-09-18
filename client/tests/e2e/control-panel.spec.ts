@@ -13,6 +13,23 @@ test.describe('Control Panel', () => {
         await page.waitForURL((url) => !url.href.endsWith('/login.html'));
     });
 
+    test('should expose mobile navigation state and controlled landmark', async ({ page }) => {
+        await page.setViewportSize({ width: 390, height: 844 });
+
+        const navigationToggle = page.getByRole('button', { name: 'GoreeCloud DNS navigation' });
+        const navigation = page.locator('#goreecloud-primary-navigation');
+
+        await expect(navigationToggle).toHaveAttribute('aria-controls', 'goreecloud-primary-navigation');
+        await expect(navigationToggle).toHaveAttribute('aria-expanded', 'false');
+        await expect(navigation).toHaveAttribute('aria-label', 'GoreeCloud DNS navigation');
+
+        await navigationToggle.click();
+        await expect(navigationToggle).toHaveAttribute('aria-expanded', 'true');
+
+        await navigationToggle.click();
+        await expect(navigationToggle).toHaveAttribute('aria-expanded', 'false');
+    });
+
     test('should sign out successfully', async ({ page }) => {
         await page.getByTestId('sign_out').click();
 
@@ -25,7 +42,6 @@ test.describe('Control Panel', () => {
         await page.getByTestId('theme_dark').click();
 
         await expect(page.locator('body[data-theme="dark"]')).toBeVisible();
-
 
         await page.getByTestId('theme_light').click();
 

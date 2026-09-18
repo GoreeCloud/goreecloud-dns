@@ -38,15 +38,18 @@ class Leases extends Component<LeasesProps> {
 
     makeStatic = ({ row }: any) => {
         const { t, disabledLeasesButton } = this.props;
+        const actionLabel = t('make_static');
+
         return (
             <div className="logs__row logs__row--center">
                 <button
                     type="button"
                     className="btn btn-icon btn-icon--green btn-outline-success btn-sm"
-                    title={t('make_static')}
+                    title={actionLabel}
+                    aria-label={actionLabel}
                     onClick={this.convertToStatic(row)}
                     disabled={disabledLeasesButton}>
-                    <svg className="icons icon12">
+                    <svg className="icons icon12" aria-hidden="true" focusable="false">
                         <use xlinkHref="#plus" />
                     </svg>
                 </button>
@@ -56,9 +59,11 @@ class Leases extends Component<LeasesProps> {
 
     render() {
         const { leases, t } = this.props;
+        const leaseData = leases || [];
+
         return (
             <ReactTable
-                data={leases || []}
+                data={leaseData}
                 columns={[
                     {
                         Header: 'MAC',
@@ -92,7 +97,7 @@ class Leases extends Component<LeasesProps> {
                 ]}
                 pageSize={LEASES_TABLE_DEFAULT_PAGE_SIZE}
                 showPageSizeOptions={false}
-                showPagination={leases.length > LEASES_TABLE_DEFAULT_PAGE_SIZE}
+                showPagination={leaseData.length > LEASES_TABLE_DEFAULT_PAGE_SIZE}
                 noDataText={t('dhcp_leases_not_found')}
                 minRows={6}
                 className="-striped -highlight card-table-overflow"

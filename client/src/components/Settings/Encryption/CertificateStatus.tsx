@@ -19,7 +19,7 @@ const CertificateStatus = ({ validChain, validCert, subject, issuer, notAfter, d
             <Trans>encryption_status</Trans>:
         </div>
 
-        <ul className="encryption__list">
+        <ul className="encryption__list" role="status" aria-live="polite">
             <li className={validChain ? 'text-success' : 'text-danger'}>
                 {validChain ? <Trans>encryption_chain_valid</Trans> : <Trans>encryption_chain_invalid</Trans>}
             </li>

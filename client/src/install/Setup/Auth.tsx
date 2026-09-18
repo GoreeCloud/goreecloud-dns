@@ -99,6 +99,7 @@ export const Auth = ({ onAuthSubmit }: Props) => {
                         name="confirm_password"
                         control={control}
                         rules={{
+                            deps: ['password'],
                             validate: {
                                 required: validateRequiredValue,
                                 confirmPassword: validateConfirmPassword,
@@ -119,7 +120,7 @@ export const Auth = ({ onAuthSubmit }: Props) => {
                 </div>
             </div>
 
-            <Controls isDirty={isDirty} isValid={isValid} />
+            <Controls invalid={!isValid} pristine={!isDirty} />
         </form>
     );
 };

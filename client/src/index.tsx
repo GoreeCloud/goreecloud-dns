@@ -6,7 +6,10 @@ import reducers from './reducers';
 
 import App from './components/App';
 import './components/App/index.css';
+import './glaze-ui.css';
+import './glaze-ui-components.css';
 import './i18n';
+import './productIdentity';
 import { RootState, initialState } from './initialState';
 
 const store = configureStore<RootState>(reducers, initialState);
